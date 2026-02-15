@@ -1,0 +1,485 @@
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field, validator
+from typing import Optional, Literal, List
+from datetime import datetime, timedelta
+from io import BytesIO
+import openpyxl
+from openpyxl.styles import Font, Alignment, PatternFill
+
+app = FastAPI(title="Backend Ventas ConectaAI")
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# =========================
+# MODELOS PYDANTIC
+# =========================
+
+class DealBase(BaseModel):
+    cliente: str = Field(..., min_length=1, max_length=200)
+    monto: int = Field(..., gt=0)
+    etapa: Literal['prospecto', 'calificado', 'propuesta', 'negociacion', 'ganado', 'perdido']
+    origen: Optional[Literal['facebook', 'instagram', 'linkedin', 'twitter', 'web', 'referido', 'llamada', 'email', 'google_ads', 'evento', 'tiktok', 'shopify', 'otro']] = 'otro'
+    fecha: str
+    contacto: Optional[str] = None
+    email: Optional[str] = None
+    telefono: Optional[str] = None
+    probabilidad: Optional[int] = Field(default=50, ge=0, le=100)
+    
+    @validator('email')
+    def validate_email(cls, v):
+        if v and '@' not in v:
+            raise ValueError('Email inválido')
+        return v
+
+class DealCreate(DealBase):
+    pass
+
+class DealUpdate(DealBase):
+    pass
+
+class DealUpdateEtapa(BaseModel):
+    etapa: Literal['prospecto', 'calificado', 'propuesta', 'negociacion', 'ganado', 'perdido']
+
+class Deal(DealBase):
+    id: int
+
+class ActividadBase(BaseModel):
+    tipo: Literal['nota', 'llamada', 'email', 'reunion', 'propuesta', 'negociacion', 'ganado', 'perdido', 'archivo']
+    descripcion: str = Field(..., min_length=1, max_length=1000)
+    fecha: Optional[str] = None
+    usuario: Optional[str] = "Sistema"
+
+class ActividadCreate(ActividadBase):
+    deal_id: int
+
+class Actividad(ActividadBase):
+    id: int
+    deal_id: int
+    created_at: str
+
+class MensajeBase(BaseModel):
+    contenido: str = Field(..., min_length=1, max_length=5000)
+    tipo: Literal['entrante', 'saliente'] = 'entrante'
+    canal: Literal['whatsapp', 'instagram', 'facebook', 'web', 'email', 'sms', 'tiktok', 'shopify'] = 'whatsapp'
+
+class MensajeCreate(MensajeBase):
+    deal_id: int
+
+class Mensaje(MensajeBase):
+    id: int
+    deal_id: int
+    created_at: str
+    leido: bool
+    usuario: Optional[str] = None
+
+class PlantillaBase(BaseModel):
+    nombre: str = Field(..., min_length=1, max_length=100)
+    contenido: str = Field(..., min_length=1, max_length=2000)
+    categoria: Optional[str] = "general"
+    activa: Optional[bool] = True
+
+class PlantillaCreate(PlantillaBase):
+    pass
+
+class Plantilla(PlantillaBase):
+    id: int
+
+# =========================
+# BASE DE DATOS MOCK - ACTUALIZADA
+# =========================
+
+DEALS_MOCK = [
+    {
+        "id": 1,
+        "cliente": "Empresa ABC",
+        "monto": 5000000,
+        "etapa": "negociacion",
+        "origen": "linkedin",
+        "fecha": "2026-01-08",
+        "contacto": "Juan Pérez",
+        "email": "juan@abc.cl",
+        "telefono": "+56912345678",
+        "probabilidad": 70
+    },
+    {
+        "id": 2,
+        "cliente": "Comercial XYZ",
+        "monto": 3500000,
+        "etapa": "propuesta",
+        "origen": "web",
+        "fecha": "2026-01-07",
+        "contacto": "María González",
+        "email": "maria@xyz.cl",
+        "telefono": "+56987654321",
+        "probabilidad": 60
+    },
+    {
+        "id": 3,
+        "cliente": "Industrias DEF",
+        "monto": 8000000,
+        "etapa": "ganado",
+        "origen": "referido",
+        "fecha": "2026-01-05",
+        "contacto": "Carlos Silva",
+        "email": "carlos@def.cl",
+        "telefono": "+56911111111",
+        "probabilidad": 100
+    },
+    {
+        "id": 5,
+        "cliente": "Distribuidora JKL",
+        "monto": 4500000,
+        "etapa": "calificado",
+        "origen": "facebook",
+        "fecha": "2026-01-06",
+        "contacto": "Pedro Morales",
+        "email": "pedro@jkl.cl",
+        "telefono": "+56933333333",
+        "probabilidad": 40
+    },
+    {
+        "id": 6,
+        "cliente": "Tech StartUp MNO",
+        "monto": 6000000,
+        "etapa": "prospecto",
+        "origen": "instagram",
+        "fecha": "2026-01-09",
+        "contacto": "Ana Rodríguez",
+        "email": "ana@techstartup.cl",
+        "telefono": "+56944444444",
+        "probabilidad": 20
+    },
+    {
+        "id": 7,
+        "cliente": "Influencer PQR",
+        "monto": 2500000,
+        "etapa": "prospecto",
+        "origen": "tiktok",
+        "fecha": "2026-01-10",
+        "contacto": "Luis Martínez",
+        "email": "luis@influencer.com",
+        "telefono": "+56955555555",
+        "probabilidad": 30
+    },
+    {
+        "id": 8,
+        "cliente": "Tienda Fashion STU",
+        "monto": 7500000,
+        "etapa": "calificado",
+        "origen": "shopify",
+        "fecha": "2026-01-10",
+        "contacto": "Carmen Ruiz",
+        "email": "carmen@fashionstu.com",
+        "telefono": "+56966666666",
+        "probabilidad": 50
+    }
+]
+
+ACTIVIDADES_MOCK = [
+    {
+        "id": 1,
+        "deal_id": 1,
+        "tipo": "nota",
+        "descripcion": "Cliente interesado en plan Enterprise",
+        "fecha": "2026-01-08",
+        "usuario": "Admin",
+        "created_at": "2026-01-08T10:30:00"
+    },
+    {
+        "id": 2,
+        "deal_id": 1,
+        "tipo": "llamada",
+        "descripcion": "Llamada de seguimiento - Solicita demo técnica",
+        "fecha": "2026-01-08",
+        "usuario": "Admin",
+        "created_at": "2026-01-08T14:15:00"
+    },
+    {
+        "id": 3,
+        "deal_id": 1,
+        "tipo": "reunion",
+        "descripcion": "Reunión virtual agendada para el 15/01",
+        "fecha": "2026-01-09",
+        "usuario": "Admin",
+        "created_at": "2026-01-09T09:00:00"
+    },
+    {
+        "id": 4,
+        "deal_id": 3,
+        "tipo": "ganado",
+        "descripcion": "¡Deal cerrado exitosamente! Contrato firmado.",
+        "fecha": "2026-01-05",
+        "usuario": "Admin",
+        "created_at": "2026-01-05T16:45:00"
+    }
+]
+
+MENSAJES_MOCK = [
+    # Conversación Deal 1 (Empresa ABC) - WhatsApp
+    {
+        "id": 1,
+        "deal_id": 1,
+        "contenido": "Hola, me interesa conocer más sobre sus servicios",
+        "tipo": "entrante",
+        "canal": "whatsapp",
+        "created_at": "2026-01-08T09:15:00",
+        "leido": True,
+        "usuario": None
+    },
+    {
+        "id": 2,
+        "deal_id": 1,
+        "contenido": "¡Hola Juan! Gracias por contactarnos. Con gusto te ayudo. ¿Qué tipo de servicio te interesa?",
+        "tipo": "saliente",
+        "canal": "whatsapp",
+        "created_at": "2026-01-08T09:18:00",
+        "leido": True,
+        "usuario": "Admin"
+    },
+    {
+        "id": 3,
+        "deal_id": 1,
+        "contenido": "Estamos buscando una solución de CRM para nuestro equipo de ventas",
+        "tipo": "entrante",
+        "canal": "whatsapp",
+        "created_at": "2026-01-08T09:25:00",
+        "leido": True,
+        "usuario": None
+    },
+    {
+        "id": 4,
+        "deal_id": 1,
+        "contenido": "Perfecto, tenemos el módulo ideal para ti. Te envío la info",
+        "tipo": "saliente",
+        "canal": "whatsapp",
+        "created_at": "2026-01-08T09:30:00",
+        "leido": True,
+        "usuario": "Admin"
+    },
+    {
+        "id": 5,
+        "deal_id": 1,
+        "contenido": "¿Podrían agendar una demo para la próxima semana?",
+        "tipo": "entrante",
+        "canal": "whatsapp",
+        "created_at": "2026-01-09T15:45:00",
+        "leido": False,
+        "usuario": None
+    },
+    
+    # Conversación Deal 2 (Comercial XYZ) - Instagram
+    {
+        "id": 6,
+        "deal_id": 2,
+        "contenido": "Vi su publicación sobre automatización de ventas",
+        "tipo": "entrante",
+        "canal": "instagram",
+        "created_at": "2026-01-07T11:20:00",
+        "leido": True,
+        "usuario": None
+    },
+    {
+        "id": 7,
+        "deal_id": 2,
+        "contenido": "Hola María! Sí, te puedo ayudar. ¿Qué te gustaría saber?",
+        "tipo": "saliente",
+        "canal": "instagram",
+        "created_at": "2026-01-07T11:25:00",
+        "leido": True,
+        "usuario": "Admin"
+    },
+    {
+        "id": 8,
+        "deal_id": 2,
+        "contenido": "¿Cuáles son los precios del plan básico?",
+        "tipo": "entrante",
+        "canal": "instagram",
+        "created_at": "2026-01-07T14:30:00",
+        "leido": False,
+        "usuario": None
+    },
+    
+    # Conversación Deal 5 (Distribuidora JKL) - Web Chat
+    {
+        "id": 9,
+        "deal_id": 5,
+        "contenido": "Hola, necesito información sobre integración con mi sistema actual",
+        "tipo": "entrante",
+        "canal": "web",
+        "created_at": "2026-01-06T16:10:00",
+        "leido": True,
+        "usuario": None
+    },
+    {
+        "id": 10,
+        "deal_id": 5,
+        "contenido": "Claro Pedro, ¿qué sistema usas actualmente?",
+        "tipo": "saliente",
+        "canal": "web",
+        "created_at": "2026-01-06T16:15:00",
+        "leido": True,
+        "usuario": "Admin"
+    },
+    
+    # Conversación Deal 6 (Tech StartUp MNO) - Facebook
+    {
+        "id": 11,
+        "deal_id": 6,
+        "contenido": "Buenas tardes, estamos buscando un CRM para startup",
+        "tipo": "entrante",
+        "canal": "facebook",
+        "created_at": "2026-01-09T13:00:00",
+        "leido": False,
+        "usuario": None
+    },
+    
+    # NUEVO: Conversación Deal 7 (Influencer PQR) - TikTok
+    {
+        "id": 12,
+        "deal_id": 7,
+        "contenido": "Hola! Vi su video sobre gestión de ventas 🎵",
+        "tipo": "entrante",
+        "canal": "tiktok",
+        "created_at": "2026-01-10T10:30:00",
+        "leido": False,
+        "usuario": None
+    },
+    {
+        "id": 13,
+        "deal_id": 7,
+        "contenido": "¡Hola Luis! Gracias por escribirnos. ¿Te gustaría saber más sobre nuestros planes?",
+        "tipo": "saliente",
+        "canal": "tiktok",
+        "created_at": "2026-01-10T10:35:00",
+        "leido": True,
+        "usuario": "Admin"
+    },
+    
+    # NUEVO: Conversación Deal 8 (Tienda Fashion STU) - Shopify
+    {
+        "id": 14,
+        "deal_id": 8,
+        "contenido": "Necesito integrar mi tienda Shopify con un CRM",
+        "tipo": "entrante",
+        "canal": "shopify",
+        "created_at": "2026-01-10T11:00:00",
+        "leido": False,
+        "usuario": None
+    },
+    {
+        "id": 15,
+        "deal_id": 8,
+        "contenido": "Perfecto Carmen! ConectaAI se integra directamente con Shopify. Te puedo mostrar cómo funciona.",
+        "tipo": "saliente",
+        "canal": "shopify",
+        "created_at": "2026-01-10T11:05:00",
+        "leido": True,
+        "usuario": "Admin"
+    },
+    {
+        "id": 16,
+        "deal_id": 8,
+        "contenido": "¿Puedo sincronizar mis productos y clientes automáticamente?",
+        "tipo": "entrante",
+        "canal": "shopify",
+        "created_at": "2026-01-10T11:10:00",
+        "leido": False,
+        "usuario": None
+    }
+]
+
+PLANTILLAS_MOCK = [
+    {
+        "id": 1,
+        "nombre": "Saludo Inicial",
+        "contenido": "¡Hola {{contacto}}! Gracias por contactarnos desde {{canal}}. ¿En qué podemos ayudarte hoy?",
+        "categoria": "saludo",
+        "activa": True
+    },
+    {
+        "id": 2,
+        "nombre": "Solicitar Info",
+        "contenido": "Hola {{contacto}}, para poder ayudarte mejor, ¿me podrías contar un poco más sobre lo que necesitas?",
+        "categoria": "seguimiento",
+        "activa": True
+    },
+    {
+        "id": 3,
+        "nombre": "Enviar Propuesta",
+        "contenido": "{{contacto}}, te envío la propuesta para {{cliente}}. El monto estimado es de {{monto}}. ¿Te parece bien si agendamos una reunión?",
+        "categoria": "propuesta",
+        "activa": True
+    },
+    {
+        "id": 4,
+        "nombre": "Seguimiento",
+        "contenido": "Hola {{contacto}}, te escribo para hacer seguimiento a nuestra conversación. ¿Tuviste tiempo de revisar la información que te envié?",
+        "categoria": "seguimiento",
+        "activa": True
+    },
+    {
+        "id": 5,
+        "nombre": "Agendar Demo",
+        "contenido": "Perfecto {{contacto}}! Te puedo agendar una demo para la próxima semana. ¿Qué día te viene mejor?",
+        "categoria": "reunion",
+        "activa": True
+    },
+    {
+        "id": 6,
+        "nombre": "Despedida",
+        "contenido": "Muchas gracias {{contacto}}! Cualquier duda, no dudes en escribirnos. ¡Saludos!",
+        "categoria": "cierre",
+        "activa": True
+    },
+    {
+        "id": 7,
+        "nombre": "Integración Shopify",
+        "contenido": "{{contacto}}, ConectaAI se integra perfectamente con Shopify. Puedes sincronizar productos, clientes y órdenes automáticamente. ¿Te muestro cómo?",
+        "categoria": "ecommerce",
+        "activa": True
+    },
+    {
+        "id": 8,
+        "nombre": "TikTok Creator",
+        "contenido": "{{contacto}}, gracias por contactarnos desde TikTok! 🎵 Tenemos planes especiales para creadores de contenido. ¿Te interesa?",
+        "categoria": "social",
+        "activa": True
+    }
+]
+
+next_id = 9
+next_actividad_id = 5
+next_mensaje_id = 17
+next_plantilla_id = 9
+
+# Copiar aquí todas las funciones auxiliares y endpoints que ya teníamos...
+# (get_etapa_text, get_origen_text, etc.)
+
+def get_origen_text(origen: str) -> str:
+    origenes = {
+        'facebook': 'Facebook',
+        'instagram': 'Instagram',
+        'linkedin': 'LinkedIn',
+        'twitter': 'Twitter',
+        'web': 'Sitio Web',
+        'referido': 'Referido',
+        'llamada': 'Llamada',
+        'email': 'Email',
+        'google_ads': 'Google Ads',
+        'evento': 'Evento',
+        'tiktok': 'TikTok',
+        'shopify': 'Shopify',
+        'otro': 'Otro'
+    }
+    return origenes.get(origen, origen)
+
+# ... resto del código igual ...

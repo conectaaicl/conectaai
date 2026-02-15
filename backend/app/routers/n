@@ -1,0 +1,35 @@
+
+
+# Ventas
+app.include_router(deals.router)
+app.include_router(leads.router)
+app.include_router(quotes.router)
+
+# Automatizaciones
+app.include_router(actions.router)
+
+# Appointments
+app.include_router(appointments.router)
+
+# Buttons
+app.include_router(buttons.router)
+
+# Google Calendar
+app.include_router(google_calendar.router)
+
+# WhatsApp
+app.include_router(whatsapp.router)
+
+# IA
+app.include_router(ai.router)
+
+# Me / Features
+app.include_router(me.router)
+
+
+# =========================
+# ROOT
+# =========================
+@app.get("/")
+def root():
+    return {"status": "ConectaAI API running"}

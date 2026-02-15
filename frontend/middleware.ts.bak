@@ -1,0 +1,37 @@
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
+
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // 🔥 REGLA 1: NUNCA interceptar rutas de API
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
+  // 🔥 REGLA 2: Login siempre es accesible (sin token)
+  if (pathname === '/login') {
+    return NextResponse.next()
+  }
+
+  // 🔒 REGLA 3: Dashboard requiere autenticación
+  if (pathname.startsWith('/dashboard')) {
+    const token = request.cookies.get('auth_token')
+    
+    if (!token) {
+      console.log('❌ Sin token, redirigiendo a login')
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+    
+    console.log('✅ Token presente, permitiendo acceso a dashboard')
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: [
+    // Intercepta TODO excepto archivos estáticos
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
+}

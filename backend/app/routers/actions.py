@@ -1,0 +1,77 @@
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
+
+from app.db.database import get_db
+from app.core.services.require_feature import require_feature
+from app.models.button import Button
+
+router = APIRouter(
+    prefix="/actions",
+    tags=["Automatizaciones"],
+    dependencies=[Depends(require_feature("automatizaciones"))],
+)
+
+
+@router.post("/")
+def create_action(
+    payload: dict,
+    db: Session = Depends(get_db),
+):
+    button = Button(**payload)
+    db.add(button)
+    db.commit()
+    db.refresh(button)
+    return {
+        "id": button.id,
+        "name": getattr(button, "name", None),
+        "created": True,
+    }
+
+
+@router.get("/")
+def list_actions(
+    db: Session = Depends(get_db),
+):
+    actions = db.query(Button).all()
+    return [
+        {
+            "id": a.id,
+            "name": getattr(a, "name", None),
+        }
+        for a in actions
+    ]
+
+
+@router.get("/{action_id}")
+def get_action(
+    action_id: int,
+    db: Session = Depends(get_db),
+):
+    button = db.query(Button).filter(Button.id == action_id).first()
+    if not button:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Action not found",
+        )
+
+    return {
+        "id": button.id,
+        "name": getattr(button, "name", None),
+    }
+
+
+@router.delete("/{action_id}")
+def delete_action(
+    action_id: int,
+    db: Session = Depends(get_db),
+):
+    button = db.query(Button).filter(Button.id == action_id).first()
+    if not button:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Action not found",
+        )
+
+    db.delete(button)
+    db.commit()
+    return {"ok": True}
