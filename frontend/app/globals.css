@@ -24,3 +24,20 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* PRO scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.6); }
+
+/* Table row hover */
+.pro-table tr:hover td { background: rgba(99,102,241,0.04); }
+
+/* Card glow on hover */
+.pro-card { transition: box-shadow 0.2s, transform 0.2s; }
+.pro-card:hover { box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 8px 32px rgba(0,0,0,0.3); transform: translateY(-1px); }
+
+/* Pulse dot animation */
+@keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+.pulse-dot { animation: pulse-dot 2s ease infinite; }

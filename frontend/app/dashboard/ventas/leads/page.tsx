@@ -43,7 +43,7 @@ export default function LeadsPage() {
       setLoading(true);
       
       // Obtener usuario actual
-      const userResponse = await fetch('https://sistema.conectaai.cl/api/auth/me', {
+      const userResponse = await fetch('/api/auth/me', {
         credentials: 'include',
       });
       
@@ -63,7 +63,7 @@ export default function LeadsPage() {
 
   const cargarLeads = async (tenant_id: number) => {
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/whatsapp360/leads?tenant_id=${tenant_id}`, {
+      const response = await fetch(`/api/whatsapp360/leads?tenant_id=${tenant_id}`, {
         credentials: 'include',
       });
       
@@ -80,7 +80,7 @@ export default function LeadsPage() {
     if (!tenantId) return;
     
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/whatsapp360/leads/${leadId}`, {
+      const response = await fetch(`/api/whatsapp360/leads/${leadId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

@@ -34,7 +34,7 @@ export default function ModalSueldo({ show, onClose, onSuccess, personal }: Prop
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
-      const res = await fetch('/api/personal/sueldos/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
+      const res = await fetch('/api/personal/sueldos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
       if (res.ok) { onSuccess(); alert('✅ Liquidación generada') } else { const error = await res.json(); alert(`❌ Error: ${JSON.stringify(error)}`) }
     } catch (err) { alert('❌ Error al generar liquidación') }
   }

@@ -7,7 +7,7 @@ class GastoComun(Base):
     __tablename__ = "gastos_comunes"
     
     id = Column(Integer, primary_key=True, index=True)
-    departamento_id = Column(Integer, ForeignKey("departamentos.id", ondelete="CASCADE"), nullable=False)
+    departamento_id = Column(Integer, ForeignKey("departamentos.id", ondelete="SET NULL"), nullable=True)
     mes = Column(Integer, nullable=False)
     anio = Column(Integer, nullable=False)
     monto_base = Column(Float, nullable=False)
@@ -19,7 +19,9 @@ class GastoComun(Base):
     estado = Column(String, default="pendiente")
     fecha_vencimiento = Column(DateTime, nullable=False)
     fecha_pago = Column(DateTime, nullable=True)
+    categoria = Column(String(80), nullable=True)
     detalle = Column(JSONB, default={})
+    descripcion = Column(String(255), nullable=True)
     observaciones = Column(Text, nullable=True)
     comprobante_url = Column(String, nullable=True)
     metodo_pago = Column(String, nullable=True)
@@ -30,11 +32,12 @@ class Multa(Base):
     __tablename__ = "multas"
     
     id = Column(Integer, primary_key=True, index=True)
-    departamento_id = Column(Integer, ForeignKey("departamentos.id", ondelete="CASCADE"), nullable=False)
+    departamento_id = Column(Integer, ForeignKey("departamentos.id", ondelete="SET NULL"), nullable=True)
     concepto = Column(String, nullable=False)
     monto = Column(Float, nullable=False)
     fecha_aplicacion = Column(DateTime, nullable=False)
     estado = Column(String, default="pendiente")
+    descripcion = Column(String(255), nullable=True)
     observaciones = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())
 
@@ -42,11 +45,12 @@ class Pago(Base):
     __tablename__ = "pagos"
     
     id = Column(Integer, primary_key=True, index=True)
-    departamento_id = Column(Integer, ForeignKey("departamentos.id", ondelete="CASCADE"), nullable=False)
+    departamento_id = Column(Integer, ForeignKey("departamentos.id", ondelete="SET NULL"), nullable=True)
     gasto_comun_id = Column(Integer, ForeignKey("gastos_comunes.id"), nullable=True)
     monto = Column(Float, nullable=False)
     fecha_pago = Column(DateTime, nullable=False)
     metodo_pago = Column(String, nullable=False)
     comprobante_url = Column(String, nullable=True)
+    descripcion = Column(String(255), nullable=True)
     observaciones = Column(Text, nullable=True)
     created_at = Column(DateTime, server_default=func.now())

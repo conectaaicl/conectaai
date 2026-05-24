@@ -2,7 +2,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-SQLALCHEMY_DATABASE_URL = "postgresql://conectaai_user:ConectaAI2026!@localhost/conectaai"
+import os as _os
+SQLALCHEMY_DATABASE_URL = _os.getenv("DATABASE_URL", "postgresql://conectaai_user:ConectaAI2026!@localhost/conectaai")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

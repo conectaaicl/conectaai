@@ -1,0 +1,96 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: conectaai_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: conectaai
+      POSTGRES_USER: conectaai_user
+      POSTGRES_PASSWORD: ConectaAI2026!
+    volumes:
+      - conectaai_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U conectaai_user -d conectaai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-condominios:
+    build:
+      context: ./condominios/backend
+      dockerfile: Dockerfile
+    container_name: conectaai_backend_condominios
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SECRET_KEY: 4641a4b513133aeac53458c38dab487b3b5331e33cc68176dd34af988140fade
+      DATABASE_URL: postgresql://conectaai_user:ConectaAI2026!@db/conectaai
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_DAYS: "7"
+      FLOW_API_KEY: ""
+      FLOW_SECRET_KEY: ""
+      FLOW_API_URL: "https://www.flow.cl/api"
+      RESEND_API_KEY: ""
+      MAIL_API_KEY: "sk_live_6pplo4eac1j6m26z2j9np"
+      MAIL_API_URL: "https://mail.conectaai.cl/api/send"
+      MAIL_API_URL_PUBLIC: "https://mail.conectaai.cl"
+      MAIL_FROM: "no-reply@conectaai.cl"
+      APP_URL: "https://conectaai.cl"
+      CRON_SECRET: "cron-conectaai-2026-secret"
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+      META_SYSTEM_TOKEN: ""
+      FERNET_KEY: "oyxVckht40BM5yXi0sUfdmLPVLsbU9pAAtaBsiJD20I="
+      META_APP_ID: ""
+      META_VERIFY_TOKEN: "conectaai_wa_2026"
+      MP_ACCESS_TOKEN: ""
+      MP_PUBLIC_KEY: ""
+      VAPID_PUBLIC_KEY: "BNAlSUWhIlq6s8uRuwUDlQZXCIu9xjdEpcO4DNnHMTt5rtfQH2acGT9S0EYHp9wdffB7Bc-m12ugaW3F-TBjSr0"
+      VAPID_PRIVATE_KEY: "b_XLOcUSCKt8tSYYpPndpQwSA4-XyPnJymujsjip-l8"
+      VAPID_EMAIL: "mailto:admin@conectaai.cl"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "127.0.0.1:8003:8003"
+
+  backend-core:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: conectaai_backend_core
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      JWT_SECRET: e00f9abe2d44bfc25739e9cce0fda7392e8fd60f8c34e175f27ef4fe71494e52
+      DATABASE_URL: postgresql://conectaai_user:ConectaAI2026!@db/conectaai
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: "1440"
+      CORS_ORIGINS: "https://conectaai.cl,http://localhost:3005"
+    ports:
+      - "127.0.0.1:8006:8006"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: conectaai_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend-condominios
+      - backend-core
+    environment:
+      PORT: "3005"
+    ports:
+      - "127.0.0.1:3005:3005"
+
+volumes:
+  conectaai_pgdata:
+
+networks:
+  default:
+    name: cai_condominios_net

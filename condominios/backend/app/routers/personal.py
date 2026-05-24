@@ -11,7 +11,7 @@ from app.schemas.personal import *
 router = APIRouter(prefix="/api/personal", tags=["Personal"])
 
 # ============ TURNOS ============
-@router.post("/turnos/", response_model=TurnoResponse)
+@router.post("/turnos", response_model=TurnoResponse)
 def crear_turno(turno: TurnoCreate, db: Session = Depends(get_db)):
     """Crear nuevo turno"""
     db_turno = Turno(**turno.model_dump())
@@ -20,7 +20,7 @@ def crear_turno(turno: TurnoCreate, db: Session = Depends(get_db)):
     db.refresh(db_turno)
     return db_turno
 
-@router.get("/turnos/", response_model=List[TurnoResponse])
+@router.get("/turnos", response_model=List[TurnoResponse])
 def listar_turnos(
     persona_id: Optional[int] = None,
     fecha_desde: Optional[date] = None,
@@ -110,7 +110,7 @@ def registrar_salida(
     db.refresh(asistencia)
     return asistencia
 
-@router.get("/asistencias/", response_model=List[AsistenciaResponse])
+@router.get("/asistencias", response_model=List[AsistenciaResponse])
 def listar_asistencias(
     persona_id: Optional[int] = None,
     fecha_desde: Optional[date] = None,
@@ -130,7 +130,7 @@ def listar_asistencias(
     return query.order_by(Asistencia.fecha.desc()).all()
 
 # ============ SUELDOS ============
-@router.post("/sueldos/", response_model=SueldoResponse)
+@router.post("/sueldos", response_model=SueldoResponse)
 def crear_sueldo(sueldo: SueldoCreate, db: Session = Depends(get_db)):
     """Generar liquidación de sueldo"""
     
@@ -156,7 +156,7 @@ def crear_sueldo(sueldo: SueldoCreate, db: Session = Depends(get_db)):
     
     return db_sueldo
 
-@router.get("/sueldos/", response_model=List[SueldoResponse])
+@router.get("/sueldos", response_model=List[SueldoResponse])
 def listar_sueldos(
     persona_id: Optional[int] = None,
     mes: Optional[int] = None,
@@ -190,7 +190,7 @@ def pagar_sueldo(sueldo_id: int, metodo_pago: str, db: Session = Depends(get_db)
     return {"message": "Sueldo marcado como pagado"}
 
 # ============ ADELANTOS ============
-@router.post("/adelantos/", response_model=AdelantoResponse)
+@router.post("/adelantos", response_model=AdelantoResponse)
 def solicitar_adelanto(adelanto: AdelantoCreate, db: Session = Depends(get_db)):
     """Solicitar adelanto"""
     db_adelanto = Adelanto(**adelanto.model_dump())
@@ -222,7 +222,7 @@ def aprobar_adelanto(adelanto_id: int, aprobador: str, db: Session = Depends(get
     db.commit()
     return {"message": "Adelanto aprobado"}
 
-@router.get("/adelantos/", response_model=List[AdelantoResponse])
+@router.get("/adelantos", response_model=List[AdelantoResponse])
 def listar_adelantos(
     persona_id: Optional[int] = None,
     estado: Optional[str] = None,
@@ -239,7 +239,7 @@ def listar_adelantos(
     return query.order_by(Adelanto.fecha_solicitud.desc()).all()
 
 # ============ EVALUACIONES ============
-@router.post("/evaluaciones/", response_model=EvaluacionResponse)
+@router.post("/evaluaciones", response_model=EvaluacionResponse)
 def crear_evaluacion(evaluacion: EvaluacionCreate, db: Session = Depends(get_db)):
     """Crear evaluación"""
     
@@ -265,7 +265,7 @@ def crear_evaluacion(evaluacion: EvaluacionCreate, db: Session = Depends(get_db)
     
     return db_eval
 
-@router.get("/evaluaciones/", response_model=List[EvaluacionResponse])
+@router.get("/evaluaciones", response_model=List[EvaluacionResponse])
 def listar_evaluaciones(
     persona_id: Optional[int] = None,
     tipo: Optional[str] = None,
@@ -282,7 +282,7 @@ def listar_evaluaciones(
     return query.order_by(Evaluacion.fecha.desc()).all()
 
 # ============ EQUIPAMIENTO ============
-@router.post("/equipamiento/", response_model=EquipamientoResponse)
+@router.post("/equipamiento", response_model=EquipamientoResponse)
 def registrar_equipamiento(equip: EquipamientoCreate, db: Session = Depends(get_db)):
     """Registrar entrega de equipamiento"""
     db_equip = Equipamiento(**equip.model_dump())
@@ -291,7 +291,7 @@ def registrar_equipamiento(equip: EquipamientoCreate, db: Session = Depends(get_
     db.refresh(db_equip)
     return db_equip
 
-@router.get("/equipamiento/", response_model=List[EquipamientoResponse])
+@router.get("/equipamiento", response_model=List[EquipamientoResponse])
 def listar_equipamiento(
     persona_id: Optional[int] = None,
     estado: Optional[str] = None,

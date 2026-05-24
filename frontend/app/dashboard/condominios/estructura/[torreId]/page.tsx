@@ -27,7 +27,7 @@ export default function TorreDetallePage() {
     try {
       const [pisosRes, personasRes] = await Promise.all([
         fetch(`/api/condominios/torres/${torreId}/pisos`),
-        fetch('/api/personas/')
+        fetch('/api/personas')
       ])
       if (pisosRes.ok) {
         const pisosData = await pisosRes.json()

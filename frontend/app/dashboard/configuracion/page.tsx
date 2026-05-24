@@ -15,8 +15,7 @@ interface BrandingData {
 }
 
 export default function ConfiguracionPage() {
-  const COMPANY_ID = 27  // 🆕 TODO: Obtener del usuario logueado
-
+  const [companyId, setCompanyId] = useState<number | null>(null)
   const [branding, setBranding] = useState<BrandingData>({
     brand_name: 'ConectaAI',
     logo_url: null,
@@ -35,12 +34,30 @@ export default function ConfiguracionPage() {
   const [uploadingFavicon, setUploadingFavicon] = useState(false)
 
   useEffect(() => {
-    fetchBranding()
+    fetchUserAndBranding()
   }, [])
 
-  async function fetchBranding() {
+  async function fetchUserAndBranding() {
     try {
-      const response = await fetch(`/api/branding/company/${COMPANY_ID}`)
+      const userResponse = await fetch('/api/auth/me', { credentials: 'include' })
+      if (userResponse.ok) {
+        const userData = await userResponse.json()
+        setCompanyId(userData.company_id)
+        await fetchBranding(userData.company_id)
+      } else {
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('Error fetching user:', err)
+      setLoading(false)
+    }
+  }
+
+  async function fetchBranding(id?: number) {
+    const cid = id ?? companyId
+    if (!cid) return
+    try {
+      const response = await fetch(`/api/branding/company/${cid}`)
       if (response.ok) {
         const data = await response.json()
         setBranding({
@@ -65,7 +82,7 @@ export default function ConfiguracionPage() {
   async function handleSave() {
     setSaving(true)
     try {
-      const response = await fetch(`/api/branding/company/${COMPANY_ID}`, {
+      const response = await fetch(`/api/branding/company/${companyId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(branding)

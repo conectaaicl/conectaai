@@ -51,7 +51,7 @@ export default function PerfilPage() {
   const cargarUsuario = async () => {
     try {
       setLoading(true)
-      const response = await fetch('https://sistema.conectaai.cl/api/auth/me', {
+      const response = await fetch('/api/auth/me', {
         credentials: 'include',
       })
       
@@ -83,7 +83,7 @@ export default function PerfilPage() {
     setMensaje(null)
 
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/usuarios/${usuario?.id}`, {
+      const response = await fetch(`/api/usuarios/${usuario?.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -114,7 +114,7 @@ export default function PerfilPage() {
     setMensaje(null)
 
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/usuarios/${usuario?.id}`, {
+      const response = await fetch(`/api/usuarios/${usuario?.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -158,7 +158,7 @@ export default function PerfilPage() {
     }
 
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/usuarios/${usuario?.id}/password`, {
+      const response = await fetch(`/api/usuarios/${usuario?.id}/password`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

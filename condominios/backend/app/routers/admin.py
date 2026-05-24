@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
+from app.routers.auth import get_current_user
 from app.models.tenant import Tenant
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantConfig
 import shutil
@@ -15,8 +16,10 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # ============ CRUD TENANTS ============
 
-@router.post("/", response_model=TenantResponse)
-def crear_tenant(tenant: TenantCreate, db: Session = Depends(get_db)):
+@router.post("", response_model=TenantResponse)
+def crear_tenant(tenant: TenantCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    if current_user.get('role') not in ('superadmin', 'admin'):
+        raise HTTPException(status_code=403, detail='Acceso denegado')
     """Crear nuevo tenant (cliente)"""
     
     # Verificar que subdominio no exista
@@ -35,7 +38,7 @@ def crear_tenant(tenant: TenantCreate, db: Session = Depends(get_db)):
     
     return db_tenant
 
-@router.get("/", response_model=List[TenantResponse])
+@router.get("", response_model=List[TenantResponse])
 def listar_tenants(
     skip: int = 0,
     limit: int = 100,

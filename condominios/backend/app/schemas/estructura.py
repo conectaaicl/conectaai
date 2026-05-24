@@ -12,10 +12,26 @@ class CondominioBase(BaseModel):
     direccion: str
     comuna: Optional[str] = None
     region: Optional[str] = None
+    ciudad: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     configuracion: Optional[dict] = {}
     logo_url: Optional[str] = None
+    # Administration info
+    administrador_nombre: Optional[str] = None
+    administrador_rut: Optional[str] = None
+    empresa_administradora: Optional[str] = None
+    administrador_telefono: Optional[str] = None
+    administrador_email: Optional[str] = None
+    contrato_inicio: Optional[str] = None
+    # Building details
+    rut_condominio: Optional[str] = None
+    tipo: Optional[str] = "edificio"
+    anno_construccion: Optional[int] = None
+    metros_totales: Optional[float] = None
+    telefono_contacto: Optional[str] = None
+    email_contacto: Optional[str] = None
+    website: Optional[str] = None
 
 
 class CondominioCreate(CondominioBase):
@@ -27,10 +43,26 @@ class CondominioUpdate(BaseModel):
     direccion: Optional[str] = None
     comuna: Optional[str] = None
     region: Optional[str] = None
+    ciudad: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     configuracion: Optional[dict] = None
     logo_url: Optional[str] = None
+    # Administration info
+    administrador_nombre: Optional[str] = None
+    administrador_rut: Optional[str] = None
+    empresa_administradora: Optional[str] = None
+    administrador_telefono: Optional[str] = None
+    administrador_email: Optional[str] = None
+    contrato_inicio: Optional[str] = None
+    # Building details
+    rut_condominio: Optional[str] = None
+    tipo: Optional[str] = None
+    anno_construccion: Optional[int] = None
+    metros_totales: Optional[float] = None
+    telefono_contacto: Optional[str] = None
+    email_contacto: Optional[str] = None
+    website: Optional[str] = None
 
 
 class CondominioResponse(CondominioBase):

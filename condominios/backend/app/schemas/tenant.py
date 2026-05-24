@@ -7,9 +7,9 @@ class TenantBase(BaseModel):
     subdominio: str
     email_contacto: str
     telefono: Optional[str] = None
-    color_primario: str = '#3498db'
-    color_secundario: str = '#2ecc71'
-    color_acento: str = '#e74c3c'
+    color_primario: Optional[str] = '#3498db'
+    color_secundario: Optional[str] = '#2ecc71'
+    color_acento: Optional[str] = '#e74c3c'
     plan: str = 'basico'
     limite_condominios: int = 1
     limite_departamentos: int = 50
@@ -36,10 +36,10 @@ class TenantResponse(TenantBase):
     logo_url: Optional[str] = None
     favicon_url: Optional[str] = None
     estado: str
-    fecha_inicio: datetime
+    fecha_inicio: Optional[datetime] = None
     fecha_vencimiento: Optional[datetime] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     
     class Config:
         from_attributes = True

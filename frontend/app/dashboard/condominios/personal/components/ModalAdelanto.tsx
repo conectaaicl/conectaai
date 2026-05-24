@@ -7,7 +7,7 @@ export default function ModalAdelanto({ show, onClose, onSuccess, personal }: Pr
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
-      const res = await fetch('/api/personal/adelantos/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
+      const res = await fetch('/api/personal/adelantos', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
       if (res.ok) { onSuccess(); alert('✅ Adelanto registrado (pendiente aprobación)') }
     } catch (err) { alert('❌ Error') }
   }

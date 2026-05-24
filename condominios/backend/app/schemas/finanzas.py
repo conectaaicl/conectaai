@@ -1,13 +1,15 @@
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 
 class DetalleGasto(BaseModel):
     concepto: str
+    categoria: Optional[str] = None
     monto: float
+    descripcion: Optional[str] = ""
 
 class GastoComunBase(BaseModel):
-    departamento_id: int
+    departamento_id: Optional[int] = None
     mes: int
     anio: int
     monto_base: float
@@ -18,6 +20,8 @@ class GastoComunBase(BaseModel):
     monto_total: float
     estado: str = "pendiente"
     fecha_vencimiento: str
+    categoria: Optional[str] = None
+    descripcion: Optional[str] = None
     detalle: List[DetalleGasto] = []
     observaciones: Optional[str] = None
 
@@ -34,6 +38,8 @@ class GastoComunUpdate(BaseModel):
     estado: Optional[str] = None
     fecha_vencimiento: Optional[str] = None
     fecha_pago: Optional[datetime] = None
+    categoria: Optional[str] = None
+    descripcion: Optional[str] = None
     detalle: Optional[List[DetalleGasto]] = None
     observaciones: Optional[str] = None
     comprobante_url: Optional[str] = None

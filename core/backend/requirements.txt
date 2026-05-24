@@ -7,3 +7,4 @@ passlib[bcrypt]
 python-dotenv
 pydantic
 pydantic-settings
+reportlab==4.2.5

@@ -54,7 +54,7 @@ export default function StatsPage() {
       setLoading(true);
       
       // Obtener usuario actual
-      const userResponse = await fetch('https://sistema.conectaai.cl/api/auth/me', {
+      const userResponse = await fetch('/api/auth/me', {
         credentials: 'include',
       });
       
@@ -63,7 +63,7 @@ export default function StatsPage() {
         setTenantId(userData.tenant_id);
         
         // Cargar stats
-        const statsResponse = await fetch(`https://sistema.conectaai.cl/api/whatsapp360/stats?tenant_id=${userData.tenant_id}`, {
+        const statsResponse = await fetch(`/api/whatsapp360/stats?tenant_id=${userData.tenant_id}`, {
           credentials: 'include',
         });
         
@@ -73,7 +73,7 @@ export default function StatsPage() {
         }
 
         // Cargar leads
-        const leadsResponse = await fetch(`https://sistema.conectaai.cl/api/whatsapp360/leads?tenant_id=${userData.tenant_id}`, {
+        const leadsResponse = await fetch(`/api/whatsapp360/leads?tenant_id=${userData.tenant_id}`, {
           credentials: 'include',
         });
         

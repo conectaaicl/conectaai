@@ -36,21 +36,11 @@ export default function CotizacionesPage() {
   async function fetchCotizaciones() {
     try {
       setLoading(true)
-      const mockCotizaciones: Cotizacion[] = [
-        {
-          id: 1,
-          deal_id: 1,
-          numero: 'COT-2026-001',
-          fecha: '2026-01-10',
-          valida_hasta: '2026-01-24',
-          estado: 'enviada',
-          total: 5950000,
-          created_at: '2026-01-10T14:00:00',
-          cliente: 'Empresa ABC',
-          contacto: 'Juan Pérez'
-        }
-      ]
-      setCotizaciones(mockCotizaciones)
+      const response = await fetch('/api/ventas/cotizaciones')
+      if (response.ok) {
+        const data = await response.json()
+        setCotizaciones(Array.isArray(data) ? data : [])
+      }
     } catch (err) {
       console.error('Error:', err)
     } finally {

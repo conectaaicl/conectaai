@@ -93,7 +93,7 @@ export default function VentasPage() {
 
   async function fetchWhatsAppStats() {
     try {
-      const response = await fetch('https://sistema.conectaai.cl/api/whatsapp360/stats?tenant_id=1', {
+      const response = await fetch('/api/whatsapp360/stats?tenant_id=1', {
         credentials: 'include',
       })
       if (response.ok) {

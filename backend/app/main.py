@@ -23,8 +23,8 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://164.68.127.8:3000",
-        "http://localhost:3000",
+                "http://localhost:3000",
+        "https://condos.conectaai.cl",
     ],
     allow_credentials=True,
     allow_methods=["*"],

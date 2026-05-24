@@ -58,7 +58,7 @@ export default function InboxPage() {
       setLoading(true);
       
       // Primero obtener el usuario actual
-      const userResponse = await fetch('https://sistema.conectaai.cl/api/auth/me', {
+      const userResponse = await fetch('/api/auth/me', {
         credentials: 'include',
       });
       
@@ -78,7 +78,7 @@ export default function InboxPage() {
 
   const cargarConversaciones = async (tenant_id: number) => {
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/whatsapp360/conversaciones?tenant_id=${tenant_id}`, {
+      const response = await fetch(`/api/whatsapp360/conversaciones?tenant_id=${tenant_id}`, {
         credentials: 'include',
       });
       
@@ -98,7 +98,7 @@ export default function InboxPage() {
     if (!tenantId) return;
     
     try {
-      const response = await fetch(`https://sistema.conectaai.cl/api/whatsapp360/mensajes/${conversacionId}?tenant_id=${tenantId}`, {
+      const response = await fetch(`/api/whatsapp360/mensajes/${conversacionId}?tenant_id=${tenantId}`, {
         credentials: 'include',
       });
       
@@ -116,7 +116,7 @@ export default function InboxPage() {
     if (!conversacionActiva || !nuevoMensaje.trim() || !tenantId) return;
 
     try {
-      const response = await fetch('https://sistema.conectaai.cl/api/whatsapp360/mensajes', {
+      const response = await fetch('/api/whatsapp360/mensajes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

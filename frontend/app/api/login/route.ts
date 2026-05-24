@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+const BACKEND_URL = process.env.BACKEND_URL || 'http://conectaai_backend_condominios:8003'
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData()
     
-    // Llamar al backend INTERNO (mismo servidor)
-    const response = await fetch('http://127.0.0.1:8003/api/auth/login', {
+    // Llamar al backend INTERNO (red Docker interna)
+    const response = await fetch(`${BACKEND_URL}/api/auth/login`, {
       method: 'POST',
       body: formData,
     })

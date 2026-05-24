@@ -43,7 +43,7 @@ export default function TenantsAdminPage() {
 
   async function fetchTenants() {
     try {
-      const res = await fetch('/api/admin/tenants/')
+      const res = await fetch('/api/admin/tenants')
       if (res.ok) setTenants(await res.json())
     } catch (err) {
       console.error(err)

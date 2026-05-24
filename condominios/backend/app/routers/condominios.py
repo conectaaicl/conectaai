@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
 from app.models.condominio import Condominio
-from app.models.estructura import Torre, Piso, Departamento  # ✅ CORREGIDO
+from app.models.estructura import Torre, Piso, Departamento, Estacionamiento, Bodega  # ✅ CORREGIDO
+from app.models.persona import Persona
 from app.schemas.estructura import (
     CondominioCreate,
     CondominioUpdate,
@@ -22,7 +23,7 @@ router = APIRouter(prefix="/api/condominios", tags=["condominios"])
 # CONDOMINIOS
 # ==========================================
 
-@router.post("/", response_model=CondominioResponse)
+@router.post("", response_model=CondominioResponse)
 def crear_condominio(condominio: CondominioCreate, db: Session = Depends(get_db)):
     """Crear nuevo condominio"""
     # Convertir a dict
@@ -39,10 +40,16 @@ def crear_condominio(condominio: CondominioCreate, db: Session = Depends(get_db)
     return db_condominio
 
 
-@router.get("/", response_model=List[CondominioResponse])
+@router.get("", response_model=List[CondominioResponse])
 def listar_condominios(tenant_id: int = 1, db: Session = Depends(get_db)):
     """Listar todos los condominios del tenant"""
     return db.query(Condominio).filter(Condominio.tenant_id == tenant_id).all()
+
+
+@router.get("/departamentos", response_model=List[DepartamentoResponse])
+def listar_todos_departamentos(tenant_id: int = 1, db: Session = Depends(get_db)):
+    """Listar todos los departamentos de un tenant (para selects y resúmenes)"""
+    return db.query(Departamento).filter(Departamento.tenant_id == tenant_id).order_by(Departamento.numero).all()
 
 
 @router.get("/{condominio_id}", response_model=CondominioResponse)
@@ -85,6 +92,38 @@ def eliminar_condominio(condominio_id: int, db: Session = Depends(get_db)):
     db.delete(condominio)
     db.commit()
     return {"message": "Condominio eliminado exitosamente"}
+
+
+
+
+@router.get("/{condominio_id}/resumen")
+def get_condominio_resumen(condominio_id: int, tenant_id: int = 1, db: Session = Depends(get_db)):
+    """Obtener resumen del condominio"""
+    c = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Condominio no encontrado")
+    torres = db.query(Torre).filter(Torre.condominio_id == condominio_id).all()
+    torre_ids = [t.id for t in torres]
+    piso_ids = [p.id for p in db.query(Piso).filter(Piso.torre_id.in_(torre_ids)).all()] if torre_ids else []
+    deptos = db.query(Departamento).filter(Departamento.piso_id.in_(piso_ids)).count() if piso_ids else 0
+    estac = db.query(Estacionamiento).filter(Estacionamiento.condominio_id == condominio_id).count()
+    bodegas = db.query(Bodega).filter(Bodega.condominio_id == condominio_id).count()
+    personas = db.query(Persona).filter(Persona.tenant_id == tenant_id, Persona.estado == "activo").count()
+    cond_dict = {col.name: getattr(c, col.name) for col in c.__table__.columns}
+    for k, v in cond_dict.items():
+        if hasattr(v, "isoformat"):
+            cond_dict[k] = v.isoformat()
+    return {
+        "condominio": cond_dict,
+        "stats": {
+            "torres": len(torres),
+            "pisos": len(piso_ids),
+            "departamentos": deptos,
+            "estacionamientos": estac,
+            "bodegas": bodegas,
+            "residentes_activos": personas
+        }
+    }
 
 
 # ==========================================
@@ -266,3 +305,36 @@ def eliminar_departamento(depto_id: int, db: Session = Depends(get_db)):
     db.delete(depto)
     db.commit()
     return {"message": "Departamento eliminado exitosamente"}
+
+
+
+import os
+import uuid
+from fastapi import UploadFile, File as FastFile
+
+LOGO_DIR = "/var/www/conectaai/condominios/uploads/logos"
+os.makedirs(LOGO_DIR, exist_ok=True)
+
+@router.post("/{condominio_id}/upload-logo")
+async def upload_condominio_logo(condominio_id: int, file: UploadFile = FastFile(...), db: Session = Depends(get_db)):
+    """Subir logo para un condominio"""
+    condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
+    if not condominio:
+        raise HTTPException(status_code=404, detail="Condominio no encontrado")
+
+    ext = os.path.splitext(file.filename or "logo.png")[1].lower()
+    if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
+        raise HTTPException(status_code=400, detail="Solo se aceptan PNG, JPG o WebP")
+
+    filename = f"cond_{condominio_id}_{uuid.uuid4().hex[:8]}{ext}"
+    path = os.path.join(LOGO_DIR, filename)
+
+    content = await file.read()
+    with open(path, "wb") as f:
+        f.write(content)
+
+    logo_url = f"/uploads/logos/{filename}"
+    condominio.logo_url = logo_url
+    db.commit()
+
+    return {"url": logo_url, "condominio_id": condominio_id}

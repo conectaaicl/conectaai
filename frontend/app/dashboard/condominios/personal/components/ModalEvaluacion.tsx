@@ -7,7 +7,7 @@ export default function ModalEvaluacion({ show, onClose, onSuccess, personal }: 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     try {
-      const res = await fetch('/api/personal/evaluaciones/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
+      const res = await fetch('/api/personal/evaluaciones', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData) })
       if (res.ok) { onSuccess(); alert('✅ Evaluación registrada') }
     } catch (err) { alert('❌ Error') }
   }
