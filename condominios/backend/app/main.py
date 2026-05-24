@@ -216,6 +216,9 @@ app.include_router(portal_ext_router.router)
 app.include_router(pagos_config_router.router)
 app.include_router(presupuesto_router.router)
 app.include_router(facial_router.router)
+from app.routers import features as features_router
+app.include_router(features_router.router)
+
 @app.get("/")
 def root():
     return {
