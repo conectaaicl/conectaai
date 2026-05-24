@@ -58,7 +58,7 @@ export default function PuertasPage() {
 
   const [form, setForm] = useState({
     nombre: '', descripcion: '', tipo: 'puerta', ubicacion: '',
-    webhook_url: '', tiempo_apertura_seg: 5
+    webhook_url: '', tiempo_apertura_seg: 5, marca_hardware: 'otro'
   })
 
   const load = useCallback(async (showSpinner = true) => {
@@ -159,6 +159,17 @@ export default function PuertasPage() {
                   <label className="block text-xs font-medium text-slate-600 mb-1">Tipo</label>
                   <select value={form.tipo} onChange={e => setForm(p => ({ ...p, tipo: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     {['puerta','porton','barrera','ascensor'].map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Hardware / Control de Acceso</label>
+                  <select value={form.marca_hardware} onChange={e => setForm(p => ({ ...p, marca_hardware: e.target.value }))} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value='otro'>Relay / Otro</option>
+                    <option value='zkteco'>ZKTeco</option>
+                    <option value='hikvision'>Hikvision</option>
+                    <option value='dahua'>Dahua</option>
+                    <option value='hid'>HID</option>
+                    <option value='suprema'>Suprema</option>
                   </select>
                 </div>
                 <div>

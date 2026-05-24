@@ -12,6 +12,7 @@ interface Camara {
   snapshot_url?: string
   onvif_puerto: number
   modelo?: string
+  marca?: string
   activa: boolean
   ultimo_estado: string
   ultima_comprobacion?: string
@@ -44,7 +45,7 @@ export default function CamarasPage() {
   const [form, setForm] = useState({
     nombre: '', ubicacion: '', ip: '', puerto: 80,
     rtsp_url: '', snapshot_url: '', onvif_puerto: 8000,
-    usuario: '', password: '', modelo: '',
+    usuario: '', password: '', modelo: '', marca: 'hikvision',
   })
 
   const [scanSubnet, setScanSubnet] = useState("192.168.1")
@@ -89,7 +90,7 @@ export default function CamarasPage() {
     if (r.ok) {
       showMsg('ok', 'Cámara registrada')
       setShowForm(false)
-      setForm({ nombre: '', ubicacion: '', ip: '', puerto: 80, rtsp_url: '', snapshot_url: '', onvif_puerto: 8000, usuario: '', password: '', modelo: '' })
+      setForm({ nombre: '', ubicacion: '', ip: '', puerto: 80, rtsp_url: '', snapshot_url: '', onvif_puerto: 8000, usuario: '', password: '', modelo: '', marca: 'hikvision' })
       fetchCamaras()
     } else {
       const d = await r.json()
@@ -194,6 +195,17 @@ export default function CamarasPage() {
               <label className="block text-xs font-medium text-slate-600 mb-1">Ubicación</label>
               <input value={form.ubicacion} onChange={e => setForm(p => ({ ...p, ubicacion: e.target.value }))}
                 placeholder="Ej: Lobby Torre A" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-600 mb-1">Marca</label>
+              <select value={form.marca} onChange={e => setForm(p => ({ ...p, marca: e.target.value }))}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="hikvision">Hikvision</option>
+                <option value="dahua">Dahua</option>
+                <option value="axis">Axis</option>
+                <option value="zkteco">ZKTeco</option>
+                <option value="otro">Otro</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Modelo</label>

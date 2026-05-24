@@ -209,11 +209,13 @@ from app.routers import sii_facturacion as sii_router
 from app.routers import portal_extendido as portal_ext_router
 from app.routers import pagos_config as pagos_config_router
 from app.routers import presupuesto as presupuesto_router
+from app.routers import facial_recognition as facial_router
 app.include_router(reportes_router.router)
 app.include_router(sii_router.router)
 app.include_router(portal_ext_router.router)
 app.include_router(pagos_config_router.router)
 app.include_router(presupuesto_router.router)
+app.include_router(facial_router.router)
 @app.get("/")
 def root():
     return {

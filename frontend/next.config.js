@@ -58,6 +58,8 @@ const nextConfig = {
       { source: '/api/paqueteria/:path*', destination: 'http://backend-condominios:8003/api/paqueteria/:path*' },
       { source: '/api/paqueteria', destination: 'http://backend-condominios:8003/api/paqueteria' },
       { source: '/api/admin-users/:path*', destination: 'http://backend-condominios:8003/api/admin-users/:path*' },
+      { source: '/api/facial/:path*', destination: 'http://backend-condominios:8003/api/facial/:path*' },
+      { source: '/api/facial', destination: 'http://backend-condominios:8003/api/facial' },
       { source: '/api/admin-users', destination: 'http://backend-condominios:8003/api/admin-users' },
       { source: '/api/conserje/:path*', destination: 'http://backend-condominios:8003/api/conserje/:path*' },
       { source: '/api/conserje', destination: 'http://backend-condominios:8003/api/conserje' },
