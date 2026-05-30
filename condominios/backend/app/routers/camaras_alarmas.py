@@ -13,6 +13,7 @@ from typing import Optional
 from pydantic import BaseModel
 import httpx
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router_camaras = APIRouter(prefix="/api/camaras", tags=["Cámaras"])
 router_alarmas = APIRouter(prefix="/api/alarmas", tags=["Alarmas"])
@@ -106,7 +107,6 @@ def _notificar_alerta(db, tenant_id: int, zona_nombre: str, tipo: str, descripci
 # ════════════════════════════════════════════════════════════════════════════
 
 class CamaraCreate(BaseModel):
-    tenant_id: int
     nombre: str
     ubicacion: Optional[str] = None
     ip: str
@@ -132,7 +132,8 @@ class CamaraUpdate(BaseModel):
 
 
 @router_camaras.get("")
-def list_camaras(tenant_id: int, db: Session = Depends(get_db)):
+def list_camaras(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     rows = db.execute(text(
         "SELECT id,nombre,ubicacion,ip,puerto,rtsp_url,snapshot_url,onvif_puerto,"
@@ -143,14 +144,15 @@ def list_camaras(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router_camaras.post("", status_code=201)
-def crear_camara(body: CamaraCreate, db: Session = Depends(get_db)):
+def crear_camara(body: CamaraCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     row = db.execute(text(
         "INSERT INTO camaras (tenant_id,nombre,ubicacion,ip,puerto,rtsp_url,snapshot_url,"
         "onvif_puerto,usuario,password,modelo) "
         "VALUES (:tid,:nom,:ubic,:ip,:port,:rtsp,:snap,:onvif,:user,:pass,:mod) RETURNING id"
     ), {
-        "tid": body.tenant_id, "nom": body.nombre, "ubic": body.ubicacion,
+        "tid": tenant_id, "nom": body.nombre, "ubic": body.ubicacion,
         "ip": body.ip, "port": body.puerto, "rtsp": body.rtsp_url,
         "snap": body.snapshot_url, "onvif": body.onvif_puerto,
         "user": body.usuario, "pass": body.password, "mod": body.modelo
@@ -160,7 +162,7 @@ def crear_camara(body: CamaraCreate, db: Session = Depends(get_db)):
 
 
 @router_camaras.put("/{camara_id}")
-def actualizar_camara(camara_id: int, body: CamaraUpdate, db: Session = Depends(get_db)):
+def actualizar_camara(camara_id: int, body: CamaraUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     updates = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     if not updates:
         raise HTTPException(400, "Sin cambios")
@@ -172,14 +174,14 @@ def actualizar_camara(camara_id: int, body: CamaraUpdate, db: Session = Depends(
 
 
 @router_camaras.delete("/{camara_id}")
-def eliminar_camara(camara_id: int, db: Session = Depends(get_db)):
+def eliminar_camara(camara_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text("DELETE FROM camaras WHERE id=:id"), {"id": camara_id})
     db.commit()
     return {"ok": True}
 
 
 @router_camaras.get("/{camara_id}/snapshot")
-def snapshot_camara(camara_id: int, db: Session = Depends(get_db)):
+def snapshot_camara(camara_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Proxy the camera snapshot image to avoid CORS/auth issues."""
     _ensure_tables(db)
     row = db.execute(text("SELECT * FROM camaras WHERE id=:id"), {"id": camara_id}).fetchone()
@@ -221,7 +223,7 @@ def snapshot_camara(camara_id: int, db: Session = Depends(get_db)):
 
 
 @router_camaras.post("/{camara_id}/test")
-def test_camara(camara_id: int, db: Session = Depends(get_db)):
+def test_camara(camara_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_tables(db)
     row = db.execute(text("SELECT * FROM camaras WHERE id=:id"), {"id": camara_id}).fetchone()
     if not row:
@@ -252,7 +254,6 @@ def test_camara(camara_id: int, db: Session = Depends(get_db)):
 # ════════════════════════════════════════════════════════════════════════════
 
 class ZonaCreate(BaseModel):
-    tenant_id: int
     condominio_id: Optional[int] = None
     nombre: str
     descripcion: Optional[str] = None
@@ -270,10 +271,8 @@ class ZonaUpdate(BaseModel):
 
 class ArmadoRequest(BaseModel):
     estado: str
-    tenant_id: int
 
 class AlertaCreate(BaseModel):
-    tenant_id: int
     zona_id: Optional[int] = None
     tipo: str
     descripcion: Optional[str] = None
@@ -281,7 +280,8 @@ class AlertaCreate(BaseModel):
 
 
 @router_alarmas.get("/zonas")
-def list_zonas(tenant_id: int, condominio_id: Optional[int] = None, db: Session = Depends(get_db)):
+def list_zonas(condominio_id: Optional[int] = None, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     sql = "SELECT * FROM zonas_alarma WHERE tenant_id=:tid"
     params: dict = {"tid": tenant_id}
@@ -294,14 +294,15 @@ def list_zonas(tenant_id: int, condominio_id: Optional[int] = None, db: Session 
 
 
 @router_alarmas.post("/zonas", status_code=201)
-def crear_zona(body: ZonaCreate, db: Session = Depends(get_db)):
+def crear_zona(body: ZonaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     row = db.execute(text(
         "INSERT INTO zonas_alarma (tenant_id,condominio_id,nombre,descripcion,tipo,"
         "horario_auto_armar,horario_auto_desarmar) "
         "VALUES (:tid,:cid,:nom,:desc,:tipo,:armar,:desarmar) RETURNING id"
     ), {
-        "tid": body.tenant_id, "cid": body.condominio_id, "nom": body.nombre,
+        "tid": tenant_id, "cid": body.condominio_id, "nom": body.nombre,
         "desc": body.descripcion, "tipo": body.tipo,
         "armar": body.horario_auto_armar, "desarmar": body.horario_auto_desarmar
     }).fetchone()
@@ -310,7 +311,7 @@ def crear_zona(body: ZonaCreate, db: Session = Depends(get_db)):
 
 
 @router_alarmas.put("/zonas/{zona_id}")
-def actualizar_zona(zona_id: int, body: ZonaUpdate, db: Session = Depends(get_db)):
+def actualizar_zona(zona_id: int, body: ZonaUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     updates = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     if not updates:
         raise HTTPException(400, "Sin cambios")
@@ -322,14 +323,14 @@ def actualizar_zona(zona_id: int, body: ZonaUpdate, db: Session = Depends(get_db
 
 
 @router_alarmas.delete("/zonas/{zona_id}")
-def eliminar_zona(zona_id: int, db: Session = Depends(get_db)):
+def eliminar_zona(zona_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text("DELETE FROM zonas_alarma WHERE id=:id"), {"id": zona_id})
     db.commit()
     return {"ok": True}
 
 
 @router_alarmas.patch("/zonas/{zona_id}/estado")
-def cambiar_estado_zona(zona_id: int, body: ArmadoRequest, db: Session = Depends(get_db)):
+def cambiar_estado_zona(zona_id: int, body: ArmadoRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_tables(db)
     if body.estado not in ("armada", "desarmada", "parcial"):
         raise HTTPException(400, "Estado invalido")
@@ -343,7 +344,8 @@ def cambiar_estado_zona(zona_id: int, body: ArmadoRequest, db: Session = Depends
 
 
 @router_alarmas.get("/alertas")
-def list_alertas(tenant_id: int, resuelta: Optional[bool] = None, limit: int = 50, db: Session = Depends(get_db)):
+def list_alertas(resuelta: Optional[bool] = None, limit: int = 50, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     sql = ("SELECT a.*, z.nombre as zona_nombre FROM alertas_alarma a "
            "LEFT JOIN zonas_alarma z ON z.id=a.zona_id "
@@ -367,13 +369,14 @@ def list_alertas(tenant_id: int, resuelta: Optional[bool] = None, limit: int = 5
 
 
 @router_alarmas.post("/alertas", status_code=201)
-def crear_alerta(body: AlertaCreate, db: Session = Depends(get_db)):
+def crear_alerta(body: AlertaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     row = db.execute(text(
         "INSERT INTO alertas_alarma (tenant_id,zona_id,tipo,descripcion,nivel) "
         "VALUES (:tid,:zid,:tipo,:desc,:nivel) RETURNING id"
     ), {
-        "tid": body.tenant_id, "zid": body.zona_id,
+        "tid": tenant_id, "zid": body.zona_id,
         "tipo": body.tipo, "desc": body.descripcion, "nivel": body.nivel
     }).fetchone()
     db.commit()
@@ -386,7 +389,7 @@ def crear_alerta(body: AlertaCreate, db: Session = Depends(get_db)):
             zona_nombre = z._mapping["nombre"]
 
     if body.nivel in ("alta", "critica"):
-        _notificar_alerta(db, body.tenant_id, zona_nombre, body.tipo, body.descripcion or "")
+        _notificar_alerta(db, tenant_id, zona_nombre, body.tipo, body.descripcion or "")
         db.execute(text("UPDATE alertas_alarma SET notificado=true WHERE id=:id"), {"id": alerta_id})
         db.commit()
 
@@ -394,14 +397,15 @@ def crear_alerta(body: AlertaCreate, db: Session = Depends(get_db)):
 
 
 @router_alarmas.patch("/alertas/{alerta_id}/resolver")
-def resolver_alerta(alerta_id: int, db: Session = Depends(get_db)):
+def resolver_alerta(alerta_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text("UPDATE alertas_alarma SET resuelta=true, resuelta_at=NOW() WHERE id=:id"), {"id": alerta_id})
     db.commit()
     return {"ok": True}
 
 
 @router_alarmas.post("/panico")
-def boton_panico(tenant_id: int, zona_id: Optional[int] = None, db: Session = Depends(get_db)):
+def boton_panico(zona_id: Optional[int] = None, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     row = db.execute(text(
         "INSERT INTO alertas_alarma (tenant_id,zona_id,tipo,descripcion,nivel,notificado) "

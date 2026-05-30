@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models import GastoComun
 from typing import Optional
 import os, hashlib, hmac, time, httpx
@@ -14,7 +15,7 @@ WEBPAY_BASE_URL = os.getenv("WEBPAY_BASE_URL", "https://webpay3gint.transbank.cl
 APP_URL = os.getenv("APP_URL", "https://conectaai.cl")
 
 @router.post("/webpay/iniciar")
-async def webpay_iniciar(data: dict, db: Session=Depends(get_db)):
+async def webpay_iniciar(data: dict, db: Session=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Initiate Webpay Plus transaction"""
     if not WEBPAY_API_KEY:
         raise HTTPException(503, "Webpay no configurado. Configure WEBPAY_API_KEY y WEBPAY_COMMERCE_CODE en variables de entorno.")
@@ -45,7 +46,7 @@ async def webpay_iniciar(data: dict, db: Session=Depends(get_db)):
         raise HTTPException(502, f"Error conectando con Webpay: {str(e)}")
 
 @router.post("/webpay/confirmar")
-async def webpay_confirmar(data: dict, db: Session=Depends(get_db)):
+async def webpay_confirmar(data: dict, db: Session=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Confirm Webpay transaction after redirect"""
     token = data.get("token_ws") or data.get("token")
     if not token: raise HTTPException(400, "Token requerido")
@@ -67,7 +68,7 @@ KHIPU_RECEIVER_ID = os.getenv("KHIPU_RECEIVER_ID", "")
 KHIPU_SECRET = os.getenv("KHIPU_SECRET", "")
 
 @router.post("/khipu/iniciar")
-async def khipu_iniciar(data: dict, db: Session=Depends(get_db)):
+async def khipu_iniciar(data: dict, db: Session=Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Create Khipu payment link"""
     if not KHIPU_RECEIVER_ID or not KHIPU_SECRET:
         raise HTTPException(503, "Khipu no configurado. Configure KHIPU_RECEIVER_ID y KHIPU_SECRET.")

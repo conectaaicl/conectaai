@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models import Paquete, Persona
 from datetime import datetime
 from typing import Optional
@@ -32,11 +33,11 @@ async def notify_resident(email: str, nombre: str, descripcion: str):
 
 @router.get("/paquetes")
 def list_paquetes(
-    tenant_id: int,
     condominio_id: Optional[int] = None,
     estado: Optional[str] = None,
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    tenant_id = current_user["tenant_id"]
     q = db.query(Paquete).filter(Paquete.tenant_id == tenant_id)
     if condominio_id:
         q = q.filter(Paquete.condominio_id == condominio_id)
@@ -46,7 +47,7 @@ def list_paquetes(
 
 
 @router.post("/paquetes")
-async def create_paquete(data: dict, db: Session = Depends(get_db)):
+async def create_paquete(data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     p = Paquete(**{k: v for k, v in data.items() if hasattr(Paquete, k)})
     p.estado = "pendiente"
     db.add(p)
@@ -69,7 +70,8 @@ async def create_paquete(data: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/paquetes/{paquete_id}/estado")
-def update_estado(paquete_id: int, data: dict, db: Session = Depends(get_db)):
+def update_estado(paquete_id: int, data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     p = db.query(Paquete).filter(Paquete.id == paquete_id).first()
     if not p:
         raise HTTPException(status_code=404, detail="Paquete no encontrado")
@@ -81,7 +83,8 @@ def update_estado(paquete_id: int, data: dict, db: Session = Depends(get_db)):
 
 
 @router.delete("/paquetes/{paquete_id}")
-def delete_paquete(paquete_id: int, db: Session = Depends(get_db)):
+def delete_paquete(paquete_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     p = db.query(Paquete).filter(Paquete.id == paquete_id).first()
     if p:
         db.delete(p)

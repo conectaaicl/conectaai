@@ -14,6 +14,7 @@ from sqlalchemy import text
 from typing import Optional
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 import httpx
 
 router = APIRouter(prefix="/api/multas", tags=["Multas"])
@@ -101,13 +102,13 @@ class MultaCreate(BaseModel):
 
 @router.get("")
 def listar_multas(
-    tenant_id: int,
     estado: Optional[str] = None,
     depto: Optional[str] = None,
     tipo: Optional[str] = None,
     limit: int = 100,
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     sql = "SELECT * FROM multas WHERE tenant_id=:tid"
     p: dict = {"tid": tenant_id}
@@ -133,7 +134,8 @@ def listar_multas(
 
 
 @router.post("", status_code=201)
-def crear_multa(body: MultaCreate, db: Session = Depends(get_db)):
+def crear_multa(body: MultaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     if body.tipo not in TIPOS:
         raise HTTPException(400, "Tipo invalido. Validos: " + ", ".join(TIPOS))
@@ -154,7 +156,8 @@ def crear_multa(body: MultaCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{multa_id}/notificar")
-def notificar_multa(multa_id: int, db: Session = Depends(get_db)):
+def notificar_multa(multa_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     m = db.execute(text("SELECT * FROM multas WHERE id=:id"), {"id": multa_id}).fetchone()
     if not m:
         raise HTTPException(404, "Multa no encontrada")
@@ -169,7 +172,8 @@ def notificar_multa(multa_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{multa_id}/pagar")
-def pagar_multa(multa_id: int, db: Session = Depends(get_db)):
+def pagar_multa(multa_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     db.execute(text(
         "UPDATE multas SET estado='pagada', fecha_resolucion=NOW() WHERE id=:id"
     ), {"id": multa_id})
@@ -178,7 +182,8 @@ def pagar_multa(multa_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{multa_id}/anular")
-def anular_multa(multa_id: int, motivo: Optional[str] = "", db: Session = Depends(get_db)):
+def anular_multa(multa_id: int, motivo: Optional[str] = "", current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     db.execute(text(
         "UPDATE multas SET estado='anulada', fecha_resolucion=NOW(), notas_resolucion=:m WHERE id=:id"
     ), {"m": motivo, "id": multa_id})
@@ -187,7 +192,8 @@ def anular_multa(multa_id: int, motivo: Optional[str] = "", db: Session = Depend
 
 
 @router.get("/resumen")
-def resumen_multas(tenant_id: int, db: Session = Depends(get_db)):
+def resumen_multas(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     rows = db.execute(text(
         "SELECT estado, COUNT(*) as total, COALESCE(SUM(monto),0) as monto_total "

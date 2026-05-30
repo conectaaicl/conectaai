@@ -8,6 +8,7 @@ import os
 import httpx
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/gastos-comunes", tags=["Gastos Comunes"])
 
@@ -138,7 +139,8 @@ def _fmt_row(row):
 # -------------------------------------------------
 
 @router.get("/periodos")
-def list_periodos(tenant_id: int, db: Session = Depends(get_db)):
+def list_periodos(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     rows = db.execute(text("""
         SELECT p.*,
@@ -154,7 +156,7 @@ def list_periodos(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/periodos", status_code=201)
-def create_periodo(body: PeriodoCreate, db: Session = Depends(get_db)):
+def create_periodo(body: PeriodoCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     row = db.execute(text("""
         INSERT INTO gastos_periodos (tenant_id, condominio_id, periodo, notas)
@@ -167,7 +169,7 @@ def create_periodo(body: PeriodoCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/periodos/{id}")
-def get_periodo(id: int, db: Session = Depends(get_db)):
+def get_periodo(id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     periodo = db.execute(text("SELECT * FROM gastos_periodos WHERE id=:id"), {"id": id}).fetchone()
     if not periodo:
@@ -192,7 +194,8 @@ def get_periodo(id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/periodos/{id}/emitir")
-def emitir_periodo(id: int, tenant_id: int, db: Session = Depends(get_db)):
+def emitir_periodo(id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     periodo = db.execute(text("SELECT * FROM gastos_periodos WHERE id=:id"), {"id": id}).fetchone()
     if not periodo:
@@ -277,7 +280,7 @@ def emitir_periodo(id: int, tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/periodos/{id}/cerrar")
-def cerrar_periodo(id: int, db: Session = Depends(get_db)):
+def cerrar_periodo(id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     periodo = db.execute(text("SELECT * FROM gastos_periodos WHERE id=:id"), {"id": id}).fetchone()
     if not periodo:
@@ -288,7 +291,7 @@ def cerrar_periodo(id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/periodos/{id}")
-def delete_periodo(id: int, db: Session = Depends(get_db)):
+def delete_periodo(id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     periodo = db.execute(text("SELECT estado FROM gastos_periodos WHERE id=:id"), {"id": id}).fetchone()
     if not periodo:
@@ -305,7 +308,7 @@ def delete_periodo(id: int, db: Session = Depends(get_db)):
 # -------------------------------------------------
 
 @router.post("/periodos/{periodo_id}/items", status_code=201)
-def add_item(periodo_id: int, body: ItemCreate, db: Session = Depends(get_db)):
+def add_item(periodo_id: int, body: ItemCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     row = db.execute(text("""
         INSERT INTO gastos_items (tenant_id, periodo_id, concepto, monto_total, tipo_distribucion)
@@ -318,7 +321,7 @@ def add_item(periodo_id: int, body: ItemCreate, db: Session = Depends(get_db)):
 
 
 @router.delete("/items/{id}")
-def delete_item(id: int, db: Session = Depends(get_db)):
+def delete_item(id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     db.execute(text("DELETE FROM gastos_items WHERE id=:id"), {"id": id})
     db.commit()
@@ -326,7 +329,7 @@ def delete_item(id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/periodos/{periodo_id}/distribuir")
-def distribuir(periodo_id: int, body: DistribuirBody, db: Session = Depends(get_db)):
+def distribuir(periodo_id: int, body: DistribuirBody, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     periodo = db.execute(text("SELECT * FROM gastos_periodos WHERE id=:id"), {"id": periodo_id}).fetchone()
     if not periodo:
@@ -400,12 +403,13 @@ def distribuir(periodo_id: int, body: DistribuirBody, db: Session = Depends(get_
 
 @router.get("/cobros")
 def list_cobros(
-    tenant_id: int,
     periodo_id: Optional[int] = None,
     estado: Optional[str] = None,
     depto: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     conditions = ["c.tenant_id = :tid"]
     params: dict = {"tid": tenant_id}
@@ -429,7 +433,7 @@ def list_cobros(
 
 
 @router.patch("/cobros/{id}/pagar")
-def pagar_cobro(id: int, body: PagarBody, db: Session = Depends(get_db)):
+def pagar_cobro(id: int, body: PagarBody, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     cobro = db.execute(text("SELECT * FROM gastos_cobros WHERE id=:id"), {"id": id}).fetchone()
     if not cobro:
@@ -443,7 +447,7 @@ def pagar_cobro(id: int, body: PagarBody, db: Session = Depends(get_db)):
 
 
 @router.patch("/cobros/{id}/exentar")
-def exentar_cobro(id: int, db: Session = Depends(get_db)):
+def exentar_cobro(id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     db.execute(text("UPDATE gastos_cobros SET estado='exento' WHERE id=:id"), {"id": id})
     db.commit()
@@ -451,7 +455,8 @@ def exentar_cobro(id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/resumen")
-def resumen(tenant_id: int, periodo_id: Optional[int] = None, db: Session = Depends(get_db)):
+def resumen(periodo_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     conditions = ["tenant_id = :tid"]
     params: dict = {"tid": tenant_id}
@@ -481,7 +486,8 @@ def resumen(tenant_id: int, periodo_id: Optional[int] = None, db: Session = Depe
 # -------------------------------------------------
 
 @router.get("/fondo")
-def get_fondo(tenant_id: int, db: Session = Depends(get_db)):
+def get_fondo(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     row = db.execute(text("""
         SELECT * FROM gastos_fondo_reserva WHERE tenant_id=:tid ORDER BY id LIMIT 1
@@ -492,7 +498,7 @@ def get_fondo(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/fondo")
-def update_fondo(body: FondoUpdate, db: Session = Depends(get_db)):
+def update_fondo(body: FondoUpdate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     existing = db.execute(text("""
         SELECT id FROM gastos_fondo_reserva WHERE tenant_id=:tid LIMIT 1
@@ -515,7 +521,8 @@ def update_fondo(body: FondoUpdate, db: Session = Depends(get_db)):
 # -------------------------------------------------
 
 @router.get("/portal/gastos")
-def portal_gastos(persona_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def portal_gastos(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     rows = db.execute(text("""
         SELECT c.*, gp.periodo

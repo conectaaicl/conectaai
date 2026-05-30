@@ -2,15 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, distinct
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models import HistorialEvento
 from typing import Optional
 
 router = APIRouter(prefix="/api/historial", tags=["historial"])
 
 @router.get("")
-def get_historial(tenant_id: int, modulo: Optional[str]=None, accion: Optional[str]=None,
+def get_historial(modulo: Optional[str]=None, accion: Optional[str]=None,
                   usuario: Optional[str]=None, page: int=1, limit: int=50,
-                  db: Session=Depends(get_db)):
+                  current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     q = db.query(HistorialEvento).filter(HistorialEvento.tenant_id == tenant_id)
     if modulo: q = q.filter(HistorialEvento.modulo == modulo)
     if accion: q = q.filter(HistorialEvento.accion.ilike(f"%{accion}%"))
@@ -25,12 +27,14 @@ def get_historial(tenant_id: int, modulo: Optional[str]=None, accion: Optional[s
     ]}
 
 @router.get("/modulos")
-def get_modulos(tenant_id: int, db: Session=Depends(get_db)):
+def get_modulos(current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     rows = db.query(distinct(HistorialEvento.modulo)).filter(HistorialEvento.tenant_id==tenant_id).all()
     return [r[0] for r in rows if r[0]]
 
 @router.post("/configurar-clave")
-def configurar_clave(data: dict, db: Session=Depends(get_db)):
+def configurar_clave(data: dict, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     from app.models import SistemaConfig
     nueva = data.get("nueva_clave","")
     tenant_id = data.get("tenant_id")
@@ -47,7 +51,8 @@ def configurar_clave(data: dict, db: Session=Depends(get_db)):
     return {"ok": True}
 
 @router.post("/borrar")
-def borrar_historial(data: dict, db: Session=Depends(get_db)):
+def borrar_historial(data: dict, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     from app.models import SistemaConfig
     import bcrypt
     tenant_id = data.get("tenant_id")

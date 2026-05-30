@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from pydantic import BaseModel
 from typing import Optional, List
 import json
@@ -44,7 +45,8 @@ class VerificarAcceso(BaseModel):
 
 
 @router.get("/rfid")
-def listar_tarjetas(tenant_id: int, activa: Optional[bool] = None, db: Session = Depends(get_db)):
+def listar_tarjetas(activa: Optional[bool] = None, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     sql = (
         "SELECT t.id, t.uid, t.tipo_tarjeta, t.descripcion, t.nombre_titular, "
         "t.categoria, t.activa, t.fecha_vencimiento, t.created_at, "
@@ -63,7 +65,7 @@ def listar_tarjetas(tenant_id: int, activa: Optional[bool] = None, db: Session =
 
 
 @router.post("/rfid")
-def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db)):
+def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     existing = db.execute(
         text("SELECT id FROM tarjetas_rfid WHERE uid = :uid AND tenant_id = :tid"),
         {"uid": data.uid.upper().strip(), "tid": data.tenant_id}
@@ -87,7 +89,7 @@ def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/rfid/{tarjeta_id}")
-def actualizar_tarjeta(tarjeta_id: int, data: dict, db: Session = Depends(get_db)):
+def actualizar_tarjeta(tarjeta_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     allowed = {"descripcion", "nombre_titular", "categoria", "activa", "fecha_vencimiento", "notas", "tipo_tarjeta"}
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
@@ -100,7 +102,7 @@ def actualizar_tarjeta(tarjeta_id: int, data: dict, db: Session = Depends(get_db
 
 
 @router.delete("/rfid/{tarjeta_id}")
-def eliminar_tarjeta(tarjeta_id: int, db: Session = Depends(get_db)):
+def eliminar_tarjeta(tarjeta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     db.execute(text("DELETE FROM permisos_acceso_rfid WHERE tarjeta_id = :id"), {"id": tarjeta_id})
     db.execute(text("DELETE FROM tarjetas_rfid WHERE id = :id"), {"id": tarjeta_id})
     db.commit()
@@ -108,7 +110,7 @@ def eliminar_tarjeta(tarjeta_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/rfid/{tarjeta_id}/permisos")
-def permisos_tarjeta(tarjeta_id: int, db: Session = Depends(get_db)):
+def permisos_tarjeta(tarjeta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     rows = db.execute(text(
         "SELECT pr.id, pr.puerta_id, pr.habilitado, pr.horario_json, "
         "p.nombre as puerta_nombre, p.ubicacion "
@@ -120,7 +122,7 @@ def permisos_tarjeta(tarjeta_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/rfid/{tarjeta_id}/permisos")
-def asignar_permiso(tarjeta_id: int, data: PermisoCreate, db: Session = Depends(get_db)):
+def asignar_permiso(tarjeta_id: int, data: PermisoCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     existing = db.execute(
         text("SELECT id FROM permisos_acceso_rfid WHERE tarjeta_id = :tid AND puerta_id = :pid"),
         {"tid": tarjeta_id, "pid": data.puerta_id}
@@ -142,7 +144,7 @@ def asignar_permiso(tarjeta_id: int, data: PermisoCreate, db: Session = Depends(
 
 
 @router.delete("/rfid/{tarjeta_id}/permisos/{puerta_id}")
-def revocar_permiso(tarjeta_id: int, puerta_id: int, db: Session = Depends(get_db)):
+def revocar_permiso(tarjeta_id: int, puerta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     db.execute(
         text("DELETE FROM permisos_acceso_rfid WHERE tarjeta_id = :tid AND puerta_id = :pid"),
         {"tid": tarjeta_id, "pid": puerta_id}
@@ -152,7 +154,7 @@ def revocar_permiso(tarjeta_id: int, puerta_id: int, db: Session = Depends(get_d
 
 
 @router.post("/rfid/verificar")
-async def verificar_acceso(data: VerificarAcceso, db: Session = Depends(get_db)):
+async def verificar_acceso(data: VerificarAcceso, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Called by RFID reader hardware to check if UID has access to a door."""
     uid = data.uid.upper().strip()
 

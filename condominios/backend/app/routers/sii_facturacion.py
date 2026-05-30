@@ -17,6 +17,7 @@ from sqlalchemy import text
 from pydantic import BaseModel
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/sii", tags=["SII Facturación"])
 
@@ -101,8 +102,7 @@ class SIIConfigCreate(BaseModel):
     api_token: Optional[str] = None
 
 class EmitirDocumentoRequest(BaseModel):
-    tenant_id: int
-    tipo_dte: str = "39"  # 39=boleta, 33=factura
+    tipo_dte: str = "39"
     rut_receptor: Optional[str] = None
     razon_receptor: Optional[str] = None
     departamento: str
@@ -116,7 +116,8 @@ class EmitirDocumentoRequest(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/config")
-def get_config(tenant_id: int = Query(1), db: Session = Depends(get_db)):
+def get_config(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _init_tables(db)
     row = db.execute(
         text("SELECT * FROM sii_config WHERE tenant_id=:tid"),
@@ -131,8 +132,9 @@ def get_config(tenant_id: int = Query(1), db: Session = Depends(get_db)):
     return r
 
 @router.post("/config")
-def save_config(tenant_id: int = Query(1), body: SIIConfigCreate = Body(...),
+def save_config(body: SIIConfigCreate = Body(...), current_user: dict = Depends(get_current_user),
                 db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _init_tables(db)
     existing = db.execute(
         text("SELECT id FROM sii_config WHERE tenant_id=:tid"), {"tid": tenant_id}
@@ -167,7 +169,7 @@ def save_config(tenant_id: int = Query(1), body: SIIConfigCreate = Body(...),
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# GENERAR XML DTE (simple, para firma posterior)
+# GENERAR XML DTE
 # ─────────────────────────────────────────────────────────────────────────────
 
 def _generar_xml_dte(cfg: dict, doc: dict, items: list) -> str:
@@ -234,16 +236,16 @@ def _generar_xml_dte(cfg: dict, doc: dict, items: list) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.post("/emitir")
-def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)):
+def emitir_documento(body: EmitirDocumentoRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _init_tables(db)
     cfg_row = db.execute(
-        text("SELECT * FROM sii_config WHERE tenant_id=:tid"), {"tid": body.tenant_id}
+        text("SELECT * FROM sii_config WHERE tenant_id=:tid"), {"tid": tenant_id}
     ).fetchone()
     if not cfg_row:
         raise HTTPException(400, "SII no configurado. Configure primero los datos del emisor.")
     cfg = dict(cfg_row._mapping)
 
-    # Obtener cobros
     if not body.cobros_ids:
         raise HTTPException(400, "Debe seleccionar al menos un cobro")
 
@@ -251,7 +253,7 @@ def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)
         SELECT id, concepto, monto, depto_numero, nombre_residente
         FROM gastos_cobros
         WHERE id = ANY(:ids) AND tenant_id=:tid
-    """), {"ids": body.cobros_ids, "tid": body.tenant_id}).fetchall()
+    """), {"ids": body.cobros_ids, "tid": tenant_id}).fetchall()
 
     if not cobros:
         raise HTTPException(404, "No se encontraron cobros")
@@ -259,11 +261,9 @@ def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)
     monto_total = sum(float(c._mapping["monto"]) for c in cobros)
     items = [{"nombre": f"{c._mapping['concepto']} - Depto {c._mapping['depto_numero']}", "monto": float(c._mapping["monto"])} for c in cobros]
 
-    # Obtener folio
     col_folio = "proximo_folio_boleta" if body.tipo_dte in ("39", "41") else "proximo_folio_factura"
     folio = int(cfg[col_folio] or 1)
 
-    # Generar XML
     doc_data = {
         "tipo_dte": body.tipo_dte,
         "folio": folio,
@@ -276,7 +276,6 @@ def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)
     }
     xml_dte = _generar_xml_dte(cfg, doc_data, items)
 
-    # Guardar documento
     res = db.execute(text("""
         INSERT INTO sii_documentos
         (tenant_id, condominio_id, tipo_dte, folio, rut_receptor, razon_receptor,
@@ -286,7 +285,7 @@ def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)
                 :neto, :iva, :total, 'generado', :xml, :per, :cobros)
         RETURNING id
     """), {
-        "tid": body.tenant_id, "cid": body.condominio_id, "tipo": body.tipo_dte,
+        "tid": tenant_id, "cid": body.condominio_id, "tipo": body.tipo_dte,
         "folio": folio, "rut": body.rut_receptor, "rrs": body.razon_receptor,
         "depto": body.departamento, "fecha": date.today(),
         "neto": round(monto_total / 1.19 if body.tipo_dte not in ("39","41") else monto_total, 2),
@@ -296,9 +295,8 @@ def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)
     })
     doc_id = res.fetchone()[0]
 
-    # Incrementar folio
     db.execute(text(f"UPDATE sii_config SET {col_folio}={col_folio}+1, updated_at=NOW() WHERE tenant_id=:tid"),
-               {"tid": body.tenant_id})
+               {"tid": tenant_id})
     db.commit()
 
     return {
@@ -317,7 +315,8 @@ def emitir_documento(body: EmitirDocumentoRequest, db: Session = Depends(get_db)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/documento/{doc_id}/xml")
-def descargar_xml(doc_id: int, tenant_id: int = Query(1), db: Session = Depends(get_db)):
+def descargar_xml(doc_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     row = db.execute(
         text("SELECT * FROM sii_documentos WHERE id=:id AND tenant_id=:tid"),
         {"id": doc_id, "tid": tenant_id}
@@ -339,13 +338,14 @@ def descargar_xml(doc_id: int, tenant_id: int = Query(1), db: Session = Depends(
 
 @router.get("/documentos")
 def listar_documentos(
-    tenant_id: int = Query(1),
     tipo_dte: Optional[str] = Query(None),
     periodo: Optional[str] = Query(None),
     limit: int = Query(50),
     offset: int = Query(0),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     _init_tables(db)
     filters = "WHERE tenant_id=:tid"
     params: dict = {"tid": tenant_id}
@@ -375,7 +375,8 @@ def listar_documentos(
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get("/stats")
-def stats_sii(tenant_id: int = Query(1), db: Session = Depends(get_db)):
+def stats_sii(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _init_tables(db)
     hoy = date.today()
     per = hoy.strftime("%Y-%m")
@@ -409,7 +410,8 @@ def stats_sii(tenant_id: int = Query(1), db: Session = Depends(get_db)):
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.delete("/documento/{doc_id}")
-def anular_documento(doc_id: int, tenant_id: int = Query(1), db: Session = Depends(get_db)):
+def anular_documento(doc_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     row = db.execute(
         text("SELECT id, estado FROM sii_documentos WHERE id=:id AND tenant_id=:tid"),
         {"id": doc_id, "tid": tenant_id}

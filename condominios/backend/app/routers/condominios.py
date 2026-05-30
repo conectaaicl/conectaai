@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.condominio import Condominio
 from app.models.estructura import Torre, Piso, Departamento, Estacionamiento, Bodega  # ✅ CORREGIDO
 from app.models.persona import Persona
@@ -24,7 +25,7 @@ router = APIRouter(prefix="/api/condominios", tags=["condominios"])
 # ==========================================
 
 @router.post("", response_model=CondominioResponse)
-def crear_condominio(condominio: CondominioCreate, db: Session = Depends(get_db)):
+def crear_condominio(condominio: CondominioCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Crear nuevo condominio"""
     # Convertir a dict
     condominio_data = condominio.model_dump()
@@ -41,19 +42,21 @@ def crear_condominio(condominio: CondominioCreate, db: Session = Depends(get_db)
 
 
 @router.get("", response_model=List[CondominioResponse])
-def listar_condominios(tenant_id: int = 1, db: Session = Depends(get_db)):
+def listar_condominios(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Listar todos los condominios del tenant"""
     return db.query(Condominio).filter(Condominio.tenant_id == tenant_id).all()
 
 
 @router.get("/departamentos", response_model=List[DepartamentoResponse])
-def listar_todos_departamentos(tenant_id: int = 1, db: Session = Depends(get_db)):
+def listar_todos_departamentos(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Listar todos los departamentos de un tenant (para selects y resúmenes)"""
     return db.query(Departamento).filter(Departamento.tenant_id == tenant_id).order_by(Departamento.numero).all()
 
 
 @router.get("/{condominio_id}", response_model=CondominioResponse)
-def obtener_condominio(condominio_id: int, db: Session = Depends(get_db)):
+def obtener_condominio(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Obtener condominio por ID"""
     condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
     if not condominio:
@@ -65,7 +68,8 @@ def obtener_condominio(condominio_id: int, db: Session = Depends(get_db)):
 def actualizar_condominio(
     condominio_id: int,
     condominio: CondominioUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Actualizar condominio"""
     db_condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
@@ -83,7 +87,7 @@ def actualizar_condominio(
 
 
 @router.delete("/{condominio_id}")
-def eliminar_condominio(condominio_id: int, db: Session = Depends(get_db)):
+def eliminar_condominio(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar condominio"""
     condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
     if not condominio:
@@ -97,7 +101,8 @@ def eliminar_condominio(condominio_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{condominio_id}/resumen")
-def get_condominio_resumen(condominio_id: int, tenant_id: int = 1, db: Session = Depends(get_db)):
+def get_condominio_resumen(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Obtener resumen del condominio"""
     c = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
     if not c:
@@ -134,7 +139,8 @@ def get_condominio_resumen(condominio_id: int, tenant_id: int = 1, db: Session =
 def crear_torre(
     condominio_id: int,
     torre: TorreCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Crear torre con sus pisos automáticamente"""
 
@@ -169,14 +175,14 @@ def crear_torre(
 
 
 @router.get("/{condominio_id}/torres", response_model=List[TorreResponse])
-def listar_torres(condominio_id: int, db: Session = Depends(get_db)):
+def listar_torres(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Listar torres de un condominio"""
     torres = db.query(Torre).filter(Torre.condominio_id == condominio_id).all()
     return torres
 
 
 @router.delete("/torres/{torre_id}")
-def eliminar_torre(torre_id: int, db: Session = Depends(get_db)):
+def eliminar_torre(torre_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar torre y todos sus pisos y departamentos"""
     torre = db.query(Torre).filter(Torre.id == torre_id).first()
     if not torre:
@@ -197,7 +203,7 @@ def eliminar_torre(torre_id: int, db: Session = Depends(get_db)):
 # ==========================================
 
 @router.get("/torres/{torre_id}/pisos")
-def listar_pisos(torre_id: int, db: Session = Depends(get_db)):
+def listar_pisos(torre_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Listar pisos de una torre con sus departamentos"""
     torre = db.query(Torre).filter(Torre.id == torre_id).first()
     if not torre:
@@ -247,7 +253,8 @@ def listar_pisos(torre_id: int, db: Session = Depends(get_db)):
 def crear_departamento(
     piso_id: int,
     depto: DepartamentoCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Crear departamento"""
     # Verificar que el piso existe
@@ -268,7 +275,7 @@ def crear_departamento(
 
 
 @router.get("/pisos/{piso_id}/departamentos", response_model=List[DepartamentoResponse])
-def listar_departamentos(piso_id: int, db: Session = Depends(get_db)):
+def listar_departamentos(piso_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Listar departamentos de un piso"""
     deptos = db.query(Departamento).filter(Departamento.piso_id == piso_id).all()
     return deptos
@@ -278,7 +285,8 @@ def listar_departamentos(piso_id: int, db: Session = Depends(get_db)):
 def actualizar_departamento(
     depto_id: int,
     depto: DepartamentoUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Actualizar departamento"""
     db_depto = db.query(Departamento).filter(Departamento.id == depto_id).first()
@@ -296,7 +304,7 @@ def actualizar_departamento(
 
 
 @router.delete("/departamentos/{depto_id}")
-def eliminar_departamento(depto_id: int, db: Session = Depends(get_db)):
+def eliminar_departamento(depto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar departamento"""
     depto = db.query(Departamento).filter(Departamento.id == depto_id).first()
     if not depto:
@@ -316,7 +324,7 @@ LOGO_DIR = "/var/www/conectaai/condominios/uploads/logos"
 os.makedirs(LOGO_DIR, exist_ok=True)
 
 @router.post("/{condominio_id}/upload-logo")
-async def upload_condominio_logo(condominio_id: int, file: UploadFile = FastFile(...), db: Session = Depends(get_db)):
+async def upload_condominio_logo(condominio_id: int, file: UploadFile = FastFile(...), db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Subir logo para un condominio"""
     condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
     if not condominio:

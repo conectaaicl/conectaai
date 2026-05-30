@@ -13,6 +13,7 @@ from sqlalchemy import text
 from typing import Optional
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/alertas-sistema", tags=["Alertas Sistema"])
 
@@ -55,7 +56,6 @@ NIVELES = ["info", "advertencia", "critico", "error"]
 
 
 class AlertaSistemaCreate(BaseModel):
-    tenant_id: int
     tipo: str
     nivel: str = "info"
     titulo: str
@@ -65,12 +65,13 @@ class AlertaSistemaCreate(BaseModel):
 
 @router.get("")
 def listar_alertas(
-    tenant_id: int,
     resuelta: Optional[bool] = None,
     nivel: Optional[str] = None,
     limit: int = 100,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     sql = "SELECT * FROM alertas_sistema WHERE tenant_id=:tid"
     params: dict = {"tid": tenant_id}
@@ -91,7 +92,8 @@ def listar_alertas(
 
 
 @router.get("/resumen")
-def resumen_alertas(tenant_id: int, db: Session = Depends(get_db)):
+def resumen_alertas(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     rows = db.execute(text(
         "SELECT nivel, COUNT(*) as total FROM alertas_sistema "
@@ -108,14 +110,14 @@ def resumen_alertas(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", status_code=201)
-def crear_alerta(body: AlertaSistemaCreate, db: Session = Depends(get_db)):
+def crear_alerta(body: AlertaSistemaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
-    # Deduplicate: don't create duplicate unresolved alerts of same type+servicio
     if body.servicio:
         existing = db.execute(text(
             "SELECT id FROM alertas_sistema WHERE tenant_id=:tid AND tipo=:tipo "
             "AND servicio=:srv AND resuelta=false LIMIT 1"
-        ), {"tid": body.tenant_id, "tipo": body.tipo, "srv": body.servicio}).fetchone()
+        ), {"tid": tenant_id, "tipo": body.tipo, "srv": body.servicio}).fetchone()
         if existing:
             return {"id": existing._mapping["id"], "duplicate": True}
 
@@ -123,7 +125,7 @@ def crear_alerta(body: AlertaSistemaCreate, db: Session = Depends(get_db)):
         "INSERT INTO alertas_sistema (tenant_id,tipo,nivel,titulo,descripcion,servicio) "
         "VALUES (:tid,:tipo,:niv,:tit,:desc,:srv) RETURNING id"
     ), {
-        "tid": body.tenant_id, "tipo": body.tipo, "niv": body.nivel,
+        "tid": tenant_id, "tipo": body.tipo, "niv": body.nivel,
         "tit": body.titulo, "desc": body.descripcion, "srv": body.servicio
     }).fetchone()
     db.commit()
@@ -131,16 +133,16 @@ def crear_alerta(body: AlertaSistemaCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{alerta_id}/ack")
-def acknowledge_alerta(alerta_id: int, acknowledged_by: Optional[str] = None, db: Session = Depends(get_db)):
+def acknowledge_alerta(alerta_id: int, acknowledged_by: Optional[str] = None, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text(
         "UPDATE alertas_sistema SET acknowledged=true, acknowledged_by=:by, acknowledged_at=NOW() WHERE id=:id"
-    ), {"by": acknowledged_by or "sistema", "id": alerta_id})
+    ), {"by": acknowledged_by or current_user.get("nombre_completo", "sistema"), "id": alerta_id})
     db.commit()
     return {"ok": True}
 
 
 @router.patch("/{alerta_id}/resolver")
-def resolver_alerta(alerta_id: int, db: Session = Depends(get_db)):
+def resolver_alerta(alerta_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text(
         "UPDATE alertas_sistema SET resuelta=true, acknowledged=true, resuelta_at=NOW() WHERE id=:id"
     ), {"id": alerta_id})
@@ -149,7 +151,7 @@ def resolver_alerta(alerta_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/{alerta_id}")
-def eliminar_alerta(alerta_id: int, db: Session = Depends(get_db)):
+def eliminar_alerta(alerta_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text("DELETE FROM alertas_sistema WHERE id=:id"), {"id": alerta_id})
     db.commit()
     return {"ok": True}

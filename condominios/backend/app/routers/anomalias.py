@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import Optional
 from app.core.database import get_db
+from app.core.dependencies import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/anomalias", tags=["Anomalias"])
 
@@ -146,18 +147,20 @@ def _run_all_detections(db, tenant_id):
 
 
 @router.post("/analizar")
-async def analizar(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+async def analizar(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     nuevas = _run_all_detections(db, tenant_id)
     return {"nuevas": nuevas, "mensaje": str(nuevas) + " nuevas anomalias detectadas"}
 
 
 @router.get("")
 async def listar(
-    tenant_id: int = Query(...),
     revisada: Optional[bool] = Query(None),
     severidad: Optional[str] = Query(None),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     conditions = ["tenant_id=:tid"]
     params = {"tid": tenant_id}
@@ -181,7 +184,7 @@ async def listar(
 
 
 @router.patch("/{anomalia_id}/revisar")
-async def revisar(anomalia_id: int, db: Session = Depends(get_db)):
+async def revisar(anomalia_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_table(db)
     db.execute(text("UPDATE anomalias_detectadas SET revisada=true WHERE id=:id"), {"id": anomalia_id})
     db.commit()
@@ -189,7 +192,7 @@ async def revisar(anomalia_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{anomalia_id}/falso-positivo")
-async def falso_positivo(anomalia_id: int, db: Session = Depends(get_db)):
+async def falso_positivo(anomalia_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_table(db)
     db.execute(text(
         "UPDATE anomalias_detectadas SET falso_positivo=true, revisada=true WHERE id=:id"
@@ -199,7 +202,8 @@ async def falso_positivo(anomalia_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/resumen")
-async def resumen(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+async def resumen(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     rows = db.execute(text(
         "SELECT severidad, COUNT(*) as total "
@@ -216,7 +220,7 @@ async def resumen(tenant_id: int = Query(...), db: Session = Depends(get_db)):
 
 
 @router.post("/analizar-todos")
-async def analizar_todos(db: Session = Depends(get_db)):
+async def analizar_todos(current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
     _ensure_table(db)
     tenants = db.execute(text("SELECT id FROM tenants")).fetchall()
     results = {}

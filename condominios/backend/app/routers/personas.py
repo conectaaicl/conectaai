@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.persona import Persona
 from app.models.historial import HistorialEvento
 from app.schemas.persona import PersonaCreate, PersonaUpdate, PersonaResponse
@@ -25,7 +26,7 @@ def _log(db, tenant_id, accion, descripcion, entidad_id=None):
 
 
 @router.post("", response_model=PersonaResponse)
-def crear_persona(persona: PersonaCreate, db: Session = Depends(get_db)):
+def crear_persona(persona: PersonaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     existing = db.query(Persona).filter(Persona.rut == persona.rut).first()
     if existing:
         raise HTTPException(status_code=400, detail="RUT ya existe")
@@ -66,8 +67,10 @@ def crear_persona(persona: PersonaCreate, db: Session = Depends(get_db)):
 @router.get("", response_model=List[PersonaResponse])
 def listar_personas(
     rol: Optional[str] = None, estado: Optional[str] = None,
-    tenant_id: int = 1, skip: int = 0, limit: int = 200, db: Session = Depends(get_db)
+    skip: int = 0, limit: int = 200, db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     query = db.query(Persona).filter(Persona.tenant_id == tenant_id)
     if rol:
         query = query.filter(Persona.roles.contains([rol]))
@@ -77,7 +80,7 @@ def listar_personas(
 
 
 @router.get("/{persona_id}", response_model=PersonaResponse)
-def obtener_persona(persona_id: int, db: Session = Depends(get_db)):
+def obtener_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -85,7 +88,7 @@ def obtener_persona(persona_id: int, db: Session = Depends(get_db)):
 
 
 @router.put("/{persona_id}", response_model=PersonaResponse)
-def actualizar_persona(persona_id: int, persona_update: PersonaUpdate, db: Session = Depends(get_db)):
+def actualizar_persona(persona_id: int, persona_update: PersonaUpdate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -100,7 +103,7 @@ def actualizar_persona(persona_id: int, persona_update: PersonaUpdate, db: Sessi
 
 
 @router.delete("/{persona_id}")
-def eliminar_persona(persona_id: int, db: Session = Depends(get_db)):
+def eliminar_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -113,7 +116,8 @@ def eliminar_persona(persona_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/{persona_id}/historial")
-def historial_persona(persona_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def historial_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     from sqlalchemy import desc
     items = (
         db.query(HistorialEvento)
@@ -130,7 +134,8 @@ def historial_persona(persona_id: int, tenant_id: int, db: Session = Depends(get
 
 
 @router.get("/{persona_id}/acceso")
-def get_acceso_persona(persona_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def get_acceso_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     rows = db.execute(text(
         "SELECT t.id, t.uid, t.tipo_tarjeta, t.nombre_titular, t.categoria, "
         "t.activa, t.created_at::text, t.fecha_vencimiento::text "
@@ -142,7 +147,7 @@ def get_acceso_persona(persona_id: int, tenant_id: int, db: Session = Depends(ge
 
 
 @router.post("/{persona_id}/acceso")
-def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_db)):
+def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(404, "Persona no encontrada")
@@ -200,7 +205,8 @@ def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_
 
 
 @router.delete("/{persona_id}/acceso/{tarjeta_id}")
-def eliminar_acceso_persona(persona_id: int, tarjeta_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def eliminar_acceso_persona(persona_id: int, tarjeta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     db.execute(text(
         "UPDATE tarjetas_rfid SET activa = false, updated_at = NOW() WHERE id = :id AND persona_id = :pid"
@@ -213,7 +219,7 @@ def eliminar_acceso_persona(persona_id: int, tarjeta_id: int, tenant_id: int, db
 
 
 @router.post("/{persona_id}/roles")
-def agregar_rol(persona_id: int, rol: str, db: Session = Depends(get_db)):
+def agregar_rol(persona_id: int, rol: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -225,7 +231,7 @@ def agregar_rol(persona_id: int, rol: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/{persona_id}/roles/{rol}")
-def quitar_rol(persona_id: int, rol: str, db: Session = Depends(get_db)):
+def quitar_rol(persona_id: int, rol: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -237,7 +243,8 @@ def quitar_rol(persona_id: int, rol: str, db: Session = Depends(get_db)):
 
 
 @router.get("/{persona_id}/portal-cuenta")
-def get_portal_cuenta(persona_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def get_portal_cuenta(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(404, "Persona no encontrada")
@@ -253,7 +260,7 @@ def get_portal_cuenta(persona_id: int, tenant_id: int, db: Session = Depends(get
 
 
 @router.post("/{persona_id}/portal-cuenta")
-def crear_portal_cuenta(persona_id: int, data: dict, db: Session = Depends(get_db)):
+def crear_portal_cuenta(persona_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     persona = db.query(Persona).filter(Persona.id == persona_id).first()
     if not persona:
         raise HTTPException(404, "Persona no encontrada")

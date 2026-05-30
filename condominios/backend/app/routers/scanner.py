@@ -1,17 +1,20 @@
 """
 Scanner — RFID card tap detection and device/port discovery
-GET  /api/scanner/rfid/listen?tenant_id=X&timeout=30  → SSE: waits for next RFID tap and returns uid
-POST /api/scanner/network/scan                         → scan subnet for open TCP devices
-GET  /api/scanner/device/test?host=X&port=Y            → test single device TCP reachability
+GET  /api/scanner/rfid/listen?timeout=30  → SSE: waits for next RFID tap and returns uid
+POST /api/scanner/network/scan            → scan subnet for open TCP devices
+GET  /api/scanner/device/test?host=X&port=Y → test single device TCP reachability
 """
 import asyncio
 import json
 import os
 import time
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
+from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
+from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/scanner", tags=["Scanner"])
 
@@ -32,16 +35,16 @@ DEVICE_TYPES = {
 # ── Endpoint 1: SSE — wait for next RFID tap ────────────────────────────────
 
 @router.get("/rfid/listen")
-async def rfid_listen(tenant_id: int, timeout: int = 30):
+async def rfid_listen(timeout: int = 30, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     SSE stream that waits for the next RFID card tap for a given tenant.
     Closes after first tap or after `timeout` seconds.
     """
+    tenant_id = current_user["tenant_id"]
     q: asyncio.Queue = asyncio.Queue(maxsize=10)
     _scan_queues.setdefault(tenant_id, []).append(q)
 
     async def generator():
-        # Announce we are ready
         yield "data: " + json.dumps({"status": "waiting", "message": "Esperando tarjeta..."}) + "\n\n"
         try:
             data_str = await asyncio.wait_for(q.get(), timeout=float(timeout))
@@ -110,7 +113,7 @@ async def _check_port(ip: str, port: int, timeout_s: float) -> Optional[dict]:
 
 
 @router.post("/network/scan")
-async def network_scan(body: ScanRequest):
+async def network_scan(body: ScanRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Scan an entire /24 subnet for open TCP ports concurrently.
     Returns only hosts with at least one open port.
@@ -125,7 +128,6 @@ async def network_scan(body: ScanRequest):
 
     results = await asyncio.gather(*tasks, return_exceptions=False)
 
-    # Group by IP: only include IPs with ≥1 open port
     open_results = [r for r in results if r is not None]
     return open_results
 
@@ -133,7 +135,7 @@ async def network_scan(body: ScanRequest):
 # ── Endpoint 3: Single device test ──────────────────────────────────────────
 
 @router.get("/device/test")
-async def device_test(host: str, port: int, timeout_ms: int = 2000):
+async def device_test(host: str, port: int, timeout_ms: int = 2000, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Test TCP reachability to a single host:port."""
     timeout_s = timeout_ms / 1000.0
     t0 = time.monotonic()

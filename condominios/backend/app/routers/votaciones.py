@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel
 import json
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.votacion import Votacion, VotoRespuesta
 
 router = APIRouter(prefix="/api/votaciones", tags=["Votaciones"])
@@ -50,8 +51,9 @@ def votacion_to_dict(v: Votacion) -> dict:
 # ─── Endpoints ──────────────────────────────────────────────────────────────
 
 @router.post("", status_code=201)
-def crear_votacion(body: VotacionCreate, db: Session = Depends(get_db)):
+def crear_votacion(body: VotacionCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new voting."""
+    tenant_id = current_user["tenant_id"]
     data = body.dict()
     data["opciones"] = json.dumps(data["opciones"])
     votacion = Votacion(**data)
@@ -70,6 +72,7 @@ def listar_votaciones(
     db: Session = Depends(get_db),
 ):
     """List votaciones with optional filters."""
+    tenant_id = current_user["tenant_id"]
     q = db.query(Votacion)
     if tenant_id:
         q = q.filter(Votacion.tenant_id == tenant_id)
@@ -80,8 +83,9 @@ def listar_votaciones(
 
 
 @router.get("/{votacion_id}/resultados")
-def resultados_votacion(votacion_id: int, db: Session = Depends(get_db)):
+def resultados_votacion(votacion_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get voting results with participation percentage."""
+    tenant_id = current_user["tenant_id"]
     votacion = db.query(Votacion).filter(Votacion.id == votacion_id).first()
     if not votacion:
         raise HTTPException(status_code=404, detail="Votación no encontrada")
@@ -114,8 +118,9 @@ def resultados_votacion(votacion_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{votacion_id}/votar", status_code=201)
-def votar(votacion_id: int, body: VotoCreate, db: Session = Depends(get_db)):
+def votar(votacion_id: int, body: VotoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Cast a vote; one vote per departamento_id enforced."""
+    tenant_id = current_user["tenant_id"]
     votacion = db.query(Votacion).filter(Votacion.id == votacion_id).first()
     if not votacion:
         raise HTTPException(status_code=404, detail="Votación no encontrada")
@@ -157,8 +162,9 @@ def votar(votacion_id: int, body: VotoCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{votacion_id}/cerrar")
-def cerrar_votacion(votacion_id: int, db: Session = Depends(get_db)):
+def cerrar_votacion(votacion_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Close a voting."""
+    tenant_id = current_user["tenant_id"]
     votacion = db.query(Votacion).filter(Votacion.id == votacion_id).first()
     if not votacion:
         raise HTTPException(status_code=404, detail="Votación no encontrada")

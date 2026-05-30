@@ -4,6 +4,7 @@ from sqlalchemy import text
 from typing import Optional
 from datetime import datetime, date
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.biometrico import DispositivoBiometrico, HuellaDigital, RegistroBiometrico
 
 router = APIRouter(prefix="/api/biometrico", tags=["biometrico"])
@@ -11,7 +12,8 @@ router = APIRouter(prefix="/api/biometrico", tags=["biometrico"])
 # --- Dispositivos ---
 
 @router.get("/dispositivos")
-def list_dispositivos(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+def list_dispositivos(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     devs = db.query(DispositivoBiometrico).filter(
         DispositivoBiometrico.tenant_id == tenant_id,
         DispositivoBiometrico.activo == True
@@ -24,13 +26,14 @@ def list_dispositivos(tenant_id: int = Query(...), db: Session = Depends(get_db)
 
 @router.post("/dispositivos")
 def create_dispositivo(
-    tenant_id: int = Form(...),
     nombre: str = Form(...),
     tipo: str = Form(...),
     ubicacion: str = Form(""),
     device_id: str = Form(...),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     existing = db.query(DispositivoBiometrico).filter(DispositivoBiometrico.device_id == device_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="device_id ya registrado")
@@ -44,7 +47,7 @@ def create_dispositivo(
     return {"ok": True, "id": dev.id}
 
 @router.delete("/dispositivos/{id}")
-def delete_dispositivo(id: int, db: Session = Depends(get_db)):
+def delete_dispositivo(id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     dev = db.query(DispositivoBiometrico).filter(DispositivoBiometrico.id == id).first()
     if not dev:
         raise HTTPException(status_code=404, detail="No encontrado")
@@ -55,7 +58,8 @@ def delete_dispositivo(id: int, db: Session = Depends(get_db)):
 # --- Huellas ---
 
 @router.get("/huellas")
-def list_huellas(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+def list_huellas(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     huellas = db.query(HuellaDigital).filter(
         HuellaDigital.tenant_id == tenant_id
     ).order_by(HuellaDigital.id.desc()).all()
@@ -66,13 +70,14 @@ def list_huellas(tenant_id: int = Query(...), db: Session = Depends(get_db)):
 
 @router.post("/huellas")
 def enroll_huella(
-    tenant_id: int = Form(...),
     empleado_id: int = Form(...),
     empleado_nombre: str = Form(...),
     dedo: str = Form("indice_der"),
     template_hash: str = Form(""),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     h = HuellaDigital(
         tenant_id=tenant_id, empleado_id=empleado_id,
         empleado_nombre=empleado_nombre, dedo=dedo,
@@ -84,7 +89,7 @@ def enroll_huella(
     return {"ok": True, "id": h.id}
 
 @router.delete("/huellas/{id}")
-def delete_huella(id: int, db: Session = Depends(get_db)):
+def delete_huella(id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     h = db.query(HuellaDigital).filter(HuellaDigital.id == id).first()
     if not h:
         raise HTTPException(status_code=404, detail="No encontrado")
@@ -92,7 +97,7 @@ def delete_huella(id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"ok": True}
 
-# --- Webhook hardware ---
+# --- Webhook hardware (no auth — called by physical biometric devices) ---
 
 @router.post("/evento")
 def hardware_evento(payload: dict, db: Session = Depends(get_db)):
@@ -155,14 +160,15 @@ def hardware_evento(payload: dict, db: Session = Depends(get_db)):
 
 @router.get("/registros")
 def list_registros(
-    tenant_id: int = Query(...),
     fecha_desde: Optional[str] = Query(None),
     fecha_hasta: Optional[str] = Query(None),
     empleado_id: Optional[int] = Query(None),
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     q = db.query(RegistroBiometrico).filter(RegistroBiometrico.tenant_id == tenant_id)
     if fecha_desde:
         q = q.filter(RegistroBiometrico.fecha_hora >= fecha_desde)
@@ -184,7 +190,6 @@ def list_registros(
 
 @router.post("/registros")
 def create_registro(
-    tenant_id: int = Form(...),
     empleado_id: Optional[int] = Form(None),
     empleado_nombre: str = Form(""),
     dispositivo_id: str = Form(""),
@@ -193,8 +198,10 @@ def create_registro(
     tarjeta_uid: str = Form(""),
     observacion: str = Form(""),
     fecha_hora: str = Form(""),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     fh = datetime.fromisoformat(fecha_hora) if fecha_hora else datetime.now()
     reg = RegistroBiometrico(
         tenant_id=tenant_id, empleado_id=empleado_id,
@@ -208,7 +215,7 @@ def create_registro(
     return {"ok": True, "id": reg.id}
 
 @router.delete("/registros/{id}")
-def delete_registro(id: int, db: Session = Depends(get_db)):
+def delete_registro(id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     r = db.query(RegistroBiometrico).filter(RegistroBiometrico.id == id).first()
     if not r:
         raise HTTPException(status_code=404, detail="No encontrado")
@@ -220,10 +227,11 @@ def delete_registro(id: int, db: Session = Depends(get_db)):
 
 @router.get("/resumen")
 def resumen_mensual(
-    tenant_id: int = Query(...),
     mes: str = Query(..., description="YYYY-MM"),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     try:
         year, month = int(mes[:4]), int(mes[5:7])
     except Exception:
@@ -311,7 +319,8 @@ def resumen_mensual(
 # --- Asistencia hoy ---
 
 @router.get("/asistencia-hoy")
-def asistencia_hoy(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+def asistencia_hoy(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     hoy = date.today()
     registros = db.query(RegistroBiometrico).filter(
         RegistroBiometrico.tenant_id == tenant_id,
@@ -367,12 +376,11 @@ def asistencia_hoy(tenant_id: int = Query(...), db: Session = Depends(get_db)):
     return result
 
 @router.post("/dispositivos/{id}/regenerar-token")
-def regenerar_token(id: int, db: Session = Depends(get_db)):
+def regenerar_token(id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     import secrets
     dev = db.query(DispositivoBiometrico).filter_by(id=id).first()
     if not dev:
         raise HTTPException(404)
-    # device_id stores our token in this router context
     dev.device_id = secrets.token_hex(24)
     db.commit()
     return {"token_secreto": dev.device_id}

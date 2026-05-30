@@ -11,6 +11,7 @@ from pydantic import BaseModel
 import httpx, jwt as _jwt
 from cryptography.fernet import Fernet, InvalidToken
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/pagos/mp", tags=["pagos_mp"])
 
@@ -73,7 +74,7 @@ class MultaBody(BaseModel):
 
 
 @router.post("/create-gasto")
-def create_gasto(body: GastoBody, request: Request, db: Session = Depends(get_db)):
+def create_gasto(body: GastoBody, request: Request, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _get_session(request)
     gasto = db.execute(text(
         "SELECT id, departamento_id, monto_total, descripcion, estado FROM gastos_comunes WHERE id=:id"
@@ -129,7 +130,7 @@ def create_gasto(body: GastoBody, request: Request, db: Session = Depends(get_db
 
 
 @router.post("/create-multa")
-def create_multa(body: MultaBody, request: Request, db: Session = Depends(get_db)):
+def create_multa(body: MultaBody, request: Request, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _get_session(request)
     multa = db.execute(text(
         "SELECT id, departamento_id, monto, descripcion, estado FROM multas WHERE id=:id"
@@ -271,7 +272,7 @@ async def mp_webhook(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/status/{payment_id}")
-def mp_status(payment_id: str, request: Request, db: Session = Depends(get_db)):
+def mp_status(payment_id: str, request: Request, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _get_session(request)
     row = db.execute(text(
         "SELECT mp_status, monto, metodo_pago, fecha_pago FROM pagos WHERE mp_payment_id=:mpid LIMIT 1"

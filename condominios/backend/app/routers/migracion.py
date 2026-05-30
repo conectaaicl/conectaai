@@ -16,6 +16,7 @@ from sqlalchemy import text
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/migracion", tags=["Migracion"])
 
@@ -186,8 +187,8 @@ def _validar_fila(fila: dict, tipo: str, mapeo: dict) -> tuple[list, list]:
 @router.post("/analizar-excel", status_code=200)
 async def analizar_excel(
     file: UploadFile = File(...),
-    tenant_id: int = Form(...),
     tipo: str = Form("residentes"),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     _ensure_tables(db)
@@ -228,14 +229,13 @@ async def analizar_excel(
 
 
 class ValidarRequest(BaseModel):
-    tenant_id: int
     tipo: str
     mapeo: Dict[str, str]
     datos: List[Dict[str, Any]]
 
 
 @router.post("/validar")
-def validar_datos(body: ValidarRequest, db: Session = Depends(get_db)):
+def validar_datos(body: ValidarRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     _ensure_tables(db)
     if body.tipo not in TIPOS_VALIDOS:
         raise HTTPException(400, "Tipo invalido: " + body.tipo)
@@ -297,14 +297,14 @@ def validar_datos(body: ValidarRequest, db: Session = Depends(get_db)):
 
 
 class ImportarRequest(BaseModel):
-    tenant_id: int
     tipo: str
     filas: List[Dict[str, Any]]
     usuario: str = "admin"
 
 
 @router.post("/importar")
-def importar_datos(body: ImportarRequest, db: Session = Depends(get_db)):
+def importar_datos(body: ImportarRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     if body.tipo not in TIPOS_VALIDOS:
         raise HTTPException(400, "Tipo invalido")
@@ -326,7 +326,7 @@ def importar_datos(body: ImportarRequest, db: Session = Depends(get_db)):
                     "VALUES (:tid, :nom, :rut, :tipo, 'activo', CAST(:dc AS jsonb)) "
                     "ON CONFLICT DO NOTHING RETURNING id"
                 ), {
-                    "tid": body.tenant_id,
+                    "tid": tenant_id,
                     "nom": str(datos.get("nombre_completo", "") or ""),
                     "rut": str(datos.get("rut", "") or "") or None,
                     "tipo": str(datos.get("tipo", "residente") or "residente"),
@@ -343,7 +343,7 @@ def importar_datos(body: ImportarRequest, db: Session = Depends(get_db)):
                     "VALUES (:tid, :dep, :pat, :mar, :mod, :col) "
                     "ON CONFLICT DO NOTHING RETURNING id"
                 ), {
-                    "tid": body.tenant_id, "dep": str(datos.get("depto_numero", "") or ""),
+                    "tid": tenant_id, "dep": str(datos.get("depto_numero", "") or ""),
                     "pat": pat, "mar": str(datos.get("marca", "") or ""),
                     "mod": str(datos.get("modelo", "") or ""), "col": str(datos.get("color", "") or ""),
                 }).fetchone()
@@ -358,7 +358,7 @@ def importar_datos(body: ImportarRequest, db: Session = Depends(get_db)):
                     "INSERT INTO migracion_gastos_comunes (tenant_id, depto_numero, monto, periodo, estado) "
                     "VALUES (:tid, :dep, :monto, :periodo, :est) ON CONFLICT DO NOTHING"
                 ), {
-                    "tid": body.tenant_id, "dep": str(datos.get("depto_numero", "") or ""),
+                    "tid": tenant_id, "dep": str(datos.get("depto_numero", "") or ""),
                     "monto": monto, "periodo": str(datos.get("periodo", "") or ""),
                     "est": str(datos.get("estado", "pendiente") or "pendiente"),
                 })
@@ -374,7 +374,7 @@ def importar_datos(body: ImportarRequest, db: Session = Depends(get_db)):
         "INSERT INTO migracion_historial (tenant_id, tipo, total_filas, importados, errores, usuario) "
         "VALUES (:tid, :tipo, :tot, :imp, :err, :usr)"
     ), {
-        "tid": body.tenant_id, "tipo": body.tipo,
+        "tid": tenant_id, "tipo": body.tipo,
         "tot": len(body.filas), "imp": importados,
         "err": errores_count, "usr": body.usuario,
     })
@@ -385,7 +385,7 @@ def importar_datos(body: ImportarRequest, db: Session = Depends(get_db)):
 @router.post("/analizar-pdf")
 async def analizar_pdf(
     file: UploadFile = File(...),
-    tenant_id: int = Form(...),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     content = await file.read()
@@ -463,7 +463,8 @@ async def analizar_pdf(
 
 
 @router.get("/historial")
-def historial(tenant_id: int, limit: int = 20, db: Session = Depends(get_db)):
+def historial(limit: int = 20, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     rows = db.execute(text(
         "SELECT * FROM migracion_historial WHERE tenant_id=:tid ORDER BY created_at DESC LIMIT :lim"
@@ -482,7 +483,7 @@ def historial(tenant_id: int, limit: int = 20, db: Session = Depends(get_db)):
 
 
 @router.get("/plantilla/{tipo}")
-def descargar_plantilla(tipo: str):
+def descargar_plantilla(tipo: str, current_user: dict = Depends(get_current_user)):
     if tipo not in TIPOS_VALIDOS:
         raise HTTPException(400, "Tipo invalido")
     try:
@@ -549,7 +550,7 @@ class AiMapearRequest(BaseModel):
 
 
 @router.post("/ai-mapear")
-def ai_mapear(body: AiMapearRequest):
+def ai_mapear(body: AiMapearRequest, current_user: dict = Depends(get_current_user)):
     mapeo_base = _sugerir_mapeo(body.columnas, body.tipo)
     campos = CAMPOS_POR_TIPO.get(body.tipo, [])
     try:

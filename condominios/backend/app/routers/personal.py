@@ -4,6 +4,7 @@ from sqlalchemy import func, and_, extract
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.personal import Turno, Asistencia, Sueldo, Adelanto, Evaluacion, Equipamiento, Vacacion
 from app.models.persona import Persona
 from app.schemas.personal import *
@@ -12,8 +13,9 @@ router = APIRouter(prefix="/api/personal", tags=["Personal"])
 
 # ============ TURNOS ============
 @router.post("/turnos", response_model=TurnoResponse)
-def crear_turno(turno: TurnoCreate, db: Session = Depends(get_db)):
+def crear_turno(turno: TurnoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Crear nuevo turno"""
+    tenant_id = current_user["tenant_id"]
     db_turno = Turno(**turno.model_dump())
     db.add(db_turno)
     db.commit()
@@ -25,9 +27,10 @@ def listar_turnos(
     persona_id: Optional[int] = None,
     fecha_desde: Optional[date] = None,
     fecha_hasta: Optional[date] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Listar turnos con filtros"""
+    tenant_id = current_user["tenant_id"]
     query = db.query(Turno)
     
     if persona_id:
@@ -45,9 +48,10 @@ def registrar_entrada(
     persona_id: int,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Registrar entrada (check-in)"""
+    tenant_id = current_user["tenant_id"]
     hoy = date.today()
     asistencia = db.query(Asistencia).filter(
         and_(Asistencia.persona_id == persona_id, Asistencia.fecha == hoy)
@@ -85,9 +89,10 @@ def registrar_salida(
     persona_id: int,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Registrar salida (check-out)"""
+    tenant_id = current_user["tenant_id"]
     hoy = date.today()
     asistencia = db.query(Asistencia).filter(
         and_(Asistencia.persona_id == persona_id, Asistencia.fecha == hoy)
@@ -115,9 +120,10 @@ def listar_asistencias(
     persona_id: Optional[int] = None,
     fecha_desde: Optional[date] = None,
     fecha_hasta: Optional[date] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Listar asistencias"""
+    tenant_id = current_user["tenant_id"]
     query = db.query(Asistencia)
     
     if persona_id:
@@ -131,8 +137,9 @@ def listar_asistencias(
 
 # ============ SUELDOS ============
 @router.post("/sueldos", response_model=SueldoResponse)
-def crear_sueldo(sueldo: SueldoCreate, db: Session = Depends(get_db)):
+def crear_sueldo(sueldo: SueldoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Generar liquidación de sueldo"""
+    tenant_id = current_user["tenant_id"]
     
     # Calcular totales
     total_bonos = sum(b['monto'] for b in sueldo.bonos) if sueldo.bonos else 0
@@ -161,9 +168,10 @@ def listar_sueldos(
     persona_id: Optional[int] = None,
     mes: Optional[int] = None,
     anio: Optional[int] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Listar sueldos"""
+    tenant_id = current_user["tenant_id"]
     query = db.query(Sueldo)
     
     if persona_id:
@@ -176,8 +184,9 @@ def listar_sueldos(
     return query.order_by(Sueldo.created_at.desc()).all()
 
 @router.post("/sueldos/{sueldo_id}/pagar")
-def pagar_sueldo(sueldo_id: int, metodo_pago: str, db: Session = Depends(get_db)):
+def pagar_sueldo(sueldo_id: int, metodo_pago: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Marcar sueldo como pagado"""
+    tenant_id = current_user["tenant_id"]
     sueldo = db.query(Sueldo).filter(Sueldo.id == sueldo_id).first()
     if not sueldo:
         raise HTTPException(status_code=404, detail="Sueldo no encontrado")
@@ -191,8 +200,9 @@ def pagar_sueldo(sueldo_id: int, metodo_pago: str, db: Session = Depends(get_db)
 
 # ============ ADELANTOS ============
 @router.post("/adelantos", response_model=AdelantoResponse)
-def solicitar_adelanto(adelanto: AdelantoCreate, db: Session = Depends(get_db)):
+def solicitar_adelanto(adelanto: AdelantoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Solicitar adelanto"""
+    tenant_id = current_user["tenant_id"]
     db_adelanto = Adelanto(**adelanto.model_dump())
     db.add(db_adelanto)
     db.commit()
@@ -200,8 +210,9 @@ def solicitar_adelanto(adelanto: AdelantoCreate, db: Session = Depends(get_db)):
     return db_adelanto
 
 @router.post("/adelantos/{adelanto_id}/aprobar")
-def aprobar_adelanto(adelanto_id: int, aprobador: str, db: Session = Depends(get_db)):
+def aprobar_adelanto(adelanto_id: int, aprobador: str, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Aprobar adelanto"""
+    tenant_id = current_user["tenant_id"]
     adelanto = db.query(Adelanto).filter(Adelanto.id == adelanto_id).first()
     if not adelanto:
         raise HTTPException(status_code=404, detail="Adelanto no encontrado")
@@ -226,9 +237,10 @@ def aprobar_adelanto(adelanto_id: int, aprobador: str, db: Session = Depends(get
 def listar_adelantos(
     persona_id: Optional[int] = None,
     estado: Optional[str] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Listar adelantos"""
+    tenant_id = current_user["tenant_id"]
     query = db.query(Adelanto)
     
     if persona_id:
@@ -240,8 +252,9 @@ def listar_adelantos(
 
 # ============ EVALUACIONES ============
 @router.post("/evaluaciones", response_model=EvaluacionResponse)
-def crear_evaluacion(evaluacion: EvaluacionCreate, db: Session = Depends(get_db)):
+def crear_evaluacion(evaluacion: EvaluacionCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Crear evaluación"""
+    tenant_id = current_user["tenant_id"]
     
     # Calcular promedio si tiene calificaciones
     calificaciones = [
@@ -269,9 +282,10 @@ def crear_evaluacion(evaluacion: EvaluacionCreate, db: Session = Depends(get_db)
 def listar_evaluaciones(
     persona_id: Optional[int] = None,
     tipo: Optional[str] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Listar evaluaciones"""
+    tenant_id = current_user["tenant_id"]
     query = db.query(Evaluacion)
     
     if persona_id:
@@ -283,8 +297,9 @@ def listar_evaluaciones(
 
 # ============ EQUIPAMIENTO ============
 @router.post("/equipamiento", response_model=EquipamientoResponse)
-def registrar_equipamiento(equip: EquipamientoCreate, db: Session = Depends(get_db)):
+def registrar_equipamiento(equip: EquipamientoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Registrar entrega de equipamiento"""
+    tenant_id = current_user["tenant_id"]
     db_equip = Equipamiento(**equip.model_dump())
     db.add(db_equip)
     db.commit()
@@ -295,9 +310,10 @@ def registrar_equipamiento(equip: EquipamientoCreate, db: Session = Depends(get_
 def listar_equipamiento(
     persona_id: Optional[int] = None,
     estado: Optional[str] = None,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
     """Listar equipamiento"""
+    tenant_id = current_user["tenant_id"]
     query = db.query(Equipamiento)
     
     if persona_id:
@@ -309,8 +325,9 @@ def listar_equipamiento(
 
 # ============ REPORTES ============
 @router.get("/reportes/resumen-mensual")
-def resumen_mensual(mes: int, anio: int, db: Session = Depends(get_db)):
+def resumen_mensual(mes: int, anio: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Resumen mensual de personal"""
+    tenant_id = current_user["tenant_id"]
     
     # Total en sueldos
     total_sueldos = db.query(func.sum(Sueldo.liquido_pagar)).filter(
@@ -362,8 +379,9 @@ def resumen_mensual(mes: int, anio: int, db: Session = Depends(get_db)):
     }
 
 @router.get("/reportes/personal-activo")
-def personal_activo(db: Session = Depends(get_db)):
+def personal_activo(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Lista de personal activo con estadísticas"""
+    tenant_id = current_user["tenant_id"]
     
     # Obtener todas las personas activas
     personas_activas = db.query(Persona).filter(Persona.estado == "activo").all()

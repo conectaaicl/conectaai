@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from pydantic import BaseModel
 from typing import Optional
 import bcrypt
@@ -36,7 +37,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def actualizar_usuario(
     user_id: int,
     datos: UsuarioUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Actualizar datos del usuario"""
     
@@ -120,7 +122,8 @@ def actualizar_usuario(
 def cambiar_password(
     user_id: int,
     datos: PasswordUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Cambiar contraseña del usuario"""
     

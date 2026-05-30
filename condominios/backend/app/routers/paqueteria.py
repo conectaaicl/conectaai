@@ -14,6 +14,7 @@ from sqlalchemy import text
 from typing import Optional
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 import httpx
 
 router = APIRouter(prefix="/api/paqueteria", tags=["Paquetería"])
@@ -154,7 +155,8 @@ class PaqueteCreate(BaseModel):
 
 
 @router.post("", status_code=201)
-def registrar_paquete(body: PaqueteCreate, db: Session = Depends(get_db)):
+def registrar_paquete(body: PaqueteCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
 
     if body.carrier not in CARRIERS:
@@ -206,7 +208,8 @@ def registrar_paquete(body: PaqueteCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{paquete_id}/entregar")
-def marcar_entregado(paquete_id: int, db: Session = Depends(get_db)):
+def marcar_entregado(paquete_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     p = db.execute(text("SELECT * FROM paqueteria WHERE id=:id"), {"id": paquete_id}).fetchone()
     if not p:
         raise HTTPException(404, "Paquete no encontrado")
@@ -217,13 +220,13 @@ def marcar_entregado(paquete_id: int, db: Session = Depends(get_db)):
 
 @router.get("")
 def listar_paquetes(
-    tenant_id: int,
     condominio_id: Optional[int] = None,
     estado: Optional[str] = None,
     depto: Optional[str] = None,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     sql = "SELECT * FROM paqueteria WHERE tenant_id=:tid"
     params: dict = {"tid": tenant_id}
@@ -245,8 +248,9 @@ def listar_paquetes(
 
 
 @router.get("/pendientes")
-def pendientes_por_depto(tenant_id: int, condominio_id: Optional[int] = None, db: Session = Depends(get_db)):
+def pendientes_por_depto(condominio_id: Optional[int] = None, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """For Central page: pending packages grouped by apartment."""
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     sql = ("SELECT depto_destino, nombre_destinatario, carrier, tracking_number, "
            "recibido_at::text, id FROM paqueteria WHERE tenant_id=:tid AND estado='pendiente'")
@@ -259,7 +263,8 @@ def pendientes_por_depto(tenant_id: int, condominio_id: Optional[int] = None, db
 
 
 @router.delete("/{paquete_id}")
-def eliminar_paquete(paquete_id: int, db: Session = Depends(get_db)):
+def eliminar_paquete(paquete_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     db.execute(text("DELETE FROM paqueteria WHERE id=:id"), {"id": paquete_id})
     db.commit()
     return {"ok": True}
@@ -267,4 +272,5 @@ def eliminar_paquete(paquete_id: int, db: Session = Depends(get_db)):
 
 @router.get("/carriers")
 def get_carriers():
+    tenant_id = current_user["tenant_id"]
     return [{"value": k, "label": v} for k, v in CARRIER_LABELS.items()]

@@ -6,6 +6,7 @@ from sqlalchemy import text
 from pydantic import BaseModel
 from typing import Optional
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/ia/chat", tags=["IA"])
 
@@ -33,13 +34,13 @@ Responde SOLO con JSON válido, sin markdown."""
 
 
 class ChatRequest(BaseModel):
-    tenant_id: int
     mensaje: str
     contexto: Optional[str] = None
 
 
 @router.post("")
-async def chat(body: ChatRequest, db: Session = Depends(get_db)):
+async def chat(body: ChatRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
         return {"tipo": "respuesta", "texto": "IA no configurada. Agrega ANTHROPIC_API_KEY al .env", "datos": None}
@@ -58,12 +59,10 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
 
         if result.get("tipo") == "query":
             sql = result.get("sql", "")
-            # Safety check - only SELECT
             if not sql.strip().upper().startswith("SELECT"):
                 return {"tipo": "respuesta", "texto": "Solo puedo consultar datos, no modificarlos.", "datos": None}
-            rows = db.execute(text(sql), {"tid": body.tenant_id}).fetchall()
-            datos = [dict(r._mapping) for r in rows[:50]]  # max 50 rows
-            # Stringify datetimes
+            rows = db.execute(text(sql), {"tid": tenant_id}).fetchall()
+            datos = [dict(r._mapping) for r in rows[:50]]
             for d in datos:
                 for k, v in d.items():
                     if hasattr(v, 'isoformat'):
@@ -79,7 +78,7 @@ async def chat(body: ChatRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/sugerencias")
-async def sugerencias(tenant_id: int):
+async def sugerencias(current_user: dict = Depends(get_current_user)):
     return [
         "Muéstrame las visitas de hoy",
         "¿Quién entró después de las 11 PM esta semana?",

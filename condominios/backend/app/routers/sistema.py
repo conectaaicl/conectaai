@@ -20,6 +20,7 @@ from sqlalchemy import text
 from typing import Optional, List
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/sistema", tags=["Sistema"])
 
@@ -121,8 +122,9 @@ def _semaforo(ok: bool, latency_ms: float) -> str:
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @router.get("/estado")
-def estado_sistema(tenant_id: int = 1, db: Session = Depends(get_db)):
+def estado_sistema(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Semáforo global: checks all services and TCP devices for this tenant."""
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     checks = []
 
@@ -235,7 +237,8 @@ def estado_sistema(tenant_id: int = 1, db: Session = Depends(get_db)):
 
 
 @router.get("/dispositivos")
-def list_dispositivos(tenant_id: int, db: Session = Depends(get_db)):
+def list_dispositivos(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     rows = db.execute(text(
         "SELECT * FROM dispositivos_tcp WHERE tenant_id=:tid ORDER BY nombre"
@@ -244,7 +247,8 @@ def list_dispositivos(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/dispositivos", status_code=201)
-def crear_dispositivo(body: DispositivoCreate, db: Session = Depends(get_db)):
+def crear_dispositivo(body: DispositivoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     row = db.execute(text(
         "INSERT INTO dispositivos_tcp (tenant_id,nombre,tipo,ip,puerto,protocolo,modelo,ubicacion,puerta_id,activo,config_extra) "
@@ -260,7 +264,8 @@ def crear_dispositivo(body: DispositivoCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/dispositivos/{dispositivo_id}")
-def actualizar_dispositivo(dispositivo_id: int, body: DispositivoUpdate, db: Session = Depends(get_db)):
+def actualizar_dispositivo(dispositivo_id: int, body: DispositivoUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     updates = {k: v for k, v in body.model_dump(exclude_unset=True).items()}
     if not updates:
@@ -276,7 +281,8 @@ def actualizar_dispositivo(dispositivo_id: int, body: DispositivoUpdate, db: Ses
 
 
 @router.delete("/dispositivos/{dispositivo_id}")
-def eliminar_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)):
+def eliminar_dispositivo(dispositivo_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     db.execute(text("DELETE FROM dispositivos_tcp WHERE id=:id"), {"id": dispositivo_id})
     db.commit()
@@ -284,7 +290,8 @@ def eliminar_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/dispositivos/{dispositivo_id}/test")
-def test_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)):
+def test_dispositivo(dispositivo_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     row = db.execute(text("SELECT * FROM dispositivos_tcp WHERE id=:id"), {"id": dispositivo_id}).fetchone()
     if not row:
@@ -310,12 +317,13 @@ def test_dispositivo(dispositivo_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/dispositivos/{dispositivo_id}/comando")
-def enviar_comando(dispositivo_id: int, body: ComandoRequest, db: Session = Depends(get_db)):
+def enviar_comando(dispositivo_id: int, body: ComandoRequest, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Send TCP command to a door controller.
     Currently implements a generic Wiegand/ZKTeco-style TCP command frame.
     For production, replace with vendor-specific SDK call.
     """
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     row = db.execute(text("SELECT * FROM dispositivos_tcp WHERE id=:id"), {"id": dispositivo_id}).fetchone()
     if not row:
@@ -403,7 +411,7 @@ class EventoCreate(BaseModel):
     detalle: Optional[str] = None
 
 
-def _match_rfid(db: Session, card_uid: str, tenant_id: int) -> dict:
+def _match_rfid(db: Session, card_uid: str) -> dict:
     """Returns {persona_id, persona_nombre, nombre_titular, resultado}"""
     try:
         row = db.execute(text(
@@ -438,11 +446,12 @@ def _publish_evento(tenant_id: int, evento_data: dict):
 
 
 @router.post("/eventos", status_code=201)
-def recibir_evento(body: EventoCreate, db: Session = Depends(get_db)):
+def recibir_evento(body: EventoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     Endpoint for device controllers to push events.
     Matches RFID card to persona, writes to historial, publishes to SSE stream.
     """
+    tenant_id = current_user["tenant_id"]
     _ensure_eventos_table(db)
 
     persona_id = None
@@ -534,8 +543,9 @@ def recibir_evento(body: EventoCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/eventos")
-def listar_eventos(tenant_id: int, limit: int = 50, db: Session = Depends(get_db)):
+def listar_eventos(limit: int = 50, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Recent events for initial page load."""
+    tenant_id = current_user["tenant_id"]
     _ensure_eventos_table(db)
     rows = db.execute(text(
         "SELECT * FROM eventos_dispositivo WHERE tenant_id=:tid ORDER BY created_at DESC LIMIT :lim"
@@ -549,10 +559,11 @@ def listar_eventos(tenant_id: int, limit: int = 50, db: Session = Depends(get_db
 
 
 @router.get("/eventos/stream")
-async def stream_eventos(tenant_id: int, request: Request):
+async def stream_eventos(current_user: dict = Depends(get_current_user), request: Request = None):
     """
     Server-Sent Events stream. Frontend subscribes here; device events are pushed in real-time.
     """
+    tenant_id = current_user["tenant_id"]
     q: asyncio.Queue = asyncio.Queue(maxsize=100)
     _sse_queues.setdefault(tenant_id, []).append(q)
 

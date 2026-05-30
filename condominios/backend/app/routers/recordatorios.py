@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models import GastoComun, Persona
 from datetime import datetime
 import httpx, os, asyncio
@@ -18,7 +19,8 @@ async def send_mail(to: str, subject: str, html: str):
         pass
 
 @router.post("/recordatorios/procesar")
-async def procesar_recordatorios(tenant_id: int, db: Session = Depends(get_db)):
+async def procesar_recordatorios(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     hoy = datetime.utcnow().date()
     enviados = 0
     gastos = db.query(GastoComun).filter(GastoComun.estado == "pendiente").all()
@@ -55,7 +57,8 @@ async def procesar_recordatorios(tenant_id: int, db: Session = Depends(get_db)):
     return {"ok": True, "recordatorios_enviados": enviados, "gastos_procesados": len(gastos)}
 
 @router.get("/recordatorios/estado")
-def get_estado(tenant_id: int, db: Session = Depends(get_db)):
+def get_estado(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     hoy = datetime.utcnow().date()
     pendientes = db.query(GastoComun).filter(GastoComun.estado == "pendiente").count()
     vencidos = db.query(GastoComun).filter(GastoComun.estado == "pendiente", GastoComun.fecha_vencimiento < datetime.utcnow()).count()

@@ -8,6 +8,7 @@ from app.models.estructura import Departamento, Piso, Torre
 from app.models.condominio import Condominio
 from app.models.persona import Persona
 from app.schemas.finanzas import GastoComunCreate, GastoComunUpdate, GastoComunResponse
+from app.core.dependencies import get_current_user
 
 
 import os as _os
@@ -54,17 +55,18 @@ CATEGORIAS_PREDEFINIDAS = [
 ]
 
 @router.get("/categorias")
-def obtener_categorias():
+def obtener_categorias(current_user: dict = Depends(get_current_user)):
     """Retorna lista de categorías predefinidas para gastos comunes"""
     return CATEGORIAS_PREDEFINIDAS
 
 
 @router.get("/resumen-departamentos")
 def resumen_por_departamento(
-    tenant_id: int = 1,
     periodo: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     """Retorna resumen de gastos comunes por departamento para un período YYYY-MM"""
     mes = None
     anio = None
@@ -181,7 +183,7 @@ def resumen_por_departamento(
 
 
 @router.post("/gastos-comunes", response_model=GastoComunResponse)
-def crear_gasto_comun(gasto: GastoComunCreate, db: Session = Depends(get_db)):
+def crear_gasto_comun(gasto: GastoComunCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Crear nuevo gasto común"""
     gasto_data = gasto.model_dump()
     if "detalle" in gasto_data:
@@ -198,11 +200,17 @@ def crear_gasto_comun(gasto: GastoComunCreate, db: Session = Depends(get_db)):
             if depto and depto.propietario_id:
                 persona = db.query(Persona).filter(Persona.id == depto.propietario_id).first()
                 if persona and persona.email:
-                    asyncio.create_task(send_gasto_notificacion(
-                        persona.email, persona.nombre_completo,
-                        db_gasto.mes, db_gasto.anio, float(db_gasto.monto_total),
-                        db_gasto.fecha_vencimiento.strftime("%d/%m/%Y") if db_gasto.fecha_vencimiento else "N/A"
-                    ))
+                    try:
+                        import asyncio as _asyncio
+                        _loop = _asyncio.get_event_loop()
+                        if _loop and _loop.is_running():
+                            _loop.create_task(send_gasto_notificacion(
+                                persona.email, persona.nombre_completo,
+                                db_gasto.mes, db_gasto.anio, float(db_gasto.monto_total),
+                                db_gasto.fecha_vencimiento.strftime("%d/%m/%Y") if db_gasto.fecha_vencimiento else "N/A"
+                            ))
+                    except Exception:
+                        pass
     except Exception:
         pass
     return db_gasto
@@ -213,11 +221,12 @@ def listar_gastos_comunes(
     anio: Optional[int] = None,
     estado: Optional[str] = None,
     departamento_id: Optional[int] = None,
-    tenant_id: int = 1,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     """Listar gastos comunes enriquecido con info residente"""
     from sqlalchemy import text as _t
     query = db.query(GastoComun)
@@ -255,7 +264,7 @@ def listar_gastos_comunes(
     return result
 
 @router.get("/gastos-comunes/{gasto_id}", response_model=GastoComunResponse)
-def obtener_gasto_comun(gasto_id: int, db: Session = Depends(get_db)):
+def obtener_gasto_comun(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Obtener gasto común por ID"""
     gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
     if not gasto:
@@ -266,7 +275,8 @@ def obtener_gasto_comun(gasto_id: int, db: Session = Depends(get_db)):
 def actualizar_gasto_comun(
     gasto_id: int,
     gasto_update: GastoComunUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Actualizar gasto común"""
     gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
@@ -283,7 +293,8 @@ def registrar_pago(
     gasto_id: int,
     metodo_pago: str = "transferencia",
     comprobante_url: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Registrar pago de gasto común"""
     gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
@@ -299,7 +310,7 @@ def registrar_pago(
     return {"message": "Pago registrado exitosamente", "gasto": gasto.id}
 
 @router.delete("/gastos-comunes/{gasto_id}")
-def eliminar_gasto_comun(gasto_id: int, db: Session = Depends(get_db)):
+def eliminar_gasto_comun(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar gasto común"""
     gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
     if not gasto:
@@ -309,7 +320,8 @@ def eliminar_gasto_comun(gasto_id: int, db: Session = Depends(get_db)):
     return {"message": "Gasto común eliminado"}
 
 @router.get("/stats/morosidad")
-def obtener_stats_morosidad(tenant_id: int = 1, db: Session = Depends(get_db)):
+def obtener_stats_morosidad(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Obtener estadísticas de morosidad"""
     from sqlalchemy import func as sqlfunc
     total = db.query(GastoComun).count()
@@ -334,7 +346,8 @@ def obtener_stats_morosidad(tenant_id: int = 1, db: Session = Depends(get_db)):
 
 
 @router.post("/gastos-comunes/enviar-masivo")
-def enviar_gastos_masivo(mes: int, anio: int, tenant_id: int, db: Session = Depends(get_db)):
+def enviar_gastos_masivo(mes: int, anio: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     from sqlalchemy import text as _t
     import httpx as _hx
     valid = db.execute(_t(
@@ -373,7 +386,8 @@ def enviar_gastos_masivo(mes: int, anio: int, tenant_id: int, db: Session = Depe
 
 
 @router.post("/gastos-comunes/{gasto_id}/enviar")
-def enviar_gasto_individual(gasto_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def enviar_gasto_individual(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     import httpx as _hx
     gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
     if not gasto:
@@ -406,7 +420,8 @@ def enviar_gasto_individual(gasto_id: int, tenant_id: int, db: Session = Depends
 def exportar_gastos_pdf(
     mes: Optional[int] = None,
     anio: Optional[int] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """Exportar gastos comunes a PDF"""
     from reportlab.lib.pagesizes import A4
@@ -495,7 +510,7 @@ def exportar_gastos_pdf(
     )
 
 @router.get("/gastos-comunes/{gasto_id}/pdf-individual")
-def generar_pdf_individual(gasto_id: int, db: Session = Depends(get_db)):
+def generar_pdf_individual(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Generar PDF individual de un gasto común"""
     from reportlab.lib.pagesizes import letter
     from reportlab.lib import colors

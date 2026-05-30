@@ -19,6 +19,7 @@ from sqlalchemy import text
 from typing import Optional
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 import httpx
 
 router = APIRouter(prefix="/api/visitas", tags=["Visitas"])
@@ -112,7 +113,7 @@ class EstacOcupar(BaseModel):
 # ── VISITAS routes ────────────────────────────────────────────────────────────
 
 @router.post("", status_code=201)
-def crear_visita(body: VisitaCreate, db: Session = Depends(get_db)):
+def crear_visita(body: VisitaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     row = db.execute(text(
         "INSERT INTO visitas (tenant_id,condominio_id,nombre_visitante,rut_visitante,"
@@ -153,7 +154,7 @@ def crear_visita(body: VisitaCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{visita_id}/salida")
-def registrar_salida(visita_id: int, db: Session = Depends(get_db)):
+def registrar_salida(visita_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     v = db.execute(text("SELECT * FROM visitas WHERE id=:id"), {"id": visita_id}).fetchone()
     if not v:
@@ -168,13 +169,14 @@ def registrar_salida(visita_id: int, db: Session = Depends(get_db)):
 
 @router.get("")
 def listar_visitas(
-    tenant_id: int,
     condominio_id: Optional[int] = None,
     activas: Optional[bool] = None,
     depto: Optional[str] = None,
     limit: int = 100,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     sql = "SELECT * FROM visitas WHERE tenant_id=:tid"
     params: dict = {"tid": tenant_id}
@@ -199,7 +201,8 @@ def listar_visitas(
 
 
 @router.get("/activas")
-def visitas_activas(tenant_id: int, condominio_id: Optional[int] = None, db: Session = Depends(get_db)):
+def visitas_activas(condominio_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Quick endpoint for the Central page: visitors currently in the building."""
     _ensure_tables(db)
     sql = "SELECT id,nombre_visitante,rut_visitante,depto_destino,nombre_residente,motivo,spot_asignado,patente,entrada_at::text FROM visitas WHERE tenant_id=:tid AND salida_at IS NULL"
@@ -214,7 +217,8 @@ def visitas_activas(tenant_id: int, condominio_id: Optional[int] = None, db: Ses
 # ── ESTACIONAMIENTOS routes ───────────────────────────────────────────────────
 
 @router_estac.get("/config")
-def listar_config(tenant_id: int, condominio_id: Optional[int] = None, db: Session = Depends(get_db)):
+def listar_config(condominio_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     sql = "SELECT * FROM estacionamientos_config WHERE tenant_id=:tid AND activo=true"
     params: dict = {"tid": tenant_id}
@@ -226,7 +230,7 @@ def listar_config(tenant_id: int, condominio_id: Optional[int] = None, db: Sessi
 
 
 @router_estac.post("/config", status_code=201)
-def crear_config(body: EstacConfigCreate, db: Session = Depends(get_db)):
+def crear_config(body: EstacConfigCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     creados = 0
     for codigo in body.codigos:
@@ -243,7 +247,8 @@ def crear_config(body: EstacConfigCreate, db: Session = Depends(get_db)):
 
 
 @router_estac.get("")
-def listar_ocupacion(tenant_id: int, condominio_id: Optional[int] = None, solo_activos: bool = True, db: Session = Depends(get_db)):
+def listar_ocupacion(condominio_id: Optional[int] = None, solo_activos: bool = True, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Returns spots with their current occupation status."""
     _ensure_tables(db)
     # Config spots
@@ -274,7 +279,7 @@ def listar_ocupacion(tenant_id: int, condominio_id: Optional[int] = None, solo_a
 
 
 @router_estac.post("", status_code=201)
-def ocupar_spot(body: EstacOcupar, db: Session = Depends(get_db)):
+def ocupar_spot(body: EstacOcupar, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
     # Check if already occupied
     existing = db.execute(text(
@@ -292,7 +297,7 @@ def ocupar_spot(body: EstacOcupar, db: Session = Depends(get_db)):
 
 
 @router_estac.patch("/{ocupacion_id}/liberar")
-def liberar_spot(ocupacion_id: int, db: Session = Depends(get_db)):
+def liberar_spot(ocupacion_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     db.execute(text("UPDATE estacionamientos_ocupacion SET salida_at=NOW(), activo=false WHERE id=:id"), {"id": ocupacion_id})
     db.commit()
     return {"ok": True}

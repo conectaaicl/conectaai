@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 try:
     import openpyxl
@@ -97,10 +98,11 @@ def _stream(wb, filename):
 
 @router.get("/excel/morosidad")
 def reporte_morosidad(
-    tenant_id: int = Query(1),
     condominio_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     wb = _wb()
     ws = wb.create_sheet("Morosidad")
     ws.sheet_view.showGridLines = True
@@ -171,10 +173,11 @@ def reporte_morosidad(
 
 @router.get("/excel/gastos-periodo")
 def reporte_gastos_periodo(
-    tenant_id: int = Query(1),
     periodo: str = Query(..., description="YYYY-MM"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     wb = _wb()
 
     # Hoja 1: Cobros por departamento
@@ -244,10 +247,11 @@ def reporte_gastos_periodo(
 
 @router.get("/excel/finanzas")
 def reporte_finanzas(
-    tenant_id: int = Query(1),
     anio: int = Query(default=None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     anio = anio or date.today().year
     wb = _wb()
     ws = wb.create_sheet("Finanzas Anual")
@@ -289,9 +293,10 @@ def reporte_finanzas(
 
 @router.get("/excel/nomina")
 def reporte_nomina(
-    tenant_id: int = Query(1),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     wb = _wb()
     ws = wb.create_sheet("Nomina")
     _title(ws, "NOMINA DE PERSONAL", 9)
@@ -332,11 +337,12 @@ def reporte_nomina(
 
 @router.get("/excel/incidencias")
 def reporte_incidencias(
-    tenant_id: int = Query(1),
     desde: Optional[str] = Query(None),
     hasta: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     if not desde:
         desde = (date.today() - timedelta(days=90)).isoformat()
     if not hasta:
@@ -377,11 +383,12 @@ def reporte_incidencias(
 
 @router.get("/excel/reservas")
 def reporte_reservas(
-    tenant_id: int = Query(1),
     desde: Optional[str] = Query(None),
     hasta: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     if not desde:
         desde = date.today().replace(day=1).isoformat()
     if not hasta:
@@ -430,10 +437,11 @@ def reporte_reservas(
 
 @router.get("/excel/residentes")
 def reporte_residentes(
-    tenant_id: int = Query(1),
     condominio_id: Optional[int] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     wb = _wb()
     ws = wb.create_sheet("Residentes")
     _title(ws, "PADRON DE RESIDENTES Y PROPIETARIOS", 8)
@@ -473,9 +481,10 @@ def reporte_residentes(
 
 @router.get("/stats/general")
 def stats_general(
-    tenant_id: int = Query(1),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
+    tenant_id = current_user["tenant_id"]
     hoy = date.today()
     per_actual = hoy.strftime("%Y-%m")
 

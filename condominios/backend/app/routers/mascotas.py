@@ -13,6 +13,7 @@ from sqlalchemy import text
 from typing import Optional
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/mascotas", tags=["Mascotas"])
 
@@ -47,7 +48,6 @@ def _ensure_table(db: Session):
 
 
 class MascotaCreate(BaseModel):
-    tenant_id: int
     persona_id: Optional[int] = None
     depto_numero: str
     nombre: str
@@ -81,13 +81,14 @@ class MascotaUpdate(BaseModel):
 
 @router.get("")
 def listar_mascotas(
-    tenant_id: int,
     depto: Optional[str] = None,
     especie: Optional[str] = None,
     activo: bool = True,
     limit: int = 200,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     sql = "SELECT * FROM mascotas WHERE tenant_id=:tid AND activo=:act"
     p: dict = {"tid": tenant_id, "act": activo}
@@ -110,7 +111,8 @@ def listar_mascotas(
 
 
 @router.get("/alertas-vacunas")
-def alertas_vacunas(tenant_id: int, db: Session = Depends(get_db)):
+def alertas_vacunas(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     rows = db.execute(text(
         "SELECT * FROM mascotas WHERE tenant_id=:tid AND activo=true "
@@ -128,7 +130,8 @@ def alertas_vacunas(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/resumen")
-def resumen_mascotas(tenant_id: int, db: Session = Depends(get_db)):
+def resumen_mascotas(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     rows = db.execute(text(
         "SELECT especie, COUNT(*) as total FROM mascotas "
@@ -149,7 +152,8 @@ def resumen_mascotas(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", status_code=201)
-def crear_mascota(body: MascotaCreate, db: Session = Depends(get_db)):
+def crear_mascota(body: MascotaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_table(db)
     if body.especie not in ESPECIES:
         raise HTTPException(400, "Especie invalida. Validas: " + ", ".join(ESPECIES))
@@ -160,7 +164,7 @@ def crear_mascota(body: MascotaCreate, db: Session = Depends(get_db)):
         "VALUES (:tid,:pid,:dep,:nom,:esp,:raza,:col,:edad,:peso,:chip,:foto,:vac,:fult,:fprox,:obs) "
         "RETURNING id"
     ), {
-        "tid": body.tenant_id, "pid": body.persona_id, "dep": body.depto_numero,
+        "tid": tenant_id, "pid": body.persona_id, "dep": body.depto_numero,
         "nom": body.nombre, "esp": body.especie, "raza": body.raza, "col": body.color,
         "edad": body.edad_anios, "peso": body.peso_kg, "chip": body.chip_numero,
         "foto": body.foto_url, "vac": body.vacunas_vigentes,
@@ -172,7 +176,7 @@ def crear_mascota(body: MascotaCreate, db: Session = Depends(get_db)):
 
 
 @router.put("/{mascota_id}")
-def actualizar_mascota(mascota_id: int, body: MascotaUpdate, db: Session = Depends(get_db)):
+def actualizar_mascota(mascota_id: int, body: MascotaUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     fields = {k: v for k, v in body.model_dump().items() if v is not None}
     if not fields:
         raise HTTPException(400, "Sin campos para actualizar")
@@ -184,7 +188,7 @@ def actualizar_mascota(mascota_id: int, body: MascotaUpdate, db: Session = Depen
 
 
 @router.delete("/{mascota_id}")
-def eliminar_mascota(mascota_id: int, db: Session = Depends(get_db)):
+def eliminar_mascota(mascota_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     db.execute(text("UPDATE mascotas SET activo=false WHERE id=:id"), {"id": mascota_id})
     db.commit()
     return {"ok": True}

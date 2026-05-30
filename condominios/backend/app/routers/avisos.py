@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.aviso import Aviso
 from pydantic import BaseModel
 from typing import Optional
@@ -19,11 +20,12 @@ class AvisoCreate(BaseModel):
 
 @router.get("")
 def list_avisos(
-    tenant_id: int = Query(...),
     condominio_id: Optional[int] = Query(None),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List active avisos for a tenant, optionally filtered by condominio."""
+    tenant_id = current_user["tenant_id"]
     q = db.query(Aviso).filter(Aviso.tenant_id == tenant_id, Aviso.activo == True)
     if condominio_id is not None:
         q = q.filter(Aviso.condominio_id == condominio_id)
@@ -45,8 +47,9 @@ def list_avisos(
 
 
 @router.post("", status_code=201)
-def create_aviso(body: AvisoCreate, db: Session = Depends(get_db)):
+def create_aviso(body: AvisoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new aviso/announcement."""
+    tenant_id = current_user["tenant_id"]
     aviso = Aviso(**body.dict())
     db.add(aviso)
     db.commit()
@@ -55,8 +58,9 @@ def create_aviso(body: AvisoCreate, db: Session = Depends(get_db)):
 
 
 @router.delete("/{aviso_id}", status_code=204)
-def delete_aviso(aviso_id: int, db: Session = Depends(get_db)):
+def delete_aviso(aviso_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Soft-delete (deactivate) an aviso."""
+    tenant_id = current_user["tenant_id"]
     aviso = db.query(Aviso).filter(Aviso.id == aviso_id).first()
     if not aviso:
         raise HTTPException(status_code=404, detail="Aviso no encontrado")
@@ -65,7 +69,8 @@ def delete_aviso(aviso_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{aviso_id}/enviar")
-def enviar_aviso_residentes(aviso_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def enviar_aviso_residentes(aviso_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     import os as _os, httpx as _hx
     from sqlalchemy import text as _t
     aviso = db.query(Aviso).filter(Aviso.id == aviso_id, Aviso.activo == True).first()

@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/resumenes", tags=["Resumenes"])
 
@@ -90,7 +91,8 @@ def build_prompt(stats):
 
 
 @router.post("/generar")
-async def generar_resumen(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+async def generar_resumen(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     ensure_table(db)
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
@@ -121,7 +123,7 @@ async def generar_resumen(tenant_id: int = Query(...), db: Session = Depends(get
     resumen_texto = result_json.get("resumen", "")
     resumen_full = dict(result_json)
     resumen_full["stats"] = stats
-    db.rollback()  # clear any aborted transaction state from safe_count failures
+    db.rollback()
     db.execute(text("""
         INSERT INTO resumenes_semanales (tenant_id, fecha_desde, fecha_hasta, resumen_texto, resumen_json, generado_por)
         VALUES (:tid, :desde, :hasta, :texto, CAST(:json_data AS jsonb), 'automatico')
@@ -142,7 +144,8 @@ async def generar_resumen(tenant_id: int = Query(...), db: Session = Depends(get
 
 
 @router.get("")
-def listar_resumenes(tenant_id: int = Query(...), limit: int = Query(10, ge=1, le=50), db: Session = Depends(get_db)):
+def listar_resumenes(limit: int = Query(10, ge=1, le=50), current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     ensure_table(db)
     rows = db.execute(text("""
         SELECT id, tenant_id, fecha_desde, fecha_hasta,
@@ -163,12 +166,13 @@ def listar_resumenes(tenant_id: int = Query(...), limit: int = Query(10, ge=1, l
 
 
 @router.get("/{resumen_id}")
-def obtener_resumen(resumen_id: int, db: Session = Depends(get_db)):
+def obtener_resumen(resumen_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     ensure_table(db)
     row = db.execute(text("""
         SELECT id, tenant_id, fecha_desde, fecha_hasta, resumen_texto, resumen_json, generado_por, created_at
-        FROM resumenes_semanales WHERE id = :rid
-    """), {"rid": resumen_id}).fetchone()
+        FROM resumenes_semanales WHERE id = :rid AND tenant_id = :tid
+    """), {"rid": resumen_id, "tid": tenant_id}).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Resumen no encontrado")
     rj = row[5] or {}
@@ -186,7 +190,8 @@ def obtener_resumen(resumen_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/programar")
-def programar_resumen(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+def programar_resumen(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     ensure_table(db)
     try:
         db.execute(text("""

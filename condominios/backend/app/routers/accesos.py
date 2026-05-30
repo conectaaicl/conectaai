@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.acceso import VisitaQR
 
 router = APIRouter(prefix="/api/accesos", tags=["Accesos QR"])
@@ -45,7 +46,7 @@ def visita_to_dict(v: VisitaQR) -> dict:
 # ─── Endpoints ──────────────────────────────────────────────────────────────
 
 @router.post("/visitas", status_code=201)
-def crear_visita(body: VisitaCreate, db: Session = Depends(get_db)):
+def crear_visita(body: VisitaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     if body.fecha_visita is None:
         from datetime import timedelta
         body.fecha_visita = datetime.utcnow() + timedelta(hours=24)
@@ -65,6 +66,7 @@ def listar_visitas(
     skip: int = 0,
     limit: int = 100,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
     """List visits with optional filters."""
     q = db.query(VisitaQR)
@@ -85,7 +87,7 @@ def listar_visitas(
 
 
 @router.get("/qr/{token}")
-def obtener_visita_por_qr(token: str, db: Session = Depends(get_db)):
+def obtener_visita_por_qr(token: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Public endpoint: get visit info by QR token (for portería tablet)."""
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:
@@ -94,7 +96,7 @@ def obtener_visita_por_qr(token: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/qr/{token}/ingresar")
-def registrar_ingreso(token: str, db: Session = Depends(get_db)):
+def registrar_ingreso(token: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Mark visitor as entered."""
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:
@@ -109,7 +111,7 @@ def registrar_ingreso(token: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/qr/{token}/salir")
-def registrar_salida(token: str, db: Session = Depends(get_db)):
+def registrar_salida(token: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Mark visitor as exited."""
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:
@@ -121,7 +123,7 @@ def registrar_salida(token: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/visitas/{visita_id}", status_code=204)
-def cancelar_visita(visita_id: int, db: Session = Depends(get_db)):
+def cancelar_visita(visita_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Cancel/delete a visit invitation."""
     visita = db.query(VisitaQR).filter(VisitaQR.id == visita_id).first()
     if not visita:
@@ -132,7 +134,8 @@ def cancelar_visita(visita_id: int, db: Session = Depends(get_db)):
 from datetime import datetime, timedelta
 
 @router.get("/live")
-def accesos_live(tenant_id: int, limit: int = 60, db: Session = Depends(get_db)):
+def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     events = []
     # 1. Puertas
     try:
@@ -222,7 +225,8 @@ def accesos_live(tenant_id: int, limit: int = 60, db: Session = Depends(get_db))
 
 
 @router.get("/resumen-hoy")
-def resumen_hoy(tenant_id: int, db: Session = Depends(get_db)):
+def resumen_hoy(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     from sqlalchemy import text as _text
     hoy = datetime.now().date().isoformat()
     r = {"ingresos": 0, "egresos": 0, "visitas_activas": 0, "fallidos": 0, "total": 0}

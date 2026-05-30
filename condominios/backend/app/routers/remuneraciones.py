@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func as sqlfunc
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models import LiquidacionSueldo, Persona
 from datetime import datetime
 from typing import Optional
@@ -71,9 +72,10 @@ def calcular_liquidacion(data: dict) -> dict:
     }
 
 @router.get("")
-def list_liquidaciones(tenant_id: int, periodo: Optional[str]=None,
+def list_liquidaciones(periodo: Optional[str]=None,
                        condominio_id: Optional[int]=None, estado: Optional[str]=None,
-                       db: Session=Depends(get_db)):
+                       current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     q = db.query(LiquidacionSueldo).filter(LiquidacionSueldo.tenant_id==tenant_id)
     if periodo: q = q.filter(LiquidacionSueldo.periodo==periodo)
     if condominio_id: q = q.filter(LiquidacionSueldo.condominio_id==condominio_id)
@@ -81,7 +83,8 @@ def list_liquidaciones(tenant_id: int, periodo: Optional[str]=None,
     return q.order_by(LiquidacionSueldo.periodo.desc(), LiquidacionSueldo.nombre_trabajador).all()
 
 @router.get("/stats")
-def get_stats(tenant_id: int, periodo: Optional[str]=None, db: Session=Depends(get_db)):
+def get_stats(periodo: Optional[str]=None, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     q = db.query(LiquidacionSueldo).filter(LiquidacionSueldo.tenant_id==tenant_id)
     if periodo: q = q.filter(LiquidacionSueldo.periodo==periodo)
     total = q.count()
@@ -92,10 +95,12 @@ def get_stats(tenant_id: int, periodo: Optional[str]=None, db: Session=Depends(g
 @router.post("/calcular")
 def calcular(data: dict):
     """Preview calculation without saving"""
+    tenant_id = current_user["tenant_id"]
     return calcular_liquidacion(data)
 
 @router.post("")
-def create_liquidacion(data: dict, db: Session=Depends(get_db)):
+def create_liquidacion(data: dict, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     calcs = calcular_liquidacion(data)
     data.update(calcs)
     liq = LiquidacionSueldo(**{k: v for k, v in data.items() if hasattr(LiquidacionSueldo, k)})
@@ -103,7 +108,8 @@ def create_liquidacion(data: dict, db: Session=Depends(get_db)):
     return liq
 
 @router.put("/{liq_id}")
-def update_liquidacion(liq_id: int, data: dict, db: Session=Depends(get_db)):
+def update_liquidacion(liq_id: int, data: dict, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     liq = db.query(LiquidacionSueldo).filter(LiquidacionSueldo.id==liq_id).first()
     if not liq: raise HTTPException(404)
     calcs = calcular_liquidacion({**{c.name: getattr(liq, c.name) for c in liq.__table__.columns}, **data})
@@ -113,14 +119,16 @@ def update_liquidacion(liq_id: int, data: dict, db: Session=Depends(get_db)):
     db.commit(); return liq
 
 @router.delete("/{liq_id}")
-def delete_liquidacion(liq_id: int, db: Session=Depends(get_db)):
+def delete_liquidacion(liq_id: int, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     liq = db.query(LiquidacionSueldo).filter(LiquidacionSueldo.id==liq_id).first()
     if liq: db.delete(liq); db.commit()
     return {"ok": True}
 
 @router.get("/previred/{periodo}")
-def export_previred(periodo: str, tenant_id: int, db: Session=Depends(get_db)):
+def export_previred(periodo: str, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):
     """Export Previred-compatible text file for a given period"""
+    tenant_id = current_user["tenant_id"]
     liqs = db.query(LiquidacionSueldo).filter(
         LiquidacionSueldo.tenant_id==tenant_id,
         LiquidacionSueldo.periodo==periodo,
@@ -150,7 +158,7 @@ def export_previred(periodo: str, tenant_id: int, db: Session=Depends(get_db)):
 
 
 @router.get("/{lid}/pdf")
-async def download_liquidacion_pdf(lid: int, db: Session = Depends(get_db)):
+async def download_liquidacion_pdf(lid: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Download liquidacion de sueldo as PDF."""
     from fastapi.responses import StreamingResponse
     from app.services.pdf_service import generar_liquidacion_pdf

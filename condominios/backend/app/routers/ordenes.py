@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models import OrdenTrabajo
 from datetime import datetime
 from typing import Optional
@@ -10,12 +11,12 @@ router = APIRouter(prefix="/api/condominios", tags=["ordenes"])
 
 @router.get("/ordenes")
 def list_ordenes(
-    tenant_id: int,
     condominio_id: Optional[int] = None,
     estado: Optional[str] = None,
     tipo: Optional[str] = None,
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    tenant_id = current_user["tenant_id"]
     q = db.query(OrdenTrabajo).filter(OrdenTrabajo.tenant_id == tenant_id)
     if condominio_id:
         q = q.filter(OrdenTrabajo.condominio_id == condominio_id)
@@ -27,7 +28,8 @@ def list_ordenes(
 
 
 @router.get("/ordenes/stats")
-def get_stats(tenant_id: int, db: Session = Depends(get_db)):
+def get_stats(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     q = db.query(OrdenTrabajo).filter(OrdenTrabajo.tenant_id == tenant_id)
     total = q.count()
     abiertas = db.query(OrdenTrabajo).filter(
@@ -55,7 +57,8 @@ def get_stats(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/ordenes")
-def create_orden(data: dict, db: Session = Depends(get_db)):
+def create_orden(data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     o = OrdenTrabajo(**{k: v for k, v in data.items() if hasattr(OrdenTrabajo, k)})
     if not o.fecha_inicio:
         o.fecha_inicio = datetime.utcnow()
@@ -66,7 +69,8 @@ def create_orden(data: dict, db: Session = Depends(get_db)):
 
 
 @router.put("/ordenes/{orden_id}")
-def update_orden(orden_id: int, data: dict, db: Session = Depends(get_db)):
+def update_orden(orden_id: int, data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     o = db.query(OrdenTrabajo).filter(OrdenTrabajo.id == orden_id).first()
     if not o:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
@@ -80,7 +84,8 @@ def update_orden(orden_id: int, data: dict, db: Session = Depends(get_db)):
 
 
 @router.delete("/ordenes/{orden_id}")
-def delete_orden(orden_id: int, db: Session = Depends(get_db)):
+def delete_orden(orden_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     o = db.query(OrdenTrabajo).filter(OrdenTrabajo.id == orden_id).first()
     if o:
         db.delete(o)

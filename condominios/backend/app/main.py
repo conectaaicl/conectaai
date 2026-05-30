@@ -241,3 +241,6 @@ def root():
 @app.get("/health")
 def health():
     return {"status": "healthy", "whatsapp360": "active"}
+
+from app.routers import ventas as ventas_router
+app.include_router(ventas_router.router)

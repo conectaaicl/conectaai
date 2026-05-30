@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.reserva import EspacioComun, Reserva
 from pydantic import BaseModel
 from typing import Optional
@@ -44,6 +45,7 @@ class EstadoUpdate(BaseModel):
 @router.get("/espacios")
 def list_espacios(condominio_id: int = Query(...), db: Session = Depends(get_db)):
     """List all common spaces for a condominio."""
+    tenant_id = current_user["tenant_id"]
     espacios = (
         db.query(EspacioComun)
         .filter(EspacioComun.condominio_id == condominio_id)
@@ -67,8 +69,9 @@ def list_espacios(condominio_id: int = Query(...), db: Session = Depends(get_db)
 
 
 @router.post("/espacios", status_code=201)
-def create_espacio(body: EspacioCreate, db: Session = Depends(get_db)):
+def create_espacio(body: EspacioCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new common space."""
+    tenant_id = current_user["tenant_id"]
     espacio = EspacioComun(**body.dict())
     db.add(espacio)
     db.commit()
@@ -85,6 +88,7 @@ def list_reservas(
     db: Session = Depends(get_db),
 ):
     """List reservations for a space, optionally filtered by day."""
+    tenant_id = current_user["tenant_id"]
     from sqlalchemy import text as _t
     sql = ("SELECT r.id,r.espacio_id,r.departamento_id,r.persona_id,"
            "r.fecha_inicio::text,r.fecha_fin::text,r.estado,"
@@ -105,8 +109,9 @@ def list_reservas(
 
 
 @router.post("", status_code=201)
-def create_reserva(body: ReservaCreate, db: Session = Depends(get_db)):
+def create_reserva(body: ReservaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a reservation; checks for time conflicts first."""
+    tenant_id = current_user["tenant_id"]
     if body.fecha_fin <= body.fecha_inicio:
         raise HTTPException(status_code=400, detail="fecha_fin debe ser posterior a fecha_inicio")
 
@@ -136,8 +141,9 @@ def create_reserva(body: ReservaCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/{reserva_id}/estado")
-def update_estado(reserva_id: int, body: EstadoUpdate, db: Session = Depends(get_db)):
+def update_estado(reserva_id: int, body: EstadoUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Confirm or cancel a reservation."""
+    tenant_id = current_user["tenant_id"]
     reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -150,8 +156,9 @@ def update_estado(reserva_id: int, body: EstadoUpdate, db: Session = Depends(get
 
 
 @router.delete("/{reserva_id}", status_code=204)
-def delete_reserva(reserva_id: int, db: Session = Depends(get_db)):
+def delete_reserva(reserva_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Delete a reservation."""
+    tenant_id = current_user["tenant_id"]
     reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
     if not reserva:
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
@@ -160,7 +167,8 @@ def delete_reserva(reserva_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/espacios/{espacio_id}")
-def delete_espacio(espacio_id: int, db: Session = Depends(get_db)):
+def delete_espacio(espacio_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     espacio = db.query(EspacioComun).filter(EspacioComun.id == espacio_id).first()
     if not espacio:
         raise HTTPException(404, "Espacio no encontrado")
@@ -170,7 +178,8 @@ def delete_espacio(espacio_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/{reserva_id}/enviar")
-def enviar_confirmacion_reserva(reserva_id: int, db: Session = Depends(get_db)):
+def enviar_confirmacion_reserva(reserva_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     import os as _os, httpx as _hx
     from sqlalchemy import text as _t
     row = db.execute(_t(
@@ -204,8 +213,9 @@ def enviar_confirmacion_reserva(reserva_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{reserva_id}/aprobar")
-def aprobar_reserva(reserva_id: int, tenant_id: int, db: Session = Depends(get_db)):
+def aprobar_reserva(reserva_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Admin approves a conserje/residente reservation request."""
+    tenant_id = current_user["tenant_id"]
     row = db.execute(text("SELECT * FROM reservas WHERE id=:id"), {"id": reserva_id}).fetchone()
     if not row:
         raise HTTPException(404, "Reserva no encontrada")
@@ -240,8 +250,9 @@ def aprobar_reserva(reserva_id: int, tenant_id: int, db: Session = Depends(get_d
 
 
 @router.patch("/{reserva_id}/rechazar")
-def rechazar_reserva(reserva_id: int, tenant_id: int, motivo: str = "", db: Session = Depends(get_db)):
+def rechazar_reserva(reserva_id: int, motivo: str = "", current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Admin rejects a reservation request."""
+    tenant_id = current_user["tenant_id"]
     row = db.execute(text("SELECT * FROM reservas WHERE id=:id"), {"id": reserva_id}).fetchone()
     if not row:
         raise HTTPException(404, "Reserva no encontrada")

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from pydantic import BaseModel
 from typing import Optional
 import httpx
@@ -42,7 +43,8 @@ async def _trigger_webhook(url: str, secret: Optional[str], accion: str, puerta_
 
 
 @router.get("/puertas")
-def listar_puertas(tenant_id: int, condominio_id: Optional[int] = None, db: Session = Depends(get_db)):
+def listar_puertas(condominio_id: Optional[int] = None, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     sql = "SELECT id, nombre, descripcion, tipo, ubicacion, activa, estado, modo, webhook_url, tiempo_apertura_seg, created_at FROM puertas WHERE tenant_id = :tid"
     params = {"tid": tenant_id}
     if condominio_id:
@@ -54,7 +56,7 @@ def listar_puertas(tenant_id: int, condominio_id: Optional[int] = None, db: Sess
 
 
 @router.post("/puertas")
-def crear_puerta(data: PuertaCreate, db: Session = Depends(get_db)):
+def crear_puerta(data: PuertaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     row = db.execute(text("""
         INSERT INTO puertas (tenant_id, condominio_id, nombre, descripcion, tipo, ubicacion,
                              webhook_url, webhook_secret, tiempo_apertura_seg)
@@ -70,7 +72,7 @@ def crear_puerta(data: PuertaCreate, db: Session = Depends(get_db)):
 
 
 @router.patch("/puertas/{puerta_id}")
-def actualizar_puerta(puerta_id: int, data: dict, db: Session = Depends(get_db)):
+def actualizar_puerta(puerta_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     allowed = {"nombre", "descripcion", "tipo", "ubicacion", "activa", "modo", "webhook_url", "webhook_secret", "tiempo_apertura_seg"}
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
@@ -83,14 +85,14 @@ def actualizar_puerta(puerta_id: int, data: dict, db: Session = Depends(get_db))
 
 
 @router.delete("/puertas/{puerta_id}")
-def eliminar_puerta(puerta_id: int, db: Session = Depends(get_db)):
+def eliminar_puerta(puerta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     db.execute(text("DELETE FROM puertas WHERE id = :id"), {"id": puerta_id})
     db.commit()
     return {"success": True}
 
 
 @router.post("/puertas/{puerta_id}/comando")
-async def comando_puerta(puerta_id: int, cmd: ComandoPuerta, db: Session = Depends(get_db)):
+async def comando_puerta(puerta_id: int, cmd: ComandoPuerta, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     row = db.execute(
         text("SELECT id, nombre, webhook_url, webhook_secret, activa, modo, tiempo_apertura_seg FROM puertas WHERE id = :id"),
         {"id": puerta_id}
@@ -126,7 +128,7 @@ async def comando_puerta(puerta_id: int, cmd: ComandoPuerta, db: Session = Depen
 
 
 @router.get("/puertas/{puerta_id}/registro")
-def registro_puerta(puerta_id: int, limit: int = 50, db: Session = Depends(get_db)):
+def registro_puerta(puerta_id: int, limit: int = 50, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     rows = db.execute(text("""
         SELECT r.id, r.tipo_evento, r.metodo, r.uid_tarjeta, r.descripcion, r.exitoso, r.created_at,
                u.nombre_completo as usuario

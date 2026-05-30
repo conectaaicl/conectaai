@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/presupuesto", tags=["presupuesto"])
 
@@ -99,7 +100,8 @@ class CategoriaUpdate(BaseModel):
 # ── Endpoints ─────────────────────────────────────────────────────────────
 
 @router.get("/categorias")
-def get_categorias(condominio_id: int, tenant_id: int = 1, db: Session = Depends(get_db)):
+def get_categorias(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Listar categorias del condominio (crea las default si no existen)"""
     _init(db)
     _ensure_categorias(condominio_id, tenant_id, db)
@@ -113,7 +115,8 @@ def get_categorias(condominio_id: int, tenant_id: int = 1, db: Session = Depends
 
 
 @router.post("/categorias")
-def crear_categoria(condominio_id: int, tenant_id: int = 1, body: CategoriaCreate = ..., db: Session = Depends(get_db)):
+def crear_categoria(condominio_id: int, body: CategoriaCreate = ..., db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     _init(db)
     row = db.execute(text("""
         INSERT INTO presupuesto_categorias (tenant_id, condominio_id, nombre, icono, color)
@@ -125,7 +128,7 @@ def crear_categoria(condominio_id: int, tenant_id: int = 1, body: CategoriaCreat
 
 
 @router.patch("/categorias/{cat_id}")
-def actualizar_categoria(cat_id: int, body: CategoriaUpdate, db: Session = Depends(get_db)):
+def actualizar_categoria(cat_id: int, body: CategoriaUpdate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _init(db)
     sets, params = [], {"cid": cat_id}
     if body.nombre is not None: sets.append("nombre=:nombre"); params["nombre"] = body.nombre
@@ -139,7 +142,8 @@ def actualizar_categoria(cat_id: int, body: CategoriaUpdate, db: Session = Depen
 
 
 @router.get("/anual")
-def get_presupuesto_anual(condominio_id: int, anio: int, tenant_id: int = 1, db: Session = Depends(get_db)):
+def get_presupuesto_anual(condominio_id: int, anio: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """
     Devuelve la tabla completa: categorias × 12 meses con proyectado, real y varianza.
     También calcula el real desde gastos_comunes cuando monto_real=0.
@@ -224,7 +228,8 @@ def get_presupuesto_anual(condominio_id: int, anio: int, tenant_id: int = 1, db:
 
 
 @router.put("/anual")
-def upsert_presupuesto(condominio_id: int, anio: int, tenant_id: int = 1, body: PresupuestoUpsert = ..., db: Session = Depends(get_db)):
+def upsert_presupuesto(condominio_id: int, anio: int, body: PresupuestoUpsert = ..., db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Crear o actualizar un valor proyectado o real para categoría+mes"""
     _init(db)
     sets = ["updated_at=NOW()"]
@@ -249,10 +254,11 @@ def upsert_presupuesto(condominio_id: int, anio: int, tenant_id: int = 1, body: 
 
 
 @router.get("/resumen")
-def resumen_presupuesto(condominio_id: int, anio: int, tenant_id: int = 1, db: Session = Depends(get_db)):
+def resumen_presupuesto(condominio_id: int, anio: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]
     """Resumen ejecutivo: estado del presupuesto anual."""
     _init(db)
-    data = get_presupuesto_anual(condominio_id, anio, tenant_id, db)
+    data = get_presupuesto_anual(condominio_id, anio, db, current_user)
     mes_actual = __import__("datetime").datetime.now().month
 
     # Months elapsed

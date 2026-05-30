@@ -16,6 +16,7 @@ from sqlalchemy import text
 from typing import Optional, List
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/checklist", tags=["Checklist"])
 
@@ -103,7 +104,8 @@ class RespuestaItem(BaseModel):
 
 
 @router.get("/plantillas")
-def listar_plantillas(tenant_id: int, db: Session = Depends(get_db)):
+def listar_plantillas(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     rows = db.execute(text(
         "SELECT p.*, COUNT(i.id) as total_items FROM checklist_plantillas p "
@@ -119,7 +121,8 @@ def listar_plantillas(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/plantillas", status_code=201)
-def crear_plantilla(body: PlantillaCreate, db: Session = Depends(get_db)):
+def crear_plantilla(body: PlantillaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     row = db.execute(text(
         "INSERT INTO checklist_plantillas (tenant_id, nombre, turno) "
@@ -137,7 +140,8 @@ def crear_plantilla(body: PlantillaCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/plantillas/{plantilla_id}")
-def get_plantilla(plantilla_id: int, db: Session = Depends(get_db)):
+def get_plantilla(plantilla_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     p = db.execute(text("SELECT * FROM checklist_plantillas WHERE id=:id"),
                    {"id": plantilla_id}).fetchone()
@@ -150,7 +154,8 @@ def get_plantilla(plantilla_id: int, db: Session = Depends(get_db)):
 
 
 @router.delete("/plantillas/{plantilla_id}")
-def eliminar_plantilla(plantilla_id: int, db: Session = Depends(get_db)):
+def eliminar_plantilla(plantilla_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     db.execute(text("UPDATE checklist_plantillas SET activo=false WHERE id=:id"),
                {"id": plantilla_id})
     db.commit()
@@ -158,7 +163,8 @@ def eliminar_plantilla(plantilla_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("/rondas", status_code=201)
-def iniciar_ronda(body: RondaCreate, db: Session = Depends(get_db)):
+def iniciar_ronda(body: RondaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     items = db.execute(text(
         "SELECT COUNT(*) as c FROM checklist_items WHERE plantilla_id=:pid"
@@ -180,11 +186,11 @@ def iniciar_ronda(body: RondaCreate, db: Session = Depends(get_db)):
 
 @router.get("/rondas")
 def listar_rondas(
-    tenant_id: int,
     fecha: Optional[str] = None,
     limit: int = 50,
-    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db),
 ):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     sql = ("SELECT r.*, p.nombre as plantilla_nombre FROM checklist_rondas r "
            "LEFT JOIN checklist_plantillas p ON p.id=r.plantilla_id "
@@ -206,7 +212,8 @@ def listar_rondas(
 
 
 @router.get("/rondas/{ronda_id}")
-def get_ronda(ronda_id: int, db: Session = Depends(get_db)):
+def get_ronda(ronda_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     _ensure_tables(db)
     ronda = db.execute(text("SELECT * FROM checklist_rondas WHERE id=:id"),
                        {"id": ronda_id}).fetchone()
@@ -228,7 +235,8 @@ def get_ronda(ronda_id: int, db: Session = Depends(get_db)):
 
 @router.patch("/rondas/{ronda_id}/item/{item_id}")
 def responder_item(ronda_id: int, item_id: int, body: RespuestaItem,
-                   db: Session = Depends(get_db)):
+                   current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     if body.estado not in ("ok", "problema", "na"):
         raise HTTPException(400, "Estado debe ser: ok, problema, na")
     db.execute(text(
@@ -249,7 +257,8 @@ def responder_item(ronda_id: int, item_id: int, body: RespuestaItem,
 
 @router.patch("/rondas/{ronda_id}/finalizar")
 def finalizar_ronda(ronda_id: int, notas: Optional[str] = None,
-                    db: Session = Depends(get_db)):
+                    current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
     db.execute(text(
         "UPDATE checklist_rondas SET estado='completada', fecha_fin=NOW(), notas_generales=:notas WHERE id=:id"
     ), {"notas": notas, "id": ronda_id})

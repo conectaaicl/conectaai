@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel
 from app.core.database import get_db
+from app.core.dependencies import get_current_user
 from app.models.incidencia import Incidencia
 
 router = APIRouter(prefix="/api/incidencias", tags=["Incidencias"])
@@ -61,8 +62,9 @@ def incidencia_to_dict(i: Incidencia) -> dict:
 # ─── Endpoints ──────────────────────────────────────────────────────────────
 
 @router.post("", status_code=201)
-def crear_incidencia(body: IncidenciaCreate, db: Session = Depends(get_db)):
+def crear_incidencia(body: IncidenciaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new incidence/maintenance report."""
+    tenant_id = current_user["tenant_id"]
     incidencia = Incidencia(**body.dict())
     db.add(incidencia)
     db.commit()
@@ -71,8 +73,9 @@ def crear_incidencia(body: IncidenciaCreate, db: Session = Depends(get_db)):
 
 
 @router.get("/stats")
-def stats_incidencias(tenant_id: int = Query(...), db: Session = Depends(get_db)):
+def stats_incidencias(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Statistics: total, por_estado, por_categoria, por_prioridad."""
+    tenant_id = current_user["tenant_id"]
     q = db.query(Incidencia).filter(Incidencia.tenant_id == tenant_id)
     all_items = q.all()
     total = len(all_items)
@@ -105,6 +108,7 @@ def listar_incidencias(
     db: Session = Depends(get_db),
 ):
     """List incidences with optional filters."""
+    tenant_id = current_user["tenant_id"]
     q = db.query(Incidencia)
     if tenant_id:
         q = q.filter(Incidencia.tenant_id == tenant_id)
@@ -119,8 +123,9 @@ def listar_incidencias(
 
 
 @router.get("/{incidencia_id}")
-def obtener_incidencia(incidencia_id: int, db: Session = Depends(get_db)):
+def obtener_incidencia(incidencia_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get incidence by ID."""
+    tenant_id = current_user["tenant_id"]
     item = db.query(Incidencia).filter(Incidencia.id == incidencia_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Incidencia no encontrada")
@@ -128,8 +133,9 @@ def obtener_incidencia(incidencia_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{incidencia_id}")
-def actualizar_incidencia(incidencia_id: int, body: IncidenciaUpdate, db: Session = Depends(get_db)):
+def actualizar_incidencia(incidencia_id: int, body: IncidenciaUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Update incidence (estado, asignado_a, notas_resolucion, costo_real)."""
+    tenant_id = current_user["tenant_id"]
     item = db.query(Incidencia).filter(Incidencia.id == incidencia_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Incidencia no encontrada")

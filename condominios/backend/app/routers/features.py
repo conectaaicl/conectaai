@@ -7,18 +7,14 @@ GET  /api/features/tenant/{id}  -> superadmin: features de un tenant especifico
 POST /api/features/tenant/{id}/tipo -> superadmin: cambiar tipo y resetear features
 GET  /api/features/pricing/{id} -> superadmin: precio mensual del tenant
 """
-import os
-import jwt
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from pydantic import BaseModel
-from app.core.database import get_db, SessionLocal
+from app.core.database import get_db
+from app.core.dependencies import get_current_user, require_admin
 
 router = APIRouter(prefix="/api/features", tags=["Feature Flags"])
-
-SECRET_KEY = os.getenv("SECRET_KEY", "")
-ALGORITHM = "HS256"
 
 TIPO_PRESETS = {
     "condominio": [
@@ -48,13 +44,6 @@ TIPO_PRESETS = {
 }
 
 
-def _decode_token(token: str) -> dict:
-    try:
-        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except Exception:
-        return {}
-
-
 def _get_tenant_features(db: Session, tenant_id: int) -> list:
     rows = db.execute(text(
         "SELECT tf.feature_key, tf.activo, fc.label, fc.categoria, fc.precio_clp "
@@ -66,19 +55,9 @@ def _get_tenant_features(db: Session, tenant_id: int) -> list:
 
 
 @router.get("")
-def get_my_features(request: Request, db: Session = Depends(get_db)):
-    """Returns active feature keys for the current tenant (from session cookie or Bearer)."""
-    token = request.cookies.get("session")
-    if not token:
-        auth = request.headers.get("authorization", "")
-        token = auth[7:] if auth.startswith("Bearer ") else None
-    if not token:
-        return {"features": [], "tipo": "condominio"}
-
-    payload = _decode_token(token)
-    tenant_id = payload.get("tenant_id")
-    if not tenant_id:
-        return {"features": [], "tipo": "condominio"}
+def get_my_features(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Returns active feature keys for the current tenant."""
+    tenant_id = current_user["tenant_id"]
 
     rows = db.execute(text(
         "SELECT tf.feature_key FROM tenant_features tf "
@@ -95,7 +74,7 @@ def get_my_features(request: Request, db: Session = Depends(get_db)):
 
 
 @router.get("/catalog")
-def get_catalog(db: Session = Depends(get_db)):
+def get_catalog(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Returns the full feature catalog with prices."""
     rows = db.execute(text(
         "SELECT key, label, descripcion, categoria, precio_clp "
@@ -105,7 +84,7 @@ def get_catalog(db: Session = Depends(get_db)):
 
 
 @router.get("/tenant/{tenant_id}")
-def get_tenant_features(tenant_id: int, db: Session = Depends(get_db)):
+def get_tenant_features(tenant_id: int, current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
     """Superadmin: get all features (active/inactive) for a specific tenant."""
     features = _get_tenant_features(db, tenant_id)
     tipo_row = db.execute(text(
@@ -118,7 +97,7 @@ def get_tenant_features(tenant_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/pricing/{tenant_id}")
-def get_pricing(tenant_id: int, db: Session = Depends(get_db)):
+def get_pricing(tenant_id: int, current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
     """Superadmin: get monthly price for a tenant based on active features."""
     row = db.execute(text(
         "SELECT COALESCE(SUM(fc.precio_clp), 0) as total "
@@ -135,7 +114,7 @@ class ToggleBody(BaseModel):
 
 
 @router.post("/{feature_key}/toggle")
-def toggle_feature(feature_key: str, body: ToggleBody, tenant_id: int, db: Session = Depends(get_db)):
+def toggle_feature(feature_key: str, body: ToggleBody, tenant_id: int, current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
     """Superadmin: activate or deactivate a feature for a tenant (tenant_id as query param)."""
     cat = db.execute(text("SELECT key FROM feature_catalog WHERE key = :fk"), {"fk": feature_key}).fetchone()
     if not cat:
@@ -161,7 +140,7 @@ class TipoBody(BaseModel):
 
 
 @router.post("/tenant/{tenant_id}/tipo")
-def set_tenant_tipo(tenant_id: int, body: TipoBody, db: Session = Depends(get_db)):
+def set_tenant_tipo(tenant_id: int, body: TipoBody, current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
     """Superadmin: change tenant type and optionally reset features to type preset."""
     valid_tipos = list(TIPO_PRESETS.keys())
     if body.tipo not in valid_tipos:
@@ -196,17 +175,7 @@ def set_tenant_tipo(tenant_id: int, body: TipoBody, db: Session = Depends(get_db
 
 
 @router.get("/tenants")
-def list_tenants_for_features(request: Request, db: Session = Depends(get_db)):
-    token = request.cookies.get("session")
-    if not token:
-        auth = request.headers.get("authorization", "")
-        token = auth[7:] if auth.startswith("Bearer ") else None
-    if not token:
-        raise HTTPException(401, "No autorizado")
-    payload = _decode_token(token)
-    rol = payload.get("rol") or payload.get("role") or ""
-    if rol != "superadmin":
-        raise HTTPException(403, "Acceso denegado")
+def list_tenants_for_features(current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
     rows = db.execute(text(
         "SELECT id, nombre, COALESCE(tipo, 'condominio') as tipo, "
         "email_contacto as email_admin, created_at "
