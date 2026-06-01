@@ -112,6 +112,20 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/dashboard/condominios/asistencia', label: 'Asistencia Personal', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', featureKey: 'asistencia' },
       { href: '/dashboard/noc', label: 'NOC', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 17a2 2 0 002 2h2a2 2 0 002-2m0 0V7m0 10a2 2 0 012 2h2a2 2 0 012-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2', featureKey: 'noc' },
       { href: '/dashboard/condominios/migracion', label: 'Migracion de Datos', icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12' },
+      { href: '/dashboard/configuracion', label: 'Configuracion', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+      { href: '/dashboard/perfil', label: 'Mi Perfil', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+    ],
+  },
+  {
+    label: 'VENTAS Y CRM',
+    items: [
+      { href: '/dashboard/ventas', label: 'Pipeline de Ventas', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 17a2 2 0 002 2h2a2 2 0 002-2m0 0V7m0 10a2 2 0 012 2h2a2 2 0 012-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2', featureKey: 'crm_ventas', exact: true },
+      { href: '/dashboard/ventas/leads', label: 'Leads', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', featureKey: 'crm_ventas' },
+      { href: '/dashboard/ventas/inbox', label: 'Inbox WhatsApp 360', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z', featureKey: 'crm_ventas' },
+      { href: '/dashboard/ventas/cotizaciones', label: 'Cotizaciones', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01', featureKey: 'crm_ventas' },
+      { href: '/dashboard/ventas/stats', label: 'Estadisticas WA360', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', featureKey: 'crm_ventas' },
+      { href: '/dashboard/ventas/reportes', label: 'Reportes CRM', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', featureKey: 'crm_ventas' },
+      { href: '/dashboard/integraciones', label: 'Integraciones', icon: 'M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1' },
     ],
   },
   {
@@ -298,7 +312,7 @@ function BellDropdown() {
             ))}
           </div>
           <div className="px-4 py-2 border-t border-slate-700">
-            <a href="/dashboard/condominios/alertas-sistema" onClick={() => setOpen(false)} className="text-xs text-indigo-400 hover:text-indigo-300">
+            <a href="/dashboard/condominios/alertas-sistema" onClick={() => setOpen(false)} className="text-xs text-violet-400 hover:text-indigo-300">
               Ver todas las alertas
             </a>
           </div>
@@ -330,7 +344,7 @@ function ProfileDropdown({ user, onLogout }: { user: any; onLogout: () => void }
       <button
         onClick={() => setOpen(o => !o)}
         className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 hover:ring-2 hover:ring-indigo-500 transition-all"
-        style={{ background: 'linear-gradient(135deg, #6366f1, #9333ea)', boxShadow: '0 0 12px rgba(99,102,241,0.4)' }}
+        style={{ background: 'linear-gradient(135deg, #6366f1, #9333ea)', boxShadow: '0 0 12px rgba(124,58,237,0.4)' }}
         title={user?.nombre_completo}
       >
         {initials}
@@ -341,7 +355,7 @@ function ProfileDropdown({ user, onLogout }: { user: any; onLogout: () => void }
           <div className="px-4 py-3 border-b border-slate-700">
             <p className="text-sm font-semibold text-white truncate">{user?.nombre_completo || 'Usuario'}</p>
             <p className="text-xs text-slate-400 truncate">{user?.email || ''}</p>
-            <span className="inline-block mt-1 text-xs bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-full">
+            <span className="inline-block mt-1 text-xs bg-indigo-500/20 text-violet-400 px-2 py-0.5 rounded-full">
               {ROL_LABEL[user?.rol] || user?.rol || ''}
             </span>
           </div>
@@ -448,7 +462,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const SidebarContent = () => (
     <div
       className="flex flex-col h-full text-white overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #0f172a 0%, #020617 100%)', position: 'relative' }}
+      style={{ background: 'linear-gradient(180deg, #0c0c1e 0%, #08080f 100%)', position: 'relative' }}
     >
       <div
         className="absolute top-0 right-0 w-40 h-40 pointer-events-none"
@@ -457,7 +471,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Logo */}
       <div className={`flex items-center gap-3 px-4 py-5 border-b border-slate-800/60 shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-900/40">
+        <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-900/40">
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
@@ -506,7 +520,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   onClick={() => setOpenGroups(p => ({ ...p, [group.label]: !p[group.label] }))}
                   className="w-full flex items-center gap-2 px-3 mb-1 group/gh"
                 >
-                  <p className={`text-[10px] font-bold uppercase tracking-[1.5px] whitespace-nowrap transition-colors ${hasActive ? 'text-indigo-400' : group.superadminOnly ? 'text-purple-500 group-hover/gh:text-purple-300' : 'text-slate-500 group-hover/gh:text-slate-300'}`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-[1.5px] whitespace-nowrap transition-colors ${hasActive ? 'text-violet-400' : group.superadminOnly ? 'text-purple-500 group-hover/gh:text-purple-300' : 'text-slate-500 group-hover/gh:text-slate-300'}`}>
                     {group.label}
                   </p>
                   <div className="flex-1 h-px bg-slate-800" />
@@ -531,9 +545,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                           ${active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}
                           ${collapsed ? 'justify-center' : ''}`}
                         style={active ? {
-                          background: 'linear-gradient(90deg, rgba(99,102,241,0.2) 0%, rgba(99,102,241,0.08) 100%)',
-                          borderLeft: '2px solid #818cf8',
-                          boxShadow: '0 0 12px rgba(99,102,241,0.15)',
+                          background: 'linear-gradient(90deg, rgba(124,58,237,0.2) 0%, rgba(124,58,237,0.08) 100%)',
+                          borderLeft: '2px solid #7c3aed',
+                          boxShadow: '0 0 12px rgba(124,58,237,0.15)',
                         } : { borderLeft: '2px solid transparent' }}
                       >
                         <NavIcon d={item.icon} />
@@ -554,9 +568,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {!collapsed && user && (
           <div
             className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl"
-            style={{ background: 'rgba(30,41,59,0.5)', border: '1px solid rgba(51,65,85,0.5)' }}
+            style={{ background: 'rgba(12,12,30,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
           >
-            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 shadow shadow-indigo-900/40">
+            <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-purple-700 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 shadow shadow-indigo-900/40">
               {initials}
             </div>
             <div className="flex-1 min-w-0">
@@ -593,16 +607,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <style>{`
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.3); border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(99,102,241,0.6); }
-        .pro-table tr:hover td { background: rgba(99,102,241,0.04); }
+        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.6); }
+        .pro-table tr:hover td { background: rgba(124,58,237,0.04); }
         .pro-card { transition: box-shadow 0.2s, transform 0.2s; }
-        .pro-card:hover { box-shadow: 0 0 0 1px rgba(99,102,241,0.3), 0 8px 32px rgba(0,0,0,0.3); transform: translateY(-1px); }
+        .pro-card:hover { box-shadow: 0 0 0 1px rgba(124,58,237,0.3), 0 8px 32px rgba(0,0,0,0.3); transform: translateY(-1px); }
         @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
         .pulse-dot { animation: pulse-dot 2s ease infinite; }
       `}</style>
 
-      <div className="flex h-screen bg-slate-950 overflow-hidden">
+      <div className="flex h-screen bg-[#080812] overflow-hidden">
         {open && (
           <div className="fixed inset-0 bg-black/70 z-20 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />
         )}
@@ -614,7 +628,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <header
             className="shrink-0 z-10 h-14 flex items-center"
-            style={{ background: 'rgba(15,23,42,0.8)', backdropFilter: 'blur(8px)', borderBottom: '1px solid rgba(30,41,59,0.8)' }}
+            style={{ background: 'rgba(8,8,18,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
           >
             <div className="flex items-center gap-3 px-4 sm:px-5 w-full h-full">
               <button
@@ -649,8 +663,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <a
                   href="/portal"
                   target="_blank"
-                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-indigo-400 px-3 py-1.5 rounded-lg hover:bg-indigo-500/20 transition-all duration-200"
-                  style={{ border: '1px solid rgba(99,102,241,0.3)', background: 'rgba(99,102,241,0.08)' }}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-violet-400 px-3 py-1.5 rounded-lg hover:bg-indigo-500/20 transition-all duration-200"
+                  style={{ border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.08)' }}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

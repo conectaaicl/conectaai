@@ -105,7 +105,13 @@ const nextConfig = {
       { source: '/api/camaras', destination: 'http://backend-condominios:8003/api/camaras' },
       { source: '/api/alarmas/:path*', destination: 'http://backend-condominios:8003/api/alarmas/:path*' },
       { source: '/api/alarmas', destination: 'http://backend-condominios:8003/api/alarmas' },
-      // Módulo core ventas → puerto 8006
+      // Ventas y WhatsApp 360 → puerto 8003
+      { source: '/api/ventas/:path*', destination: 'http://backend-condominios:8003/api/ventas/:path*' },
+      { source: '/api/ventas', destination: 'http://backend-condominios:8003/api/ventas' },
+      { source: '/api/whatsapp360/:path*', destination: 'http://backend-condominios:8003/api/whatsapp360/:path*' },
+      { source: '/api/whatsapp360', destination: 'http://backend-condominios:8003/api/whatsapp360' },
+      { source: '/api/wa-platform/:path*', destination: 'http://backend-condominios:8003/api/wa-platform/:path*' },
+      { source: '/api/wa-platform', destination: 'http://backend-condominios:8003/api/wa-platform' },
       { source: '/uploads/:path*', destination: 'http://backend-condominios:8003/uploads/:path*' },
       { source: '/api/features/:path*', destination: 'http://backend-condominios:8003/api/features/:path*' },
       { source: '/api/features', destination: 'http://backend-condominios:8003/api/features' },

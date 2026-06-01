@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+Disallow: /dashboard/
+Disallow: /conserje/
+Disallow: /portal/
+Disallow: /superadmin/
+Disallow: /api/
+Disallow: /login
+Disallow: /forgot-password
+Disallow: /reset-password
+
+Sitemap: https://conectaai.cl/sitemap.xml

@@ -102,8 +102,8 @@ export default function DashboardHome() {
   const puertasCerradas = puertas.filter(p => p.estado === 'cerrada' && p.modo !== 'libre_paso' && p.modo !== 'bloqueada').length
   const puertasBloqueadas = puertas.filter(p => p.modo === 'bloqueada').length
 
-  const cardBg = { background: 'rgba(15,23,42,0.85)', border: '1px solid rgba(30,41,59,0.8)' }
-  const cardBg2 = { background: 'rgba(15,23,42,0.6)', border: '1px solid rgba(30,41,59,0.5)' }
+  const cardBg = { background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.05)' }
+  const cardBg2 = { background: 'rgba(13,13,26,0.7)', border: '1px solid rgba(255,255,255,0.04)' }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto">

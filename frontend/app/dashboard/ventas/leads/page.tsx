@@ -1,509 +1,187 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
+'use client'
+import { useState, useEffect } from 'react'
+import Link from 'next/link'
 
 interface Lead {
-  id: number;
-  nombre: string;
-  telefono: string;
-  email: string;
-  temperatura: string;
-  canal_origen: string;
-  interes: string;
-  notas: string;
-  created_at: string;
-  tenant_id: number;
+  id: number
+  nombre: string
+  telefono: string
+  email: string
+  temperatura: string
+  canal_origen: string
+  interes: string
+  notas: string
+  created_at: string
+  tenant_id: number
 }
 
-const CANALES = {
-  whatsapp: { icon: '💬', color: 'bg-green-500' },
-  instagram: { icon: '📸', color: 'bg-pink-500' },
-  facebook: { icon: '👥', color: 'bg-blue-600' },
-  telegram: { icon: '✈️', color: 'bg-sky-500' },
-  messenger: { icon: '💭', color: 'bg-blue-500' },
-  tiktok: { icon: '🎵', color: 'bg-black' },
-  email: { icon: '📧', color: 'bg-red-500' },
-  webchat: { icon: '💻', color: 'bg-indigo-500' },
-};
+const TEMP_CONFIG: Record<string, { label: string; dot: string; col: string; text: string; border: string }> = {
+  frio:     { label: 'Frío',      dot: 'bg-blue-500',    col: 'text-blue-400',    text: 'text-blue-400',    border: 'border-blue-600/30' },
+  tibio:    { label: 'Tibio',     dot: 'bg-amber-500',   col: 'text-amber-400',   text: 'text-amber-400',   border: 'border-amber-600/30' },
+  caliente: { label: 'Caliente',  dot: 'bg-orange-500',  col: 'text-orange-400',  text: 'text-orange-400',  border: 'border-orange-600/30' },
+  ganado:   { label: 'Ganado',    dot: 'bg-emerald-500', col: 'text-emerald-400', text: 'text-emerald-400', border: 'border-emerald-600/30' },
+}
+
+const CANAL_LABELS: Record<string, string> = {
+  whatsapp: 'WhatsApp', instagram: 'Instagram', facebook: 'Facebook',
+  telegram: 'Telegram', messenger: 'Messenger', tiktok: 'TikTok',
+  email: 'Email', webchat: 'WebChat',
+}
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [leadSeleccionado, setLeadSeleccionado] = useState<Lead | null>(null);
-  const [mostrarModal, setMostrarModal] = useState(false);
-  const [tenantId, setTenantId] = useState<number | null>(null);
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState<Lead | null>(null)
+  const [tenantId, setTenantId] = useState<number | null>(null)
 
-  useEffect(() => {
-    cargarUsuarioYLeads();
-  }, []);
+  useEffect(() => { cargarDatos() }, [])
 
-  const cargarUsuarioYLeads = async () => {
+  async function cargarDatos() {
     try {
-      setLoading(true);
-      
-      // Obtener usuario actual
-      const userResponse = await fetch('/api/auth/me', {
-        credentials: 'include',
-      });
-      
-      if (userResponse.ok) {
-        const userData = await userResponse.json();
-        setTenantId(userData.tenant_id);
-        
-        // Cargar leads con tenant_id correcto
-        await cargarLeads(userData.tenant_id);
+      const r = await fetch('/api/auth/me', { credentials: 'include' })
+      if (r.ok) {
+        const u = await r.json()
+        setTenantId(u.tenant_id)
+        await cargarLeads(u.tenant_id)
       }
-    } catch (error) {
-      console.error('Error cargando usuario:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const cargarLeads = async (tenant_id: number) => {
-    try {
-      const response = await fetch(`/api/whatsapp360/leads?tenant_id=${tenant_id}`, {
-        credentials: 'include',
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setLeads(data);
-      }
-    } catch (error) {
-      console.error('Error cargando leads:', error);
-    }
-  };
-
-  const cambiarTemperatura = async (leadId: number, nuevaTemperatura: string) => {
-    if (!tenantId) return;
-    
-    try {
-      const response = await fetch(`/api/whatsapp360/leads/${leadId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          temperatura: nuevaTemperatura,
-          tenant_id: tenantId,
-        }),
-      });
-
-      if (response.ok) {
-        await cargarLeads(tenantId);
-      }
-    } catch (error) {
-      console.error('Error actualizando lead:', error);
-    }
-  };
-
-  const leadsPorTemperatura = {
-    frio: leads.filter(l => l.temperatura === 'frio'),
-    tibio: leads.filter(l => l.temperatura === 'tibio'),
-    caliente: leads.filter(l => l.temperatura === 'caliente'),
-    ganado: leads.filter(l => l.temperatura === 'ganado'),
-  };
-
-  const formatearFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
-  };
-
-  const getColorTemperatura = (temp: string) => {
-    switch (temp) {
-      case 'frio':
-        return 'bg-blue-50 border-blue-300 text-blue-800';
-      case 'tibio':
-        return 'bg-yellow-50 border-yellow-300 text-yellow-800';
-      case 'caliente':
-        return 'bg-orange-50 border-orange-300 text-orange-800';
-      case 'ganado':
-        return 'bg-green-50 border-green-300 text-green-800';
-      default:
-        return 'bg-gray-50 border-gray-300 text-gray-800';
-    }
-  };
-
-  const getIconoTemperatura = (temp: string) => {
-    switch (temp) {
-      case 'frio':
-        return '❄️';
-      case 'tibio':
-        return '🌤️';
-      case 'caliente':
-        return '🔥';
-      case 'ganado':
-        return '🎉';
-      default:
-        return '📌';
-    }
-  };
-
-  const getInfoCanal = (canal: string) => {
-    const canalLower = canal?.toLowerCase();
-    return CANALES[canalLower as keyof typeof CANALES] || { icon: '📱', color: 'bg-gray-500' };
-  };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-600 border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-700 font-semibold">Cargando leads...</p>
-        </div>
-      </div>
-    );
+    } catch {}
+    setLoading(false)
   }
 
+  async function cargarLeads(tid: number) {
+    try {
+      const r = await fetch(`/api/whatsapp360/leads?tenant_id=${tid}`, { credentials: 'include' })
+      if (r.ok) setLeads(await r.json())
+    } catch {}
+  }
+
+  async function cambiarTemperatura(leadId: number, temp: string) {
+    if (!tenantId) return
+    try {
+      const r = await fetch(`/api/whatsapp360/leads/${leadId}`, {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ temperatura: temp, tenant_id: tenantId }),
+      })
+      if (r.ok) cargarLeads(tenantId)
+    } catch {}
+  }
+
+  const byTemp = (t: string) => leads.filter(l => l.temperatura === t)
+  const fmtDate = (s: string) => new Date(s).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+    </div>
+  )
+
+  const COLUMNAS: Array<{ key: string; next: string[]; prev: string[] }> = [
+    { key: 'frio',     next: ['tibio'],            prev: [] },
+    { key: 'tibio',    next: ['caliente'],          prev: ['frio'] },
+    { key: 'caliente', next: ['ganado'],            prev: ['tibio'] },
+    { key: 'ganado',   next: [],                    prev: ['caliente'] },
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
-      {/* Botón Atrás */}
-      <div className="mb-4">
-        <Link
-          href="/dashboard/ventas"
-          className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-lg shadow-md hover:shadow-lg transition text-gray-700 font-semibold"
-        >
-          ← Atrás
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-white">Panel de Leads</h1>
+          <p className="text-sm text-slate-400 mt-0.5">Prospectos desde todos los canales</p>
+        </div>
+        <Link href="/dashboard/ventas" className="px-4 py-2 text-sm text-slate-300 border border-slate-700 rounded-lg hover:border-slate-500 hover:text-white transition-colors">
+          ← Pipeline
         </Link>
       </div>
 
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-4xl font-extrabold text-gray-900 mb-2 flex items-center gap-3">
-          <span className="text-5xl">🔥</span>
-          Panel de Leads
-        </h1>
-        <p className="text-gray-600 text-lg">Gestiona y da seguimiento a tus prospectos desde todos los canales</p>
+      {/* KPI row */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Object.entries(TEMP_CONFIG).map(([key, cfg]) => (
+          <div key={key} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-4 flex items-center gap-3">
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
+            <div>
+              <p className={`text-2xl font-bold ${cfg.col}`}>{byTemp(key).length}</p>
+              <p className="text-xs text-slate-500">{cfg.label}</p>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-blue-500 transform hover:scale-105 transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1 font-semibold">Fríos</p>
-              <p className="text-4xl font-bold text-blue-600">{leadsPorTemperatura.frio.length}</p>
+      {/* Kanban */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {COLUMNAS.map(col => {
+          const cfg = TEMP_CONFIG[col.key]
+          const items = byTemp(col.key)
+          return (
+            <div key={col.key} className="flex flex-col">
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className={`w-2 h-2 rounded-full ${cfg.dot}`} />
+                <span className={`text-xs font-semibold uppercase tracking-wider ${cfg.col}`}>{cfg.label}</span>
+                <span className="text-xs text-slate-500 ml-auto">{items.length}</span>
+              </div>
+              <div className={`flex-1 min-h-80 rounded-xl border ${cfg.border} bg-slate-800/20 p-2 space-y-2`}>
+                {items.map(lead => (
+                  <div key={lead.id} onClick={() => setSelected(lead)}
+                    className="bg-slate-800 border border-slate-700/60 rounded-lg p-3 cursor-pointer hover:border-slate-600 hover:bg-slate-700/50 transition-all">
+                    <p className="text-sm font-semibold text-white leading-tight mb-0.5 truncate">{lead.nombre}</p>
+                    <p className="text-xs text-slate-500 mb-2 truncate">{CANAL_LABELS[lead.canal_origen?.toLowerCase()] ?? lead.canal_origen}</p>
+                    {lead.interes && <p className="text-xs text-slate-400 line-clamp-2 mb-2">{lead.interes}</p>}
+                    <div className="flex gap-1.5 flex-wrap">
+                      {col.prev.map(p => (
+                        <button key={p} onClick={e => { e.stopPropagation(); cambiarTemperatura(lead.id, p) }}
+                          className="text-xs px-2 py-1 border border-slate-600 text-slate-400 rounded hover:text-white transition-colors">
+                          ← {TEMP_CONFIG[p].label}
+                        </button>
+                      ))}
+                      {col.next.map(n => (
+                        <button key={n} onClick={e => { e.stopPropagation(); cambiarTemperatura(lead.id, n) }}
+                          className="text-xs px-2 py-1 border border-slate-600 text-slate-400 rounded hover:text-white transition-colors">
+                          {TEMP_CONFIG[n].label} →
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {items.length === 0 && <p className="text-center text-slate-600 text-xs pt-8">Sin leads</p>}
+              </div>
             </div>
-            <div className="text-5xl">❄️</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-yellow-500 transform hover:scale-105 transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1 font-semibold">Tibios</p>
-              <p className="text-4xl font-bold text-yellow-600">{leadsPorTemperatura.tibio.length}</p>
-            </div>
-            <div className="text-5xl">🌤️</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-orange-500 transform hover:scale-105 transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1 font-semibold">Calientes</p>
-              <p className="text-4xl font-bold text-orange-600">{leadsPorTemperatura.caliente.length}</p>
-            </div>
-            <div className="text-5xl">🔥</div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-lg p-6 border-l-4 border-green-500 transform hover:scale-105 transition">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600 mb-1 font-semibold">Ganados</p>
-              <p className="text-4xl font-bold text-green-600">{leadsPorTemperatura.ganado.length}</p>
-            </div>
-            <div className="text-5xl">🎉</div>
-          </div>
-        </div>
+          )
+        })}
       </div>
 
-      {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Columna Fríos */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-5 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-            <h3 className="font-bold text-lg flex items-center gap-3">
-              <span className="text-3xl">❄️</span>
-              <div>
-                <div>Fríos</div>
-                <div className="text-sm opacity-90">{leadsPorTemperatura.frio.length} leads</div>
-              </div>
-            </h3>
-          </div>
-          <div className="p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto">
-            {leadsPorTemperatura.frio.map((lead) => {
-              const { icon, color } = getInfoCanal(lead.canal_origen);
-              return (
-                <div
-                  key={lead.id}
-                  onClick={() => {
-                    setLeadSeleccionado(lead);
-                    setMostrarModal(true);
-                  }}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg transform hover:-translate-y-1 ${getColorTemperatura(lead.temperatura)}`}
-                >
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center text-white text-lg flex-shrink-0`}>
-                      {icon}
-                    </div>
-                    <h4 className="font-bold flex-1">{lead.nombre}</h4>
-                  </div>
-                  <p className="text-xs mb-2 font-medium">{lead.telefono}</p>
-                  <p className="text-xs mb-3 line-clamp-2">{lead.interes}</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cambiarTemperatura(lead.id, 'tibio');
-                      }}
-                      className="text-xs px-3 py-1.5 bg-white rounded-lg hover:bg-yellow-100 transition font-semibold shadow-sm"
-                    >
-                      → Tibio
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Columna Tibios */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-5 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white">
-            <h3 className="font-bold text-lg flex items-center gap-3">
-              <span className="text-3xl">🌤️</span>
-              <div>
-                <div>Tibios</div>
-                <div className="text-sm opacity-90">{leadsPorTemperatura.tibio.length} leads</div>
-              </div>
-            </h3>
-          </div>
-          <div className="p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto">
-            {leadsPorTemperatura.tibio.map((lead) => {
-              const { icon, color } = getInfoCanal(lead.canal_origen);
-              return (
-                <div
-                  key={lead.id}
-                  onClick={() => {
-                    setLeadSeleccionado(lead);
-                    setMostrarModal(true);
-                  }}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg transform hover:-translate-y-1 ${getColorTemperatura(lead.temperatura)}`}
-                >
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center text-white text-lg flex-shrink-0`}>
-                      {icon}
-                    </div>
-                    <h4 className="font-bold flex-1">{lead.nombre}</h4>
-                  </div>
-                  <p className="text-xs mb-2 font-medium">{lead.telefono}</p>
-                  <p className="text-xs mb-3 line-clamp-2">{lead.interes}</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cambiarTemperatura(lead.id, 'frio');
-                      }}
-                      className="text-xs px-2 py-1.5 bg-white rounded-lg hover:bg-blue-100 transition font-semibold shadow-sm"
-                    >
-                      ← Frío
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cambiarTemperatura(lead.id, 'caliente');
-                      }}
-                      className="text-xs px-2 py-1.5 bg-white rounded-lg hover:bg-orange-100 transition font-semibold shadow-sm"
-                    >
-                      → Caliente
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Columna Calientes */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-5 bg-gradient-to-r from-orange-500 to-orange-600 text-white">
-            <h3 className="font-bold text-lg flex items-center gap-3">
-              <span className="text-3xl">🔥</span>
-              <div>
-                <div>Calientes</div>
-                <div className="text-sm opacity-90">{leadsPorTemperatura.caliente.length} leads</div>
-              </div>
-            </h3>
-          </div>
-          <div className="p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto">
-            {leadsPorTemperatura.caliente.map((lead) => {
-              const { icon, color } = getInfoCanal(lead.canal_origen);
-              return (
-                <div
-                  key={lead.id}
-                  onClick={() => {
-                    setLeadSeleccionado(lead);
-                    setMostrarModal(true);
-                  }}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg transform hover:-translate-y-1 ${getColorTemperatura(lead.temperatura)}`}
-                >
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center text-white text-lg flex-shrink-0`}>
-                      {icon}
-                    </div>
-                    <h4 className="font-bold flex-1">{lead.nombre}</h4>
-                  </div>
-                  <p className="text-xs mb-2 font-medium">{lead.telefono}</p>
-                  <p className="text-xs mb-3 line-clamp-2">{lead.interes}</p>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cambiarTemperatura(lead.id, 'tibio');
-                      }}
-                      className="text-xs px-2 py-1.5 bg-white rounded-lg hover:bg-yellow-100 transition font-semibold shadow-sm"
-                    >
-                      ← Tibio
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        cambiarTemperatura(lead.id, 'ganado');
-                      }}
-                      className="text-xs px-2 py-1.5 bg-white rounded-lg hover:bg-green-100 transition font-semibold shadow-sm"
-                    >
-                      ✓ Ganado
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Columna Ganados */}
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="p-5 bg-gradient-to-r from-green-500 to-green-600 text-white">
-            <h3 className="font-bold text-lg flex items-center gap-3">
-              <span className="text-3xl">🎉</span>
-              <div>
-                <div>Ganados</div>
-                <div className="text-sm opacity-90">{leadsPorTemperatura.ganado.length} leads</div>
-              </div>
-            </h3>
-          </div>
-          <div className="p-4 space-y-3 min-h-[400px] max-h-[600px] overflow-y-auto">
-            {leadsPorTemperatura.ganado.map((lead) => {
-              const { icon, color } = getInfoCanal(lead.canal_origen);
-              return (
-                <div
-                  key={lead.id}
-                  onClick={() => {
-                    setLeadSeleccionado(lead);
-                    setMostrarModal(true);
-                  }}
-                  className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-lg transform hover:-translate-y-1 ${getColorTemperatura(lead.temperatura)}`}
-                >
-                  <div className="flex items-start gap-2 mb-2">
-                    <div className={`w-8 h-8 rounded-full ${color} flex items-center justify-center text-white text-lg flex-shrink-0`}>
-                      {icon}
-                    </div>
-                    <h4 className="font-bold flex-1">{lead.nombre}</h4>
-                  </div>
-                  <p className="text-xs mb-2 font-medium">{lead.telefono}</p>
-                  <p className="text-xs mb-3 line-clamp-2">{lead.interes}</p>
-                  <p className="text-xs text-green-700 font-bold mt-2">✓ Cliente activo</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Modal de detalles */}
-      {mostrarModal && leadSeleccionado && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-2xl">
-              <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-bold">Detalles del Lead</h2>
-                <button
-                  onClick={() => setMostrarModal(false)}
-                  className="text-white hover:text-gray-200 text-3xl"
-                >
-                  ×
-                </button>
-              </div>
+      {/* Lead detail modal */}
+      {selected && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+          <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-slate-700">
+              <h3 className="font-semibold text-white">Detalle del Lead</h3>
+              <button onClick={() => setSelected(null)} className="text-slate-500 hover:text-white">&times;</button>
             </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Nombre</label>
-                <p className="text-xl text-gray-900 font-semibold">{leadSeleccionado.nombre}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Teléfono</label>
-                <p className="text-xl text-gray-900 font-semibold">{leadSeleccionado.telefono}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Email</label>
-                <p className="text-xl text-gray-900 font-semibold">{leadSeleccionado.email || 'No especificado'}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Canal de Origen</label>
-                <div className="flex items-center gap-3 mt-1">
-                  <div className={`w-10 h-10 rounded-full ${getInfoCanal(leadSeleccionado.canal_origen).color} flex items-center justify-center text-white text-xl`}>
-                    {getInfoCanal(leadSeleccionado.canal_origen).icon}
-                  </div>
-                  <p className="text-xl text-gray-900 font-semibold capitalize">{leadSeleccionado.canal_origen}</p>
+            <div className="p-5 space-y-4">
+              {[
+                { l: 'Nombre', v: selected.nombre },
+                { l: 'Teléfono', v: selected.telefono },
+                { l: 'Email', v: selected.email },
+                { l: 'Canal', v: CANAL_LABELS[selected.canal_origen?.toLowerCase()] ?? selected.canal_origen },
+                { l: 'Temperatura', v: TEMP_CONFIG[selected.temperatura]?.label ?? selected.temperatura },
+                { l: 'Interés', v: selected.interes },
+                { l: 'Notas', v: selected.notas },
+                { l: 'Fecha', v: selected.created_at ? fmtDate(selected.created_at) : '' },
+              ].filter(f => f.v).map(f => (
+                <div key={f.l}>
+                  <p className="text-xs text-slate-500 uppercase tracking-wide mb-0.5">{f.l}</p>
+                  <p className="text-sm text-slate-200">{f.v}</p>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Interés</label>
-                <p className="text-lg text-gray-900">{leadSeleccionado.interes}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Temperatura</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-4 py-2 rounded-xl text-base font-bold ${getColorTemperatura(leadSeleccionado.temperatura)}`}>
-                    {getIconoTemperatura(leadSeleccionado.temperatura)} {leadSeleccionado.temperatura.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Notas</label>
-                <p className="text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded-xl">{leadSeleccionado.notas || 'Sin notas'}</p>
-              </div>
-
-              <div>
-                <label className="text-sm font-bold text-gray-600 uppercase tracking-wide">Fecha de creación</label>
-                <p className="text-gray-900 font-semibold">{formatearFecha(leadSeleccionado.created_at)}</p>
-              </div>
+              ))}
             </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50 rounded-b-2xl">
-              <button
-                onClick={() => setMostrarModal(false)}
-                className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-bold hover:from-purple-700 hover:to-blue-700 transition shadow-lg"
-              >
-                Cerrar
-              </button>
+            <div className="p-5 border-t border-slate-700">
+              <button onClick={() => setSelected(null)} className="w-full py-2 text-sm border border-slate-600 text-slate-400 rounded-lg hover:text-white transition-colors">Cerrar</button>
             </div>
           </div>
         </div>
       )}
     </div>
-  );
+  )
 }
