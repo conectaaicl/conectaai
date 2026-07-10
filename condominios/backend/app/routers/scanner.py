@@ -8,7 +8,7 @@ import asyncio
 import json
 import os
 import time
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -30,6 +30,15 @@ DEVICE_TYPES = {
     26:   "Telnet Alt",
     8000: "API Device",
 }
+
+# Only allow private RFC1918 subnets — prevents SSRF against external IPs
+ALLOWED_SUBNET_PREFIXES = (
+    "10.",
+    "172.16.", "172.17.", "172.18.", "172.19.", "172.20.", "172.21.", "172.22.",
+    "172.23.", "172.24.", "172.25.", "172.26.", "172.27.", "172.28.", "172.29.",
+    "172.30.", "172.31.",
+    "192.168.",
+)
 
 
 # ── Endpoint 1: SSE — wait for next RFID tap ────────────────────────────────
@@ -120,6 +129,10 @@ async def network_scan(body: ScanRequest, current_user: dict = Depends(get_curre
     """
     timeout_s = body.timeout_ms / 1000.0
 
+    # SSRF protection: only allow private RFC1918 subnets
+    if not any(body.subnet.startswith(p) for p in ALLOWED_SUBNET_PREFIXES):
+        raise HTTPException(status_code=400, detail="Subnet no permitida. Solo se permiten rangos privados")
+
     tasks = [
         _check_port(f"{body.subnet}.{i}", port, timeout_s)
         for i in range(1, 255)
@@ -137,6 +150,9 @@ async def network_scan(body: ScanRequest, current_user: dict = Depends(get_curre
 @router.get("/device/test")
 async def device_test(host: str, port: int, timeout_ms: int = 2000, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Test TCP reachability to a single host:port."""
+    # SSRF protection: only allow private RFC1918 hosts
+    if not any(host.startswith(p) for p in ALLOWED_SUBNET_PREFIXES):
+        raise HTTPException(status_code=400, detail="Host no permitido. Solo se permiten IPs privadas")
     timeout_s = timeout_ms / 1000.0
     t0 = time.monotonic()
     try:

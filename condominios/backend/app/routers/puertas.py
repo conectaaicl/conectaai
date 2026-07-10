@@ -57,13 +57,14 @@ def listar_puertas(condominio_id: Optional[int] = None, db: Session = Depends(ge
 
 @router.post("/puertas")
 def crear_puerta(data: PuertaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
     row = db.execute(text("""
         INSERT INTO puertas (tenant_id, condominio_id, nombre, descripcion, tipo, ubicacion,
                              webhook_url, webhook_secret, tiempo_apertura_seg)
         VALUES (:tid, :cid, :nom, :desc, :tipo, :ubic, :wurl, :wsec, :tseg)
         RETURNING id, nombre, estado, modo, activa
     """), {
-        "tid": data.tenant_id, "cid": data.condominio_id, "nom": data.nombre,
+        "tid": tenant_id, "cid": data.condominio_id, "nom": data.nombre,
         "desc": data.descripcion, "tipo": data.tipo, "ubic": data.ubicacion,
         "wurl": data.webhook_url, "wsec": data.webhook_secret, "tseg": data.tiempo_apertura_seg,
     }).fetchone()
@@ -79,14 +80,15 @@ def actualizar_puerta(puerta_id: int, data: dict, db: Session = Depends(get_db),
         raise HTTPException(status_code=400, detail="Nada que actualizar")
     sets = ", ".join(f"{k} = :{k}" for k in updates)
     updates["pid"] = puerta_id
-    db.execute(text(f"UPDATE puertas SET {sets}, updated_at = NOW() WHERE id = :pid"), updates)
+    updates["tid"] = current_user["tenant_id"]  # CRIT-06: filtrar por tenant
+    db.execute(text(f"UPDATE puertas SET {sets}, updated_at = NOW() WHERE id = :pid AND tenant_id = :tid"), updates)
     db.commit()
     return {"success": True}
 
 
 @router.delete("/puertas/{puerta_id}")
 def eliminar_puerta(puerta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    db.execute(text("DELETE FROM puertas WHERE id = :id"), {"id": puerta_id})
+    db.execute(text("DELETE FROM puertas WHERE id = :id AND tenant_id = :tid"), {"id": puerta_id, "tid": current_user["tenant_id"]})  # CRIT-06
     db.commit()
     return {"success": True}
 
@@ -94,13 +96,15 @@ def eliminar_puerta(puerta_id: int, db: Session = Depends(get_db), current_user:
 @router.post("/puertas/{puerta_id}/comando")
 async def comando_puerta(puerta_id: int, cmd: ComandoPuerta, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     row = db.execute(
-        text("SELECT id, nombre, webhook_url, webhook_secret, activa, modo, tiempo_apertura_seg FROM puertas WHERE id = :id"),
+        text("SELECT id, tenant_id, nombre, webhook_url, webhook_secret, activa, modo, tiempo_apertura_seg FROM puertas WHERE id = :id"),
         {"id": puerta_id}
     ).fetchone()
     if not row:
         raise HTTPException(status_code=404, detail="Puerta no encontrada")
 
-    puerta_id_, nombre, webhook_url, webhook_secret, activa, modo, tseg = row
+    puerta_id_, row_tenant_id, nombre, webhook_url, webhook_secret, activa, modo, tseg = row
+    if row_tenant_id != current_user["tenant_id"]:  # CRIT-06: verificar ownership
+        raise HTTPException(status_code=403, detail="Sin acceso a esta puerta")
 
     if not activa:
         raise HTTPException(status_code=400, detail="Puerta desactivada")

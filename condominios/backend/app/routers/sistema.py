@@ -591,3 +591,31 @@ async def stream_eventos(current_user: dict = Depends(get_current_user), request
             "X-Accel-Buffering": "no",
         }
     )
+
+
+# ─── Contador de visitas públicas ───────────────────────────────────────────
+@router.get('/public/visits', tags=['público'])
+def get_visits(db: Session = Depends(get_db)):
+    db.execute(text("""
+        CREATE TABLE IF NOT EXISTS page_visits (
+            id SERIAL PRIMARY KEY,
+            count BIGINT DEFAULT 0,
+            last_updated TIMESTAMPTZ DEFAULT NOW()
+        )
+    """))
+    row = db.execute(text("SELECT count FROM page_visits WHERE id=1")).fetchone()
+    if not row:
+        db.execute(text("INSERT INTO page_visits (id, count) VALUES (1, 1)"))
+        db.commit()
+        return {'visits': 1}
+    return {'visits': row[0]}
+
+@router.post('/public/visits', tags=['público'])
+def increment_visits(db: Session = Depends(get_db)):
+    db.execute(text("""
+        INSERT INTO page_visits (id, count) VALUES (1, 1)
+        ON CONFLICT (id) DO UPDATE SET count = page_visits.count + 1, last_updated = NOW()
+    """))
+    db.commit()
+    row = db.execute(text("SELECT count FROM page_visits WHERE id=1")).fetchone()
+    return {'visits': row[0]}

@@ -43,7 +43,7 @@ class EstadoUpdate(BaseModel):
 # ─── Espacios ───────────────────────────────────────────────────────────────
 
 @router.get("/espacios")
-def list_espacios(condominio_id: int = Query(...), db: Session = Depends(get_db)):
+def list_espacios(condominio_id: int = Query(...), current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """List all common spaces for a condominio."""
     tenant_id = current_user["tenant_id"]
     espacios = (
@@ -85,6 +85,7 @@ def create_espacio(body: EspacioCreate, current_user: dict = Depends(get_current
 def list_reservas(
     espacio_id: int = Query(...),
     fecha: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List reservations for a space, optionally filtered by day."""

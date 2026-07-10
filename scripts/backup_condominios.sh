@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 BACKUP_DIR=/var/backups/conectaai_condominios
-DATE=2026-05-24_14-12
+DATE=$(date +%Y-%m-%d_%H-%M)
 DB_CONTAINER=conectaai_db
 DB_NAME=conectaai
 DB_USER=conectaai_user

@@ -6,6 +6,8 @@ from app.models.persona import Persona
 from app.models.estructura import Departamento, Piso
 from app.models.condominio import Condominio
 from app.models.aviso import Aviso
+from app.routers.portal_auth import get_residente
+from app.models import ResidentePortal
 import hmac
 import hashlib
 import os
@@ -34,8 +36,11 @@ class PagoFlowRequest(BaseModel):
 
 
 @router.get("/residente/{rut}")
-def get_residente(rut: str, db: Session = Depends(get_db)):
+def get_residente_info(rut: str, db: Session = Depends(get_db),
+                       current_residente: ResidentePortal = Depends(get_residente)):
     """Returns resident info, their apartments, and pending/paid gastos comunes."""
+    if current_residente.rut != rut:
+        raise HTTPException(status_code=403, detail="No autorizado para ver este residente")
     persona = db.query(Persona).filter(Persona.rut == rut).first()
     if not persona:
         raise HTTPException(status_code=404, detail="Residente no encontrado")
@@ -96,7 +101,8 @@ def get_residente(rut: str, db: Session = Depends(get_db)):
 
 
 @router.post("/pago/flow/iniciar")
-def iniciar_pago_flow(body: PagoFlowRequest, db: Session = Depends(get_db)):
+def iniciar_pago_flow(body: PagoFlowRequest, db: Session = Depends(get_db),
+                      current_residente: ResidentePortal = Depends(get_residente)):
     """Initiates a Flow.cl payment for a gasto comun."""
     if not FLOW_API_KEY or not FLOW_SECRET_KEY:
         raise HTTPException(status_code=503, detail="Flow no configurado")
@@ -106,6 +112,9 @@ def iniciar_pago_flow(body: PagoFlowRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Gasto no encontrado")
     if gasto.estado not in ("pendiente", "atrasado"):
         raise HTTPException(status_code=400, detail="Gasto ya pagado o no válido")
+    # Verify this gasto belongs to the authenticated resident's department
+    if gasto.departamento_id != current_residente.departamento_id:
+        raise HTTPException(status_code=403, detail="Gasto no pertenece a su departamento")
 
     params = {
         "apiKey": FLOW_API_KEY,
@@ -159,8 +168,11 @@ def confirmar_pago_flow(token: str = Form(...), db: Session = Depends(get_db)):
         if commerce_order.startswith("GC-"):
             try:
                 gasto_id = int(commerce_order[3:])
+                # Validate gasto exists before updating (prevents forged webhook abuse)
                 gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
-                if gasto and gasto.estado != "pagado":
+                if not gasto:
+                    return {"ok": True}  # Silently ignore unknown gasto_id
+                if gasto.estado != "pagado":
                     gasto.estado = "pagado"
                     gasto.fecha_pago = datetime.utcnow()
                     gasto.metodo_pago = "flow"

@@ -56,6 +56,7 @@ def crear_votacion(body: VotacionCreate, current_user: dict = Depends(get_curren
     tenant_id = current_user["tenant_id"]
     data = body.dict()
     data["opciones"] = json.dumps(data["opciones"])
+    data["tenant_id"] = tenant_id  # FLUJO-04: override body value with JWT tenant_id
     votacion = Votacion(**data)
     db.add(votacion)
     db.commit()
@@ -65,10 +66,10 @@ def crear_votacion(body: VotacionCreate, current_user: dict = Depends(get_curren
 
 @router.get("")
 def listar_votaciones(
-    tenant_id: Optional[int] = Query(None),
     estado: Optional[str] = Query(None),
     skip: int = 0,
     limit: int = 100,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List votaciones with optional filters."""
@@ -127,14 +128,17 @@ def votar(votacion_id: int, body: VotoCreate, current_user: dict = Depends(get_c
     if votacion.estado != "activa":
         raise HTTPException(status_code=400, detail="La votación no está activa")
 
+      # Require departamento_id — prevents anonymous multi-vote
+    if not body.departamento_id:
+        raise HTTPException(status_code=400, detail="departamento_id es requerido para votar")
+
     # Duplicate check per departamento
-    if body.departamento_id:
-        existing = db.query(VotoRespuesta).filter(
-            VotoRespuesta.votacion_id == votacion_id,
-            VotoRespuesta.departamento_id == body.departamento_id,
-        ).first()
-        if existing:
-            raise HTTPException(status_code=409, detail="Este departamento ya emitió su voto")
+    existing = db.query(VotoRespuesta).filter(
+        VotoRespuesta.votacion_id == votacion_id,
+        VotoRespuesta.departamento_id == body.departamento_id,
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Este departamento ya emitió su voto")
 
     # Validate option
     try:

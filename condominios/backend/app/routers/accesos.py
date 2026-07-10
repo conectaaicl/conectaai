@@ -96,7 +96,7 @@ def obtener_visita_por_qr(token: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/qr/{token}/ingresar")
-def registrar_ingreso(token: str, db: Session = Depends(get_db)):
+def registrar_ingreso(token: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Mark visitor as entered."""
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:
@@ -111,7 +111,7 @@ def registrar_ingreso(token: str, db: Session = Depends(get_db)):
 
 
 @router.patch("/qr/{token}/salir")
-def registrar_salida(token: str, db: Session = Depends(get_db)):
+def registrar_salida(token: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Mark visitor as exited."""
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:

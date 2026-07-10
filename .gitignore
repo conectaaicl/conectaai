@@ -31,3 +31,9 @@ Thumbs.db
 # UPLOADS
 # =========================
 uploads/
+
+# Respaldos de auditoria (contienen secretos) — nunca commitear
+*.bak
+*.bak.audit
+.env.bak.audit
+docker-compose.yml.bak.audit

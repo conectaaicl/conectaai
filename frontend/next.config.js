@@ -17,7 +17,6 @@ const nextConfig = {
       // Superadmin
       { source: "/api/cron/:path*", destination: "http://backend-condominios:8003/api/cron/:path*" },
         { source: "/api/superadmin/:path*", destination: "http://backend-condominios:8003/api/superadmin/:path*" },
-      { source: "/api/cron/:path*", destination: "http://backend-condominios:8003/api/cron/:path*" },
         { source: "/api/superadmin", destination: "http://backend-condominios:8003/api/superadmin" },
       // Portal residente + historial
       { source: "/api/accesos/:path*", destination: "http://backend-condominios:8003/api/accesos/:path*" },
@@ -49,8 +48,6 @@ const nextConfig = {
       { source: '/api/condominios', destination: 'http://backend-condominios:8003/api/condominios' },
       { source: '/api/finanzas', destination: 'http://backend-condominios:8003/api/finanzas' },
       { source: '/api/accesos', destination: 'http://backend-condominios:8003/api/accesos' },
-      { source: '/api/historial', destination: 'http://backend-condominios:8003/api/historial' },
-      { source: '/api/admin/tenants', destination: 'http://backend-condominios:8003/api/admin/tenants' },
       { source: '/api/visitas/:path*', destination: 'http://backend-condominios:8003/api/visitas/:path*' },
       { source: '/api/visitas', destination: 'http://backend-condominios:8003/api/visitas' },
       { source: '/api/estacionamientos/:path*', destination: 'http://backend-condominios:8003/api/estacionamientos/:path*' },

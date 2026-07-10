@@ -7,11 +7,12 @@ from app.models.finanzas import GastoComun
 from app.models.residente_portal import ResidentePortal
 from app.models.usuario import Usuario
 from app.models.condominio import Condominio
+from app.models.estructura import Departamento
 from datetime import datetime, date
 
 router = APIRouter(prefix="/api/cron", tags=["cron"])
 
-CRON_SECRET = os.getenv("CRON_SECRET", "cron-conectaai-2026-secret")
+CRON_SECRET = os.getenv("CRON_SECRET")
 MAIL_API_URL = os.getenv("MAIL_API_URL", "http://localhost:3004/api/send")
 MAIL_API_KEY = os.getenv("MAIL_API_KEY", "")
 APP_URL = os.getenv("APP_URL", "https://conectaai.cl")
@@ -122,7 +123,7 @@ async def notificar_gastos_vencidos(secret: str, db: Session = Depends(get_db)):
     except Exception:
         db.rollback()
 
-    # Push notification broadcast cuando hay gastos vencidos
+    # Push notification broadcast cuando hay gastos vencidos (por tenant)
     if notificados > 0:
         try:
             import json, os
@@ -130,17 +131,29 @@ async def notificar_gastos_vencidos(secret: str, db: Session = Depends(get_db)):
             vapid_priv = os.getenv("VAPID_PRIVATE_KEY", "")
             vapid_email = os.getenv("VAPID_EMAIL", "mailto:admin@conectaai.cl")
             if vapid_priv:
-                subs = db.execute(
-                    __import__("sqlalchemy").text("SELECT endpoint, p256dh, auth, tenant_id FROM push_subscriptions"),
-                    {}
-                ).fetchall()
-                payload = json.dumps({"titulo": "⚠️ Gastos comunes pendientes", "mensaje": f"Tienes gastos comunes por pagar. Revisa tu cuenta en el portal.", "url": "/portal/cuenta"}, ensure_ascii=False)
-                for s in subs:
-                    try:
-                        m = s._mapping
-                        webpush(subscription_info={"endpoint": m["endpoint"], "keys": {"p256dh": m["p256dh"], "auth": m["auth"]}}, data=payload, vapid_private_key=vapid_priv, vapid_claims={"sub": vapid_email})
-                    except Exception:
-                        pass
+                # Collect tenant_ids from gastos vencidos (via their departamento)
+                from app.models.estructura import Departamento as _Depto
+                tenant_ids_con_gastos = set()
+                for g in gastos_vencidos:
+                    if g.departamento_id:
+                        dep = db.query(_Depto).filter(_Depto.id == g.departamento_id).first()
+                        if dep:
+                            tenant_ids_con_gastos.add(dep.tenant_id)
+                if tenant_ids_con_gastos:
+                    # Send push only to subscribers of the affected tenants
+                    subs = db.execute(
+                        __import__("sqlalchemy").text(
+                            "SELECT endpoint, p256dh, auth, tenant_id FROM push_subscriptions WHERE tenant_id = ANY(:tids)"
+                        ),
+                        {"tids": list(tenant_ids_con_gastos)}
+                    ).fetchall()
+                    payload = json.dumps({"titulo": "⚠️ Gastos comunes pendientes", "mensaje": "Tienes gastos comunes por pagar. Revisa tu cuenta en el portal.", "url": "/portal/cuenta"}, ensure_ascii=False)
+                    for s in subs:
+                        try:
+                            m = s._mapping
+                            webpush(subscription_info={"endpoint": m["endpoint"], "keys": {"p256dh": m["p256dh"], "auth": m["auth"]}}, data=payload, vapid_private_key=vapid_priv, vapid_claims={"sub": vapid_email})
+                        except Exception:
+                            pass
         except Exception:
             pass
     return {"notificados": notificados, "errors": errors, "gastos_procesados": len(gastos_vencidos)}
@@ -170,12 +183,19 @@ async def enviar_resumen_mensual(secret: str, db: Session = Depends(get_db)):
             Condominio.tenant_id == admin.tenant_id
         ).count()
 
+        # Sub-query: departamento IDs belonging to this tenant
+        depto_ids = db.query(Departamento.id).filter(
+            Departamento.tenant_id == admin.tenant_id
+        ).subquery()
+
         gastos_pendientes = db.query(GastoComun).filter(
             GastoComun.estado.in_(["pendiente", "atrasado"]),
+            GastoComun.departamento_id.in_(depto_ids),
         ).count()
 
         gastos_atrasados = db.query(GastoComun).filter(
             GastoComun.estado == "atrasado",
+            GastoComun.departamento_id.in_(depto_ids),
         ).count()
 
         residentes_activos = db.query(ResidentePortal).filter(

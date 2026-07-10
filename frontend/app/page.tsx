@@ -3,68 +3,76 @@ import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 const WA_URL = "https://wa.me/56998101891?text=Hola%2C%20quiero%20consultar%20sobre%20ConectaAI%20Condominios"
 
-/* ─── Icons ─── */
-const Check = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-const WA = () => <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-const Menu = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-const X = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-
-const MODULES = [
-  { key:'door',      color:'#7c3aed', label:'Control de Puertas TCP/IP',  desc:'Abre y cierra puertas remotamente. Historial completo de cada acceso.' },
-  { key:'rfid',      color:'#10b981', label:'Acceso RFID y Biométrico',   desc:'Tarjetas, llaveros y huella dactilar. Sin llaves físicas que perder.' },
-  { key:'camera',    color:'#3b82f6', label:'Cámaras integradas',         desc:'CCTV vinculado a eventos. Ver grabación del momento exacto de un incidente.' },
-  { key:'alarm',     color:'#f97316', label:'Alarmas y sensores IoT',     desc:'Alertas en tiempo real por intrusión, humo o movimiento sospechoso.' },
-  { key:'concierge', color:'#06b6d4', label:'Panel Conserje Táctil',      desc:'Interfaz optimizada para tablet. El conserje opera todo sin capacitación.' },
-  { key:'package',   color:'#a78bfa', label:'Gestión de Paquetes',        desc:'Registra con foto. Notifica al residente por WhatsApp de inmediato.' },
-  { key:'visitor',   color:'#34d399', label:'Control de Visitas',         desc:'Pre-autorización digital. El residente aprueba desde su celular.' },
-  { key:'reserve',   color:'#fbbf24', label:'Reserva de Espacios',        desc:'Quincho, piscina, sala de eventos. Sin superposición, sin conflictos.' },
-  { key:'portal',    color:'#f472b6', label:'Portal del Residente',       desc:'App móvil y web. Comunicados, votaciones, solicitudes y pagos.' },
-  { key:'finance',   color:'#4ade80', label:'Gestión Financiera',         desc:'Gastos comunes, morosidad, rendición de cuentas. Transparente y auditable.' },
-  { key:'wa',        color:'#25d366', label:'Bot WhatsApp',               desc:'Notificaciones automáticas. El residente consulta estado de su visita por chat.' },
-  { key:'alert',     color:'#60a5fa', label:'Alertas y notificaciones',   desc:'Push, email y WhatsApp. Nadie se pierde nada importante en el edificio.' },
-]
-
-const ICONS: Record<string, React.ReactNode> = {
-  door:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M13 4H6a2 2 0 0 0-2 2v14h16V6a2 2 0 0 0-2-2h-5z"/><path d="M10 12h1"/></svg>,
-  rfid:      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0"/><path d="M6.3 6.3a8 8 0 0 0 0 11.4"/><path d="M17.7 6.3a8 8 0 0 1 0 11.4"/></svg>,
-  camera:    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>,
-  alarm:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
-  concierge: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  package:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>,
-  visitor:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-  reserve:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  portal:    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/><line x1="9" y1="15" x2="12" y2="15"/></svg>,
-  finance:   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-  wa:        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
-  alert:     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+/* ─── LOGO SUPER PRO ─── */
+function ConectaAILogo({ size = 40, dark = false }: { size?: number; dark?: boolean }) {
+  const s = size
+  return (
+    <svg width={s} height={s} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg1" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#7c3aed"/>
+          <stop offset="100%" stopColor="#4f46e5"/>
+        </linearGradient>
+        <linearGradient id="lg2" x1="0" y1="0" x2="80" y2="80" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stopColor="#34d399"/>
+          <stop offset="100%" stopColor="#10b981"/>
+        </linearGradient>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+        </filter>
+      </defs>
+      {/* Background rounded square */}
+      <rect width="80" height="80" rx="20" fill="url(#lg1)"/>
+      {/* Building silhouette — stylized */}
+      {/* Main tower */}
+      <rect x="24" y="26" width="14" height="36" rx="2" fill="white" fillOpacity="0.95"/>
+      {/* Side wing */}
+      <rect x="42" y="36" width="14" height="26" rx="2" fill="white" fillOpacity="0.7"/>
+      {/* Windows grid on main tower */}
+      <rect x="27" y="30" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.5"/>
+      <rect x="32" y="30" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.5"/>
+      <rect x="27" y="36" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.5"/>
+      <rect x="32" y="36" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.5"/>
+      <rect x="27" y="42" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.5"/>
+      <rect x="32" y="42" width="3" height="3" rx="0.5" fill="url(#lg2)" fillOpacity="0.8"/>
+      {/* Windows on side wing */}
+      <rect x="45" y="39" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.4"/>
+      <rect x="50" y="39" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.4"/>
+      <rect x="45" y="45" width="3" height="3" rx="0.5" fill="url(#lg2)" fillOpacity="0.7"/>
+      <rect x="50" y="45" width="3" height="3" rx="0.5" fill="url(#lg1)" fillOpacity="0.4"/>
+      {/* WiFi/connectivity arc top-right */}
+      <circle cx="62" cy="18" r="2.5" fill="#34d399" filter="url(#glow)"/>
+      <path d="M57 18 Q59.5 14 62 14 Q64.5 14 67 18" stroke="#34d399" strokeWidth="1.5" strokeLinecap="round" fill="none" opacity="0.8"/>
+      <path d="M55 18 Q58.5 11 62 11 Q65.5 11 69 18" stroke="#34d399" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.4"/>
+      {/* Ground line */}
+      <rect x="18" y="62" width="44" height="2.5" rx="1.25" fill="white" fillOpacity="0.3"/>
+    </svg>
+  )
 }
 
-const PLANS = [
-  {
-    name: 'Básico', highlight: false,
-    desc: 'Ideal para un edificio o condominio pequeño',
-    features: ['1 edificio', 'Hasta 50 departamentos', 'Control de acceso TCP/IP', 'Paquetería básica', 'Portal del residente', 'Soporte email'],
-    cta: 'Consultar precio',
-  },
-  {
-    name: 'Profesional', highlight: true, badge: 'Más popular',
-    desc: 'Para complejos medianos con mayor exigencia',
-    features: ['Hasta 3 edificios', 'Hasta 150 departamentos', 'RFID + cámaras integradas', 'Bot WhatsApp incluido', 'Push notifications', 'Dashboard conserje avanzado', 'Soporte prioritario'],
-    cta: 'Consultar precio',
-  },
-  {
-    name: 'Enterprise', highlight: false,
-    desc: 'Multi-edificio, multi-ciudad, SaaS white-label',
-    features: ['Edificios ilimitados', 'Residentes ilimitados', 'IoT custom (alarmas/RFID)', 'API pública + webhooks', 'SLA 99.9% garantizado', 'Onboarding dedicado', 'Soporte 24/7 directo'],
-    cta: 'Consultar',
-  },
-]
+function ConectaAIWordmark({ light = false }: { light?: boolean }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+      <ConectaAILogo size={52} />
+      <div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
+          <span style={{ fontSize: 18, fontWeight: 900, color: light ? '#0f172a' : '#f1f5f9', letterSpacing: '-0.03em', lineHeight: 1 }}>Conecta</span>
+          <span style={{ fontSize: 18, fontWeight: 900, background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', letterSpacing: '-0.03em', lineHeight: 1 }}>AI</span>
+        </div>
+        <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.18em', color: light ? '#64748b' : 'rgba(255,255,255,0.35)', textTransform: 'uppercase', marginTop: 2 }}>Condominios</div>
+      </div>
+    </div>
+  )
+}
 
-const TESTIMONIALS = [
-  { name: 'Rodrigo Fuentes', role: 'Administrador, Edificio Andes', text: 'En 2 semanas digitalizamos todo el control de acceso. Los residentes están felices y el conserje no necesitó capacitación.' },
-  { name: 'Carla Muñoz', role: 'Comité de Propietarios, Torres del Parque', text: 'Las notificaciones de paquetes y visitas por WhatsApp cambiaron la experiencia de vivir en el edificio. Cero reclamos.' },
-  { name: 'Felipe Araya', role: 'Gerente de Administración, Grupo Inmobiliario', text: 'Manejamos 8 edificios desde un solo panel. El ahorro en tiempo y personal fue inmediato.' },
-]
+/* ─── SVG Icons ─── */
+const WA = () => <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+const MenuIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+const CloseIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+const Check = ({ color = '#10b981' }: { color?: string }) => <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill={color + '18'}/><polyline points="7 13 10 16 17 9" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+const ArrowRight = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+const EyeIcon = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
 
 /* ─── Animated counter ─── */
 function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
@@ -72,7 +80,7 @@ function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const animate = useCallback(() => {
     const start = Date.now()
-    const duration = 1800
+    const duration = 2000
     const tick = () => {
       const elapsed = Date.now() - start
       const progress = Math.min(elapsed / duration, 1)
@@ -92,398 +100,506 @@ function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
   return <span ref={ref}>{val.toLocaleString('es-CL')}{suffix}</span>
 }
 
-/* ─── Navbar ─── */
+/* ─── NAVBAR ─── */
 function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 40)
+    const fn = () => setScrolled(window.scrollY > 50)
     window.addEventListener('scroll', fn, { passive: true })
     return () => window.removeEventListener('scroll', fn)
   }, [])
+  const links = ['Funcionalidades', 'Cómo funciona', 'Precios', 'Contacto']
   return (
-    <nav style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100, borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent', backdropFilter: 'blur(16px)', background: scrolled ? 'rgba(7,9,15,0.92)' : 'transparent', transition: 'all 0.3s' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px', height: 64, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 22px rgba(124,58,237,0.45)', flexShrink: 0 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="white" strokeWidth="2"/><path d="M9 3v18M3 9h18M3 15h18" stroke="white" strokeWidth="1.5"/></svg>
+    <>
+      <nav style={{ position:'fixed', top:0, left:0, right:0, zIndex:100, backdropFilter:'blur(20px)', background: scrolled ? 'rgba(6,6,10,0.95)' : 'rgba(0,0,0,0.15)', borderBottom: scrolled ? '1px solid rgba(255,255,255,0.06)' : '1px solid transparent', transition:'all 0.4s ease' }}>
+        <div style={{ maxWidth:1200, margin:'0 auto', padding:'0 28px', height:68, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+          <a href="#" style={{ textDecoration:'none' }}><ConectaAIWordmark /></a>
+          <div className="ca-nav-links" style={{ display:'flex', alignItems:'center', gap:36 }}>
+            {links.map(l => (
+              <a key={l} href={`#${l.toLowerCase().replace(/\s/g,'-').replace(/é/g,'e').replace(/ó/g,'o')}`}
+                style={{ fontSize:13.5, color:'rgba(255,255,255,0.5)', textDecoration:'none', fontWeight:500, transition:'color 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.color='#fff')} onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.5)')}>{l}</a>
+            ))}
           </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: '#f1f5f9', letterSpacing: '-0.02em', lineHeight: 1.2 }}>ConectaAI</div>
-            <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', background: 'linear-gradient(90deg,#a78bfa,#34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>CONDOMINIOS</div>
+          <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+            <a href="/login" className="ca-login-btn" style={{ fontSize:13.5, color:'rgba(255,255,255,0.45)', textDecoration:'none', padding:'8px 16px', borderRadius:8, transition:'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.color='#fff'; e.currentTarget.style.background='rgba(255,255,255,0.06)' }}
+              onMouseLeave={e => { e.currentTarget.style.color='rgba(255,255,255,0.45)'; e.currentTarget.style.background='transparent' }}>Ingresar</a>
+            <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display:'flex', alignItems:'center', gap:8, fontSize:13.5, fontWeight:700, color:'white', textDecoration:'none', padding:'10px 20px', borderRadius:10, background:'linear-gradient(135deg,#25d366,#128c3e)', boxShadow:'0 4px 20px rgba(37,211,102,0.3)', transition:'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(37,211,102,0.4)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(37,211,102,0.3)' }}>
+              <WA /><span className="ca-wa-text">Cotizar</span>
+            </a>
+            <button onClick={() => setOpen(!open)} className="ca-menu-btn" style={{ display:'none', background:'none', border:'none', color:'rgba(255,255,255,0.7)', cursor:'pointer', padding:6 }}>
+              {open ? <CloseIcon /> : <MenuIcon />}
+            </button>
           </div>
         </div>
-        {/* Desktop links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }} className="ca-nav-desktop">
-          {['Funcionalidades', 'Precios', 'Contacto'].map(l => (
-            <a key={l} href={`#${l.toLowerCase()}`} style={{ fontSize: 13, color: '#64748b', textDecoration: 'none', fontWeight: 500, transition: 'color 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#e2e8f0')} onMouseLeave={e => (e.currentTarget.style.color = '#64748b')}>{l}</a>
-          ))}
-        </div>
-        {/* CTAs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <a href="/login" style={{ fontSize: 13, color: '#64748b', textDecoration: 'none', padding: '8px 16px', borderRadius: 8, transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.color = '#e2e8f0'; e.currentTarget.style.background = 'rgba(255,255,255,0.04)' }}
-            onMouseLeave={e => { e.currentTarget.style.color = '#64748b'; e.currentTarget.style.background = 'transparent' }}>Ingresar</a>
-          <a href={WA_URL} target="_blank" rel="noopener noreferrer"
-            style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 700, color: 'white', textDecoration: 'none', padding: '9px 18px', borderRadius: 8, background: '#10b981', boxShadow: '0 4px 16px rgba(16,185,129,0.35)', transition: 'all 0.15s' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-            onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.transform = 'translateY(0)' }}>
-            <WA /> Cotizar ahora
-          </a>
-          <button onClick={() => setOpen(!open)} style={{ display: 'none', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }} className="ca-menu-btn">
-            {open ? <X /> : <Menu />}
-          </button>
-        </div>
-      </div>
-      {/* Mobile menu */}
-      {open && (
-        <div style={{ background: 'rgba(7,9,15,0.98)', borderTop: '1px solid rgba(255,255,255,0.06)', padding: '16px 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {['Funcionalidades', 'Precios', 'Contacto'].map(l => (
-            <a key={l} href={`#${l.toLowerCase()}`} onClick={() => setOpen(false)} style={{ fontSize: 14, color: '#94a3b8', textDecoration: 'none', padding: '10px 0' }}>{l}</a>
-          ))}
-          <a href={WA_URL} target="_blank" rel="noopener noreferrer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '12px', borderRadius: 10, background: '#10b981', color: 'white', fontSize: 14, fontWeight: 700, textDecoration: 'none' }}>
-            <WA /> Cotizar por WhatsApp
-          </a>
-        </div>
-      )}
+        {open && (
+          <div style={{ background:'rgba(6,6,10,0.99)', borderTop:'1px solid rgba(255,255,255,0.06)', padding:'20px 28px 28px' }}>
+            {links.map(l => (
+              <a key={l} href={`#${l.toLowerCase().replace(/\s/g,'-').replace(/é/g,'e').replace(/ó/g,'o')}`} onClick={() => setOpen(false)}
+                style={{ display:'block', fontSize:16, color:'rgba(255,255,255,0.6)', textDecoration:'none', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontWeight:500 }}>{l}</a>
+            ))}
+            <a href={WA_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
+              style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginTop:20, padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#25d366,#128c3e)', color:'white', fontSize:15, fontWeight:700, textDecoration:'none' }}>
+              <WA /> Cotizar por WhatsApp
+            </a>
+          </div>
+        )}
+      </nav>
       <style>{`
-        @media (max-width: 768px) { .ca-nav-desktop { display: none !important; } .ca-menu-btn { display: flex !important; } }
+        @media (max-width:820px) { .ca-nav-links{display:none!important} .ca-login-btn{display:none!important} .ca-menu-btn{display:flex!important} .ca-wa-text{display:none!important} }
       `}</style>
-    </nav>
+    </>
   )
 }
 
-/* ─── Hero ─── */
+/* ─── HERO ─── */
 function Hero() {
   return (
-    <section style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', padding: '120px 24px 80px', position: 'relative', overflow: 'hidden' }}>
-      {/* BG */}
-      <div style={{ position: 'absolute', top: '20%', left: '50%', transform: 'translateX(-50%)', width: 700, height: 500, borderRadius: '50%', background: 'radial-gradient(circle, rgba(124,58,237,0.1) 0%, transparent 70%)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: 300, height: 300, borderRadius: '50%', background: 'rgba(16,185,129,0.06)', filter: 'blur(60px)', pointerEvents: 'none' }} />
-      <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 60, alignItems: 'center' }}>
-        {/* Left */}
-        <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '5px 14px', borderRadius: 100, background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', marginBottom: 28 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 8px #10b981', display: 'inline-block' }} />
-            <span style={{ fontSize: 11, fontWeight: 700, color: '#a78bfa', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Sistema integral de condominios</span>
+    <section style={{ position:'relative', minHeight:'100vh', display:'flex', alignItems:'center', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, zIndex:0 }}>
+        <img src="https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?w=1920&q=85&auto=format&fit=crop" alt="Condominio moderno" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 60%' }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(6,6,10,0.93) 0%,rgba(30,10,60,0.82) 50%,rgba(6,6,10,0.78) 100%)' }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(to top,rgba(6,6,10,1) 0%,transparent 40%)' }} />
+      </div>
+      <div style={{ position:'absolute', top:'25%', left:'55%', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(124,58,237,0.14) 0%,transparent 65%)', pointerEvents:'none', zIndex:1 }} />
+      <div style={{ maxWidth:1200, margin:'0 auto', padding:'120px 28px 80px', width:'100%', position:'relative', zIndex:2 }}>
+        <div style={{ maxWidth:720 }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 16px', borderRadius:100, background:'rgba(124,58,237,0.12)', border:'1px solid rgba(124,58,237,0.28)', marginBottom:32, backdropFilter:'blur(8px)' }}>
+            <span style={{ width:7, height:7, borderRadius:'50%', background:'#10b981', boxShadow:'0 0 10px #10b981', display:'inline-block', animation:'pulse 2s infinite' }} />
+            <span style={{ fontSize:11.5, fontWeight:700, color:'#c4b5fd', letterSpacing:'0.08em', textTransform:'uppercase' }}>Sistema integral para condominios en Chile</span>
           </div>
-          <h1 style={{ fontSize: 52, fontWeight: 900, lineHeight: 1.08, letterSpacing: '-0.03em', marginBottom: 24, color: '#f1f5f9' }}>
+          <h1 style={{ fontSize:'clamp(40px,6vw,72px)', fontWeight:900, lineHeight:1.05, letterSpacing:'-0.03em', marginBottom:24, color:'#f8fafc' }}>
             Tu condominio,<br />
-            <span style={{ background: 'linear-gradient(135deg,#a78bfa 0%,#34d399 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>inteligente</span> y{' '}
-            <span style={{ background: 'linear-gradient(135deg,#60a5fa,#a78bfa)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>seguro</span>
+            <span style={{ background:'linear-gradient(135deg,#a78bfa 0%,#818cf8 50%,#34d399 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>gestionado por IA</span>
           </h1>
-          <p style={{ fontSize: 17, color: '#475569', lineHeight: 1.7, marginBottom: 36, maxWidth: 480 }}>
-            Control de acceso RFID, cámaras, bot WhatsApp, portal del residente y gestión financiera — todo conectado en una sola plataforma.
+          <p style={{ fontSize:18, color:'rgba(255,255,255,0.55)', lineHeight:1.75, marginBottom:40, maxWidth:560 }}>
+            Control de acceso RFID, cámaras integradas, bot WhatsApp, portal del residente y gestión financiera — todo en una plataforma diseñada para edificios y condominios chilenos.
           </p>
-          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display:'flex', gap:16, flexWrap:'wrap', alignItems:'center', marginBottom:56 }}>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer"
-              style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 28px', borderRadius: 12, background: '#10b981', color: 'white', textDecoration: 'none', fontSize: 15, fontWeight: 700, boxShadow: '0 6px 24px rgba(16,185,129,0.4)', transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.transform = 'translateY(0)' }}>
+              style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 32px', borderRadius:14, background:'linear-gradient(135deg,#25d366,#128c3e)', color:'white', textDecoration:'none', fontSize:16, fontWeight:700, boxShadow:'0 8px 32px rgba(37,211,102,0.35)', transition:'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 40px rgba(37,211,102,0.45)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 32px rgba(37,211,102,0.35)' }}>
               <WA /> Cotizar por WhatsApp
             </a>
-            <a href="#funcionalidades" style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '14px 24px', borderRadius: 12, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: '#94a3b8', textDecoration: 'none', fontSize: 15, fontWeight: 500, transition: 'all 0.15s' }}
-              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#e2e8f0' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = '#94a3b8' }}>
-              Ver funcionalidades →
+            <a href="#funcionalidades"
+              style={{ display:'flex', alignItems:'center', gap:8, padding:'16px 28px', borderRadius:14, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.8)', textDecoration:'none', fontSize:15, fontWeight:600, backdropFilter:'blur(8px)', transition:'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.1)'; e.currentTarget.style.color='#fff' }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='rgba(255,255,255,0.8)' }}>
+              Ver funcionalidades <ArrowRight />
             </a>
           </div>
-          <div style={{ display: 'flex', gap: 24, marginTop: 32 }}>
-            {[{ v: '500', s: '+', l: 'edificios' }, { v: '98', s: '%', l: 'satisfacción' }, { v: '24', s: '/7', l: 'soporte' }].map(s => (
-              <div key={s.l}>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#e2e8f0', letterSpacing: '-0.02em' }}>{s.v}<span style={{ color: '#7c3aed' }}>{s.s}</span></div>
-                <div style={{ fontSize: 11, color: '#475569', fontWeight: 500 }}>{s.l}</div>
+          <div style={{ display:'flex', gap:0, flexWrap:'wrap' }}>
+            {[{v:'12',s:'+',l:'módulos integrados'},{v:'98',s:'%',l:'satisfacción clientes'},{v:'24',s:'/7',l:'soporte técnico'}].map((s,i) => (
+              <div key={s.l} style={{ paddingRight:28, marginRight:28, borderRight:i<2?'1px solid rgba(255,255,255,0.1)':'none' }}>
+                <div style={{ fontSize:26, fontWeight:900, color:'#f8fafc', letterSpacing:'-0.03em', lineHeight:1 }}>{s.v}<span style={{ color:'#a78bfa' }}>{s.s}</span></div>
+                <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', fontWeight:500, marginTop:4 }}>{s.l}</div>
               </div>
             ))}
           </div>
         </div>
-        {/* Right — dashboard preview */}
-        <div style={{ position: 'relative' }}>
-          <div style={{ background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 20, padding: 20, boxShadow: '0 40px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(124,58,237,0.06)' }}>
-            {/* Browser bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16 }}>
-              {['#ef4444','#f59e0b','#22c55e'].map((c, i) => <div key={i} style={{ width: 10, height: 10, borderRadius: '50%', background: c, opacity: 0.6 }} />)}
-              <div style={{ flex: 1, background: 'rgba(255,255,255,0.04)', borderRadius: 6, height: 22, marginLeft: 8, display: 'flex', alignItems: 'center', paddingLeft: 10 }}>
-                <span style={{ fontSize: 10, color: '#334155' }}>conectaai.cl/dashboard</span>
-              </div>
-            </div>
-            {/* KPI cards */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 12 }}>
-              {[{l:'Puertas',v:'12',c:'#7c3aed'},{l:'Residentes',v:'248',c:'#10b981'},{l:'Visitas hoy',v:'34',c:'#3b82f6'}].map(k => (
-                <div key={k.l} style={{ background: `linear-gradient(135deg,rgba(${k.c==='#7c3aed'?'124,58,237':k.c==='#10b981'?'16,185,129':'59,130,246'},0.08),transparent)`, border: `1px solid rgba(${k.c==='#7c3aed'?'124,58,237':k.c==='#10b981'?'16,185,129':'59,130,246'},0.12)`, borderRadius: 10, padding: '12px 14px' }}>
-                  <div style={{ fontSize: 9, color: '#475569', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{k.l}</div>
-                  <div style={{ fontSize: 22, fontWeight: 800, color: k.c }}>{k.v}</div>
-                </div>
-              ))}
-            </div>
-            {/* Access log */}
-            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: '12px 14px' }}>
-              <div style={{ fontSize: 10, color: '#334155', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Últimos accesos</div>
-              {[
-                { name: 'Carlos Mendoza', unit: 'Dpto 502', time: '08:34', icon: '🟢' },
-                { name: 'Visita — Laura Soto', unit: 'Dpto 301', time: '08:21', icon: '🔵' },
-                { name: 'Delivery — Chilexpress', unit: 'Conserjería', time: '08:05', icon: '📦' },
-                { name: 'María González', unit: 'Dpto 802', time: '07:58', icon: '🟢' },
-              ].map((r, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: i < 3 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
-                  <span style={{ fontSize: 12 }}>{r.icon}</span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 11, color: '#94a3b8', fontWeight: 500 }}>{r.name}</div>
-                    <div style={{ fontSize: 10, color: '#334155' }}>{r.unit}</div>
-                  </div>
-                  <div style={{ fontSize: 10, color: '#334155' }}>{r.time}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* Glow */}
-          <div style={{ position: 'absolute', bottom: -20, left: '50%', transform: 'translateX(-50%)', width: '50%', height: 50, background: 'rgba(124,58,237,0.2)', filter: 'blur(30px)', pointerEvents: 'none' }} />
-        </div>
       </div>
-      <style>{`@media (max-width: 900px) { .ca-hero-grid { grid-template-columns: 1fr !important; } .ca-hero-right { display: none !important; } }`}</style>
+      <div style={{ position:'absolute', bottom:32, left:'50%', transform:'translateX(-50%)', zIndex:2, display:'flex', flexDirection:'column', alignItems:'center', gap:8, animation:'float 2s ease-in-out infinite' }}>
+        <span style={{ fontSize:11, color:'rgba(255,255,255,0.2)', fontWeight:500, letterSpacing:'0.1em', textTransform:'uppercase' }}>Descubrir</span>
+        <div style={{ width:1, height:40, background:'linear-gradient(to bottom,rgba(167,139,250,0.5),transparent)' }} />
+      </div>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+        @keyframes float{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(6px)}}
+      `}</style>
     </section>
   )
 }
 
-/* ─── Stats ─── */
-function Stats() {
+/* ─── TRUST BAR ─── */
+function TrustBar() {
+  const items = ['Control de acceso TCP/IP','RFID + Biometría','Bot WhatsApp integrado','Panel conserje táctil','Portal del residente','Gestión financiera','Reserva de espacios','Alertas IoT']
   return (
-    <section style={{ padding: '48px 24px', borderTop: '1px solid rgba(255,255,255,0.04)', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-      <div style={{ maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 2 }}>
-        {[
-          { to: 500, suffix: '+', label: 'edificios activos' },
-          { to: 50000, suffix: '+', label: 'residentes gestionados' },
-          { to: 98, suffix: '%', label: 'satisfacción clientes' },
-          { to: 12, suffix: ' módulos', label: 'integrados' },
-        ].map((s, i) => (
-          <div key={i} style={{ textAlign: 'center', padding: '20px 16px', borderRight: i < 3 ? '1px solid rgba(255,255,255,0.04)' : 'none' }}>
-            <div style={{ fontSize: 42, fontWeight: 900, letterSpacing: '-0.03em', background: 'linear-gradient(135deg,#a78bfa,#34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', lineHeight: 1 }}>
-              <Counter to={s.to} suffix={s.suffix} />
-            </div>
-            <div style={{ fontSize: 12, color: '#475569', marginTop: 6, fontWeight: 500 }}>{s.label}</div>
+    <div style={{ background:'#0a0a12', borderTop:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)', padding:'18px 0', overflow:'hidden' }}>
+      <div style={{ display:'flex', gap:56, animation:'marquee 22s linear infinite', width:'max-content' }}>
+        {[...items,...items].map((item,i) => (
+          <div key={i} style={{ display:'flex', alignItems:'center', gap:10, whiteSpace:'nowrap' }}>
+            <span style={{ width:5, height:5, borderRadius:'50%', background:'#7c3aed', display:'inline-block' }} />
+            <span style={{ fontSize:13, color:'rgba(255,255,255,0.28)', fontWeight:500 }}>{item}</span>
           </div>
         ))}
       </div>
+      <style>{`@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}`}</style>
+    </div>
+  )
+}
+
+/* ─── HOW IT WORKS ─── */
+function HowItWorks() {
+  const steps = [
+    {n:'01',title:'Instalación en tu edificio',desc:'Configuramos los módulos hardware (RFID, cámaras, sensores) e integramos con tu infraestructura existente. Sin obras mayores.'},
+    {n:'02',title:'Capacitación del equipo',desc:'El conserje aprende en 30 minutos. El panel táctil está diseñado para operarse sin conocimientos técnicos.'},
+    {n:'03',title:'Todos conectados',desc:'Residentes reciben acceso al portal web y app móvil. Visitas, paquetes y comunicados fluyen automáticamente.'},
+  ]
+  return (
+    <section id="c-mo-funciona" style={{ padding:'100px 28px', background:'rgba(255,255,255,0.01)' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:64 }}>
+          <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#10b981', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(16,185,129,0.08)', borderRadius:100, border:'1px solid rgba(16,185,129,0.2)' }}>
+            Cómo funciona
+          </div>
+          <h2 style={{ fontSize:'clamp(28px,4vw,44px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', lineHeight:1.2 }}>Operativo en menos de una semana</h2>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:2 }} className="ca-steps-grid">
+          {steps.map((s,i) => (
+            <div key={i} style={{ position:'relative', padding:'36px 32px', borderRight:i<2?'1px solid rgba(255,255,255,0.05)':'none' }} className="ca-step">
+              <div style={{ fontSize:52, fontWeight:900, background:'linear-gradient(135deg,rgba(124,58,237,0.4),transparent)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1, marginBottom:20, letterSpacing:'-0.04em' }}>{s.n}</div>
+              <h3 style={{ fontSize:18, fontWeight:700, color:'#e2e8f0', marginBottom:12 }}>{s.title}</h3>
+              <p style={{ fontSize:14, color:'rgba(255,255,255,0.38)', lineHeight:1.7 }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   )
 }
 
-/* ─── Features ─── */
+/* ─── FEATURE ROW ─── */
+function FeatureRow({ img, tag, tagColor, title, desc, bullets, reverse }: any) {
+  return (
+    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'center', maxWidth:1200, margin:'0 auto', padding:'0 28px' }} className="ca-feature-row">
+      <div style={{ order:reverse?2:1, position:'relative', borderRadius:24, overflow:'hidden', aspectRatio:'4/3', boxShadow:'0 40px 80px rgba(0,0,0,0.5)' }}>
+        <img src={img} alt={title} style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(124,58,237,0.18) 0%,transparent 60%)' }} />
+        <div style={{ position:'absolute', top:20, left:20, padding:'6px 14px', borderRadius:100, background:'rgba(0,0,0,0.6)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.1)' }}>
+          <span style={{ fontSize:11, fontWeight:700, color:tagColor, textTransform:'uppercase', letterSpacing:'0.08em' }}>{tag}</span>
+        </div>
+      </div>
+      <div style={{ order:reverse?1:2 }}>
+        <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:tagColor, textTransform:'uppercase', marginBottom:18, padding:'5px 14px', background:tagColor+'12', borderRadius:100, border:`1px solid ${tagColor}25` }}>{tag}</div>
+        <h3 style={{ fontSize:'clamp(26px,3vw,38px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', lineHeight:1.2, marginBottom:18 }}>{title}</h3>
+        <p style={{ fontSize:16, color:'rgba(255,255,255,0.42)', lineHeight:1.8, marginBottom:28 }}>{desc}</p>
+        <div style={{ display:'flex', flexDirection:'column', gap:12, marginBottom:32 }}>
+          {bullets.map((b: string,i: number) => (
+            <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:12 }}>
+              <Check color={tagColor} />
+              <span style={{ fontSize:14, color:'rgba(255,255,255,0.55)', lineHeight:1.5 }}>{b}</span>
+            </div>
+          ))}
+        </div>
+        <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+          style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 22px', borderRadius:10, background:'transparent', border:`1px solid ${tagColor}40`, color:tagColor, textDecoration:'none', fontSize:13.5, fontWeight:700, transition:'all 0.2s' }}
+          onMouseEnter={e => { e.currentTarget.style.background=tagColor+'12'; e.currentTarget.style.borderColor=tagColor }}
+          onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.borderColor=tagColor+'40' }}>
+          Consultar más <ArrowRight />
+        </a>
+      </div>
+    </div>
+  )
+}
+
+/* ─── FEATURES SECTION ─── */
 function Features() {
   return (
-    <section id="funcionalidades" style={{ padding: '100px 24px' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 60 }}>
-          <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', color: '#7c3aed', textTransform: 'uppercase', marginBottom: 16, padding: '4px 12px', background: 'rgba(124,58,237,0.08)', borderRadius: 100, border: '1px solid rgba(124,58,237,0.15)' }}>12 módulos integrados</div>
-          <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em', color: '#f1f5f9', lineHeight: 1.2, marginBottom: 16 }}>Todo lo que necesita<br /><span style={{ color: '#475569' }}>tu condominio</span></h2>
-          <p style={{ fontSize: 16, color: '#475569', maxWidth: 500, margin: '0 auto', lineHeight: 1.7 }}>Una plataforma que centraliza acceso, comunicación, seguridad y administración.</p>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10 }}>
-          {MODULES.map((m) => (
-            <div key={m.key} style={{ background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14, padding: '20px 22px', transition: 'all 0.2s', cursor: 'default' }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = m.color + '30'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'; e.currentTarget.style.transform = 'translateY(0)' }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: m.color + '14', border: `1px solid ${m.color}20`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.color, marginBottom: 14 }}>
-                {ICONS[m.key]}
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 6 }}>{m.label}</div>
-              <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.6 }}>{m.desc}</div>
-            </div>
-          ))}
-        </div>
+    <section id="funcionalidades" style={{ padding:'100px 0' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto 16px', padding:'0 28px', textAlign:'center' }}>
+        <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#7c3aed', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(124,58,237,0.08)', borderRadius:100, border:'1px solid rgba(124,58,237,0.2)' }}>Funcionalidades</div>
+        <h2 style={{ fontSize:'clamp(28px,4vw,48px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', lineHeight:1.2, marginBottom:16 }}>Todo lo que tu condominio<br />necesita, integrado</h2>
+        <p style={{ fontSize:16, color:'rgba(255,255,255,0.38)', maxWidth:520, margin:'0 auto', lineHeight:1.7, marginBottom:80 }}>Desde el control de acceso hasta los estados financieros, una sola plataforma conecta a residentes, conserjes y administración.</p>
       </div>
+      <div style={{ display:'flex', flexDirection:'column', gap:100 }}>
+        <FeatureRow img="https://images.unsplash.com/photo-1697382608786-bcf4c113b86e?w=900&q=80&auto=format&fit=crop" tag="Control de Acceso" tagColor="#7c3aed" title="Acceso inteligente sin llaves físicas" desc="Controla puertas y portones remotamente desde cualquier dispositivo. Tarjetas RFID, llaveros, biometría de huella y apertura remota desde el celular." bullets={['Apertura TCP/IP desde panel web, tablet o smartphone','Acceso RFID, llaveros y huella dactilar biométrica','Historial completo de cada acceso con fecha y hora','Alertas de puertas forzadas o abiertas por tiempo excesivo']} reverse={false} />
+        <FeatureRow img="https://images.unsplash.com/photo-1759038085950-1234ca8f5fed?w=900&q=80&auto=format&fit=crop" tag="Panel Conserje" tagColor="#06b6d4" title="Interfaz táctil para conserjería" desc="Una tablet en recepción y el conserje tiene todo el control. Botones grandes, información clara, sin necesidad de capacitación técnica previa." bullets={['Registro de visitas con foto y pre-autorización del residente','Gestión de encomiendas con notificación automática por WhatsApp','Control de puertas y acceso a cámaras en vivo','Comunicación directa con residentes desde la pantalla']} reverse={true} />
+        <FeatureRow img="https://images.unsplash.com/photo-1592890288564-76628a30a657?w=900&q=80&auto=format&fit=crop" tag="Portal del Residente" tagColor="#f97316" title="Los residentes conectados desde su celular" desc="App web y móvil para que cada residente gestione visitas, reciba notificaciones, vote en asambleas y acceda a todos los documentos del condominio." bullets={['Pre-autorización digital de visitas desde el celular','Notificaciones de paquetes, comunicados y alertas en tiempo real','Acceso a estados de cuenta y gastos comunes','Votaciones y asambleas virtuales integradas']} reverse={false} />
+        <FeatureRow img="https://images.unsplash.com/photo-1496368077930-c1e31b4e5b44?w=900&q=80&auto=format&fit=crop" tag="Cámaras e IoT" tagColor="#10b981" title="Seguridad visual integrada al sistema" desc="Vincula las grabaciones de CCTV a cada evento. Cuando ocurre un incidente, accede directamente al video del momento exacto." bullets={['CCTV integrado con log de eventos del sistema','Alertas IoT por movimiento, intrusión o humo','Sensores de temperatura y humedad en áreas comunes','Acceso remoto a cámaras en vivo desde cualquier dispositivo']} reverse={true} />
+      </div>
+      <style>{`@media (max-width:860px){.ca-feature-row{grid-template-columns:1fr!important;gap:32px!important} .ca-feature-row>div{order:unset!important}}`}</style>
     </section>
   )
 }
 
-/* ─── Conserje section ─── */
-function Conserje() {
+/* ─── MODULES GRID ─── */
+const MODULES = [
+  {color:'#7c3aed',label:'Control de Puertas TCP/IP',desc:'Abre y cierra puertas remotamente con historial completo.'},
+  {color:'#10b981',label:'Acceso RFID y Biométrico',desc:'Tarjetas, llaveros y huella dactilar. Sin llaves que perder.'},
+  {color:'#3b82f6',label:'Cámaras integradas',desc:'CCTV vinculado a eventos. Ve la grabación del incidente exacto.'},
+  {color:'#f97316',label:'Alarmas y sensores IoT',desc:'Alertas en tiempo real por intrusión, humo o movimiento.'},
+  {color:'#06b6d4',label:'Panel Conserje Táctil',desc:'Interfaz optimizada para tablet. Opera todo sin capacitación.'},
+  {color:'#a78bfa',label:'Gestión de Paquetes',desc:'Registra con foto. Notifica al residente por WhatsApp.'},
+  {color:'#34d399',label:'Control de Visitas',desc:'Pre-autorización digital. El residente aprueba desde su celular.'},
+  {color:'#fbbf24',label:'Reserva de Espacios',desc:'Quincho, piscina, sala de eventos. Sin superposición.'},
+  {color:'#f472b6',label:'Portal del Residente',desc:'App web y móvil. Comunicados, votaciones y solicitudes.'},
+  {color:'#4ade80',label:'Gestión Financiera',desc:'Gastos comunes, morosidad y rendición de cuentas transparente.'},
+  {color:'#25d366',label:'Bot WhatsApp',desc:'Notificaciones automáticas al residente directo en WhatsApp.'},
+  {color:'#60a5fa',label:'Alertas y notificaciones',desc:'Push, email y WhatsApp. Nadie se pierde nada importante.'},
+]
+
+function Modules() {
   return (
-    <section style={{ padding: '100px 24px', background: 'rgba(255,255,255,0.01)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, alignItems: 'center' }}>
-        <div>
-          <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', color: '#06b6d4', textTransform: 'uppercase', marginBottom: 20, padding: '4px 12px', background: 'rgba(6,182,212,0.08)', borderRadius: 100, border: '1px solid rgba(6,182,212,0.15)' }}>Panel conserje</div>
-          <h2 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.02em', color: '#f1f5f9', marginBottom: 18, lineHeight: 1.2 }}>Diseñado para<br />pantallas táctiles</h2>
-          <p style={{ fontSize: 15, color: '#475569', lineHeight: 1.7, marginBottom: 28 }}>Botones grandes, respuesta instantánea. Coloca una tablet en recepción y el conserje controla todo sin necesitar capacitación previa.</p>
-          {[
-            { icon: '🚪', title: 'Control puertas', desc: 'Abre o cierra desde la pantalla. Historial de cada evento.' },
-            { icon: '👤', title: 'Registro visitas', desc: 'Alta en segundos. Notifica al residente automáticamente.' },
-            { icon: '📦', title: 'Paquetes y envíos', desc: 'Registra con foto. Push al residente de inmediato.' },
-          ].map(c => (
-            <div key={c.title} style={{ display: 'flex', gap: 14, marginBottom: 16 }}>
-              <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(6,182,212,0.08)', border: '1px solid rgba(6,182,212,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, flexShrink: 0 }}>{c.icon}</div>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0', marginBottom: 3 }}>{c.title}</div>
-                <div style={{ fontSize: 13, color: '#475569', lineHeight: 1.5 }}>{c.desc}</div>
-              </div>
+    <section style={{ padding:'80px 28px', background:'linear-gradient(180deg,rgba(124,58,237,0.04) 0%,transparent 100%)' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:52 }}>
+          <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#a78bfa', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(167,139,250,0.08)', borderRadius:100, border:'1px solid rgba(167,139,250,0.2)' }}>12 módulos integrados</div>
+          <h2 style={{ fontSize:'clamp(24px,3vw,36px)', fontWeight:800, letterSpacing:'-0.02em', color:'#f1f5f9' }}>Todos los módulos que necesita tu condominio</h2>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="ca-modules-grid">
+          {MODULES.map((m,i) => (
+            <div key={i} style={{ background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.05)', borderRadius:14, padding:'18px 20px', transition:'all 0.2s', cursor:'default' }}
+              onMouseEnter={e => { e.currentTarget.style.background=m.color+'0a'; e.currentTarget.style.borderColor=m.color+'30'; e.currentTarget.style.transform='translateY(-2px)' }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.025)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.05)'; e.currentTarget.style.transform='translateY(0)' }}>
+              <div style={{ width:8, height:8, borderRadius:'50%', background:m.color, boxShadow:`0 0 8px ${m.color}80`, marginBottom:12 }} />
+              <div style={{ fontSize:13.5, fontWeight:700, color:'#e2e8f0', marginBottom:6, lineHeight:1.3 }}>{m.label}</div>
+              <div style={{ fontSize:12.5, color:'rgba(255,255,255,0.33)', lineHeight:1.6 }}>{m.desc}</div>
             </div>
           ))}
         </div>
-        {/* Tablet mockup */}
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <div style={{ width: 300, background: '#0d0d1a', borderRadius: 20, padding: 20, border: '1px solid rgba(255,255,255,0.07)', boxShadow: '0 30px 80px rgba(0,0,0,0.5)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>Conserjería</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 6px #22c55e', display: 'inline-block' }} />
-                  <span style={{ fontSize: 10, color: '#22c55e', fontWeight: 600 }}>Online</span>
+      </div>
+      <style>{`@media (max-width:1000px){.ca-modules-grid{grid-template-columns:repeat(3,1fr)!important}} @media (max-width:700px){.ca-modules-grid{grid-template-columns:repeat(2,1fr)!important}} @media (max-width:440px){.ca-modules-grid{grid-template-columns:1fr!important}}`}</style>
+    </section>
+  )
+}
+
+/* ─── STATS ─── */
+function Stats() {
+  return (
+    <section style={{ position:'relative', padding:'80px 28px', overflow:'hidden' }}>
+      <div style={{ position:'absolute', inset:0, zIndex:0 }}>
+        <img src="https://images.unsplash.com/photo-1486325212027-8081e485255e?w=1400&q=75&auto=format&fit=crop" alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 40%' }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(6,6,10,0.93) 0%,rgba(30,10,60,0.9) 100%)' }} />
+      </div>
+      <div style={{ maxWidth:1000, margin:'0 auto', position:'relative', zIndex:1 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }} className="ca-stats-grid">
+          {[
+            {to:50,suffix:'+',label:'Edificios activos',sub:'en Chile'},
+            {to:8000,suffix:'+',label:'Residentes gestionados',sub:'en la plataforma'},
+            {to:98,suffix:'%',label:'Satisfacción',sub:'clientes encuestados'},
+            {to:12,suffix:'',label:'Módulos integrados',sub:'en una sola plataforma'},
+          ].map((s,i) => (
+            <div key={i} style={{ textAlign:'center', padding:'28px 20px', borderRight:i<3?'1px solid rgba(255,255,255,0.07)':'none' }}>
+              <div style={{ fontSize:'clamp(36px,5vw,56px)', fontWeight:900, letterSpacing:'-0.03em', background:'linear-gradient(135deg,#a78bfa,#34d399)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1 }}>
+                <Counter to={s.to} suffix={s.suffix} />
+              </div>
+              <div style={{ fontSize:14, color:'#e2e8f0', fontWeight:700, marginTop:8 }}>{s.label}</div>
+              <div style={{ fontSize:12, color:'rgba(255,255,255,0.28)', marginTop:3 }}>{s.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <style>{`@media (max-width:700px){.ca-stats-grid{grid-template-columns:repeat(2,1fr)!important}}`}</style>
+    </section>
+  )
+}
+
+/* ─── TESTIMONIALS ─── */
+function Testimonials() {
+  const testi = [
+    {name:'Rodrigo Fuentes',role:'Administrador',building:'Edificio Andes, Santiago',text:'En 2 semanas digitalizamos todo el control de acceso. Los residentes están felices y el conserje no necesitó capacitación. Fue más fácil de lo esperado.',avatar:'https://ui-avatars.com/api/?name=Rodrigo+Fuentes&background=7c3aed&color=fff&size=88'},
+    {name:'Carla Muñoz',role:'Presidenta Comité',building:'Torres del Parque, Las Condes',text:'Las notificaciones de paquetes y visitas por WhatsApp cambiaron la experiencia de vivir en el edificio. Cero reclamos de los vecinos.',avatar:'https://ui-avatars.com/api/?name=Carla+Munoz&background=10b981&color=fff&size=88'},
+    {name:'Felipe Araya',role:'Gerente de Administración',building:'Grupo Inmobiliario, 8 edificios',text:'Manejamos 8 edificios desde un solo panel. El ahorro en tiempo y personal fue inmediato desde el primer mes. Muy recomendable.',avatar:'https://ui-avatars.com/api/?name=Felipe+Araya&background=4f46e5&color=fff&size=88'},
+  ]
+  return (
+    <section style={{ padding:'100px 28px', borderTop:'1px solid rgba(255,255,255,0.04)' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:56 }}>
+          <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#fbbf24', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(251,191,36,0.08)', borderRadius:100, border:'1px solid rgba(251,191,36,0.2)' }}>Testimonios</div>
+          <h2 style={{ fontSize:'clamp(26px,3.5vw,40px)', fontWeight:800, letterSpacing:'-0.02em', color:'#f1f5f9' }}>Lo que dicen nuestros clientes</h2>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }} className="ca-testi-grid">
+          {testi.map((t,i) => (
+            <div key={i} style={{ background:'linear-gradient(135deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))', border:'1px solid rgba(255,255,255,0.06)', borderRadius:20, padding:'28px 26px', position:'relative', overflow:'hidden' }}>
+              <div style={{ position:'absolute', top:14, right:18, fontSize:80, color:'rgba(124,58,237,0.07)', fontFamily:'Georgia,serif', lineHeight:1 }}>"</div>
+              <div style={{ display:'flex', gap:3, marginBottom:18 }}>{[1,2,3,4,5].map(s=><span key={s} style={{ color:'#fbbf24', fontSize:14 }}>★</span>)}</div>
+              <p style={{ fontSize:14.5, color:'rgba(255,255,255,0.48)', lineHeight:1.75, marginBottom:24, fontStyle:'italic' }}>"{t.text}"</p>
+              <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                <img src={t.avatar} alt={t.name} style={{ width:44, height:44, borderRadius:'50%', border:'2px solid rgba(124,58,237,0.35)', flexShrink:0 }} />
+                <div>
+                  <div style={{ fontSize:13.5, fontWeight:700, color:'#e2e8f0' }}>{t.name}</div>
+                  <div style={{ fontSize:12, color:'rgba(255,255,255,0.28)', marginTop:2 }}>{t.role} · {t.building}</div>
                 </div>
               </div>
-              <div style={{ fontSize: 11, color: '#475569' }}>08:34</div>
             </div>
-            {/* Door buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
-              <button style={{ padding: '14px 10px', borderRadius: 10, background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.25)', color: '#34d399', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>🚪 Abrir entrada</button>
-              <button style={{ padding: '14px 10px', borderRadius: 10, background: 'rgba(14,165,233,0.12)', border: '1px solid rgba(14,165,233,0.25)', color: '#38bdf8', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>📹 Ver cámaras</button>
-            </div>
-            {/* Recent */}
-            <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: 10, padding: 12 }}>
-              <div style={{ fontSize: 10, color: '#334155', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>Actividad reciente</div>
-              {['Carlos M. — Dpto 502 ✓', 'Visita — Laura S. 🔵', 'Delivery 📦 — 08:05'].map((l, i) => (
-                <div key={i} style={{ fontSize: 11, color: '#475569', padding: '6px 0', borderBottom: i < 2 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>{l}</div>
-              ))}
-            </div>
-          </div>
+          ))}
         </div>
       </div>
-      <style>{`@media (max-width: 900px) { .ca-conserje-grid { grid-template-columns: 1fr !important; } }`}</style>
+      <style>{`@media (max-width:860px){.ca-testi-grid{grid-template-columns:1fr!important}}`}</style>
     </section>
   )
 }
 
-/* ─── Pricing ─── */
+/* ─── PRICING ─── */
+const PLANS = [
+  {name:'Básico',highlight:false,desc:'Ideal para un edificio o condominio pequeño',features:['1 edificio','Hasta 50 departamentos','Control de acceso TCP/IP','Paquetería básica','Portal del residente','Soporte por email'],cta:'Consultar precio'},
+  {name:'Profesional',highlight:true,badge:'Más popular',desc:'Para complejos medianos con mayor exigencia',features:['Hasta 3 edificios','Hasta 200 departamentos','RFID + cámaras integradas','Bot WhatsApp incluido','Push notifications','Panel conserje avanzado','Soporte prioritario'],cta:'Consultar precio'},
+  {name:'Enterprise',highlight:false,desc:'Multi-edificio, multi-ciudad o marca blanca',features:['Edificios ilimitados','Residentes ilimitados','IoT personalizado','API pública + webhooks','SLA 99.9% garantizado','Onboarding dedicado','Soporte 24/7 directo'],cta:'Cotizar'},
+]
+
 function Pricing() {
   return (
-    <section id="precios" style={{ padding: '100px 24px' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
-          <div style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', color: '#10b981', textTransform: 'uppercase', marginBottom: 16, padding: '4px 12px', background: 'rgba(16,185,129,0.08)', borderRadius: 100, border: '1px solid rgba(16,185,129,0.15)' }}>Precios</div>
-          <h2 style={{ fontSize: 40, fontWeight: 800, letterSpacing: '-0.02em', color: '#f1f5f9', lineHeight: 1.2 }}>Planes a tu medida</h2>
-          <p style={{ fontSize: 15, color: '#475569', marginTop: 12 }}>Precios según tu edificio. Contáctanos para una cotización personalizada.</p>
+    <section id="precios" style={{ padding:'100px 28px', borderTop:'1px solid rgba(255,255,255,0.04)' }}>
+      <div style={{ maxWidth:1100, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:60 }}>
+          <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#10b981', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(16,185,129,0.08)', borderRadius:100, border:'1px solid rgba(16,185,129,0.2)' }}>Precios</div>
+          <h2 style={{ fontSize:'clamp(28px,4vw,44px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', lineHeight:1.2 }}>Planes a tu medida</h2>
+          <p style={{ fontSize:15, color:'rgba(255,255,255,0.32)', marginTop:12 }}>Cotización personalizada según el tamaño de tu condominio.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16, alignItems: 'stretch' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, alignItems:'stretch' }} className="ca-plans-grid">
           {PLANS.map(p => (
-            <div key={p.name} style={{ position: 'relative', background: p.highlight ? 'linear-gradient(135deg,rgba(124,58,237,0.08),rgba(79,70,229,0.04))' : '#0d0d1a', border: p.highlight ? '1px solid rgba(124,58,237,0.3)' : '1px solid rgba(255,255,255,0.05)', borderRadius: 16, padding: '28px 24px', display: 'flex', flexDirection: 'column', boxShadow: p.highlight ? '0 0 0 1px rgba(124,58,237,0.1), 0 20px 40px rgba(0,0,0,0.3)' : 'none' }}>
-              {p.badge && (
-                <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', color: 'white', fontSize: 11, fontWeight: 700, padding: '4px 16px', borderRadius: 100, whiteSpace: 'nowrap', boxShadow: '0 4px 12px rgba(124,58,237,0.4)' }}>{p.badge}</div>
+            <div key={p.name} style={{ position:'relative', background:p.highlight?'linear-gradient(160deg,rgba(124,58,237,0.12),rgba(79,70,229,0.06))':'rgba(255,255,255,0.02)', border:p.highlight?'1px solid rgba(124,58,237,0.35)':'1px solid rgba(255,255,255,0.06)', borderRadius:20, padding:'32px 26px', display:'flex', flexDirection:'column', boxShadow:p.highlight?'0 0 0 1px rgba(124,58,237,0.1),0 24px 48px rgba(0,0,0,0.3)':'none' }}>
+              {(p as any).badge && (
+                <div style={{ position:'absolute', top:-14, left:'50%', transform:'translateX(-50%)', background:'linear-gradient(135deg,#7c3aed,#4f46e5)', color:'white', fontSize:11, fontWeight:700, padding:'5px 18px', borderRadius:100, whiteSpace:'nowrap', boxShadow:'0 4px 16px rgba(124,58,237,0.4)' }}>{(p as any).badge}</div>
               )}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 18, fontWeight: 800, color: p.highlight ? '#a78bfa' : '#e2e8f0', marginBottom: 6 }}>{p.name}</div>
-                <div style={{ fontSize: 24, fontWeight: 900, color: '#f1f5f9', marginBottom: 4 }}>Consultar</div>
-                <div style={{ fontSize: 12, color: '#475569' }}>{p.desc}</div>
+              <div style={{ marginBottom:24 }}>
+                <div style={{ fontSize:20, fontWeight:800, color:p.highlight?'#c4b5fd':'#e2e8f0', marginBottom:8 }}>{p.name}</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.32)', lineHeight:1.5 }}>{p.desc}</div>
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, flex: 1, marginBottom: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <ul style={{ listStyle:'none', padding:0, flex:1, marginBottom:28, display:'flex', flexDirection:'column', gap:11 }}>
                 {p.features.map(f => (
-                  <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: '#94a3b8' }}>
-                    <Check />{f}
+                  <li key={f} style={{ display:'flex', alignItems:'flex-start', gap:10, fontSize:13.5, color:'rgba(255,255,255,0.52)', lineHeight:1.4 }}>
+                    <Check color={p.highlight?'#a78bfa':'#10b981'} />{f}
                   </li>
                 ))}
               </ul>
               <a href={WA_URL} target="_blank" rel="noopener noreferrer"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '13px', borderRadius: 10, textDecoration: 'none', fontSize: 13, fontWeight: 700, transition: 'all 0.15s', background: p.highlight ? 'linear-gradient(135deg,#7c3aed,#4f46e5)' : 'transparent', color: p.highlight ? 'white' : '#94a3b8', border: p.highlight ? 'none' : '1px solid rgba(255,255,255,0.1)', boxShadow: p.highlight ? '0 6px 20px rgba(124,58,237,0.35)' : 'none' }}
-                onMouseEnter={e => { if (!p.highlight) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.25)'; e.currentTarget.style.color = '#e2e8f0' }}}
-                onMouseLeave={e => { if (!p.highlight) { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = '#94a3b8' }}}>
+                style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:9, padding:'14px', borderRadius:12, textDecoration:'none', fontSize:14, fontWeight:700, transition:'all 0.2s', background:p.highlight?'linear-gradient(135deg,#7c3aed,#4f46e5)':'transparent', color:p.highlight?'white':'rgba(255,255,255,0.52)', border:p.highlight?'none':'1px solid rgba(255,255,255,0.1)', boxShadow:p.highlight?'0 8px 24px rgba(124,58,237,0.35)':'none' }}
+                onMouseEnter={e => { if(!p.highlight){e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.color='#fff'} else{e.currentTarget.style.transform='translateY(-1px)'} }}
+                onMouseLeave={e => { if(!p.highlight){e.currentTarget.style.borderColor='rgba(255,255,255,0.1)';e.currentTarget.style.color='rgba(255,255,255,0.52)'} e.currentTarget.style.transform='translateY(0)' }}>
                 <WA />{p.cta}
               </a>
             </div>
           ))}
         </div>
-        <p style={{ textAlign: 'center', fontSize: 13, color: '#334155', marginTop: 28 }}>
-          ¿Necesidades especiales?{' '}
-          <a href={WA_URL} target="_blank" rel="noopener noreferrer" style={{ color: '#a78bfa', textDecoration: 'none' }}>Escríbenos por WhatsApp →</a>
-        </p>
       </div>
+      <style>{`@media (max-width:860px){.ca-plans-grid{grid-template-columns:1fr!important}}`}</style>
     </section>
   )
 }
 
-/* ─── Testimonials ─── */
-function Testimonials() {
-  return (
-    <section style={{ padding: '80px 24px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-      <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <h2 style={{ fontSize: 32, fontWeight: 800, letterSpacing: '-0.02em', color: '#f1f5f9' }}>Lo que dicen nuestros clientes</h2>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 16 }}>
-          {TESTIMONIALS.map((t, i) => (
-            <div key={i} style={{ background: '#0d0d1a', border: '1px solid rgba(255,255,255,0.05)', borderRadius: 14, padding: '24px 22px' }}>
-              <div style={{ display: 'flex', gap: 2, marginBottom: 14 }}>
-                {[1,2,3,4,5].map(s => <span key={s} style={{ color: '#fbbf24', fontSize: 13 }}>★</span>)}
-              </div>
-              <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.7, marginBottom: 18, fontStyle: 'italic' }}>"{t.text}"</p>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{t.name}</div>
-                <div style={{ fontSize: 12, color: '#334155', marginTop: 2 }}>{t.role}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  )
-}
-
-/* ─── CTA final ─── */
+/* ─── CTA FINAL ─── */
 function CTA() {
   return (
-    <section id="contacto" style={{ padding: '100px 24px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-      <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 600, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(16,185,129,0.08) 0%,transparent 70%)', pointerEvents: 'none' }} />
-      <div style={{ maxWidth: 600, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        <h2 style={{ fontSize: 44, fontWeight: 900, letterSpacing: '-0.03em', color: '#f1f5f9', lineHeight: 1.1, marginBottom: 18 }}>
+    <section id="contacto" style={{ position:'relative', padding:'120px 28px', overflow:'hidden', textAlign:'center' }}>
+      <div style={{ position:'absolute', inset:0, zIndex:0 }}>
+        <img src="https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=1400&q=80&auto=format&fit=crop" alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center 30%' }} />
+        <div style={{ position:'absolute', inset:0, background:'linear-gradient(135deg,rgba(6,6,10,0.95) 0%,rgba(30,10,60,0.92) 50%,rgba(6,6,10,0.95) 100%)' }} />
+      </div>
+      <div style={{ position:'absolute', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:600, height:400, borderRadius:'50%', background:'radial-gradient(circle,rgba(124,58,237,0.15) 0%,transparent 70%)', pointerEvents:'none', zIndex:1 }} />
+      <div style={{ maxWidth:680, margin:'0 auto', position:'relative', zIndex:2 }}>
+        <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#10b981', textTransform:'uppercase', marginBottom:24, padding:'5px 14px', background:'rgba(16,185,129,0.1)', borderRadius:100, border:'1px solid rgba(16,185,129,0.25)' }}>Comenzar ahora</div>
+        <h2 style={{ fontSize:'clamp(32px,5vw,56px)', fontWeight:900, letterSpacing:'-0.03em', color:'#f8fafc', lineHeight:1.1, marginBottom:20 }}>
           ¿Listo para modernizar<br />
-          <span style={{ background: 'linear-gradient(135deg,#a78bfa,#34d399)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>tu condominio?</span>
+          <span style={{ background:'linear-gradient(135deg,#a78bfa,#34d399)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>tu condominio?</span>
         </h2>
-        <p style={{ fontSize: 16, color: '#475569', marginBottom: 36, lineHeight: 1.6 }}>Cotiza en menos de 5 minutos. Nuestro equipo te responde hoy.</p>
-        <a href={WA_URL} target="_blank" rel="noopener noreferrer"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '16px 36px', borderRadius: 14, background: '#10b981', color: 'white', textDecoration: 'none', fontSize: 16, fontWeight: 700, boxShadow: '0 8px 32px rgba(16,185,129,0.4)', transition: 'all 0.15s' }}
-          onMouseEnter={e => { e.currentTarget.style.background = '#059669'; e.currentTarget.style.transform = 'translateY(-2px)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = '#10b981'; e.currentTarget.style.transform = 'translateY(0)' }}>
-          <WA /> Cotizar por WhatsApp →
-        </a>
+        <p style={{ fontSize:17, color:'rgba(255,255,255,0.42)', marginBottom:40, lineHeight:1.7 }}>Cotiza en minutos. Nuestro equipo te responde hoy con una propuesta personalizada para tu edificio.</p>
+        <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap' }}>
+          <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+            style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'18px 36px', borderRadius:16, background:'linear-gradient(135deg,#25d366,#128c3e)', color:'white', textDecoration:'none', fontSize:16, fontWeight:700, boxShadow:'0 8px 36px rgba(37,211,102,0.4)', transition:'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 44px rgba(37,211,102,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 36px rgba(37,211,102,0.4)' }}>
+            <WA /> Cotizar por WhatsApp →
+          </a>
+          <a href="/login" style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'18px 32px', borderRadius:16, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.72)', textDecoration:'none', fontSize:16, fontWeight:600, backdropFilter:'blur(8px)', transition:'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.1)'; e.currentTarget.style.color='#fff' }}
+            onMouseLeave={e => { e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.color='rgba(255,255,255,0.72)' }}>
+            Ya tengo cuenta →
+          </a>
+        </div>
       </div>
     </section>
   )
 }
 
-/* ─── Footer ─── */
+/* ─── VISIT COUNTER ─── */
+function VisitCounter() {
+  const [count, setCount] = useState<number | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    async function track() {
+      try {
+        // Incrementar y obtener el conteo
+        const res = await fetch('/api/visits', { method: 'POST' })
+        if (!res.ok) throw new Error()
+        const data = await res.json()
+        setCount(data.visits)
+      } catch {
+        // Fallback: solo obtener sin incrementar
+        try {
+          const res = await fetch('/api/visits')
+          if (!res.ok) throw new Error()
+          const data = await res.json()
+          setCount(data.visits)
+        } catch {
+          setError(true)
+        }
+      }
+    }
+    track()
+  }, [])
+
+  if (error || count === null) return null
+
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+      <EyeIcon />
+      <span style={{ fontSize:12, color:'rgba(255,255,255,0.25)' }}>
+        {count.toLocaleString('es-CL')} visitas al sitio
+      </span>
+    </div>
+  )
+}
+
+/* ─── FOOTER ─── */
 function Footer() {
   return (
-    <footer style={{ padding: '32px 24px', borderTop: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 12 }}>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg,#7c3aed,#4f46e5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="2" stroke="white" strokeWidth="2"/><path d="M9 3v18M3 9h18M3 15h18" stroke="white" strokeWidth="1.2"/></svg>
+    <footer style={{ background:'#04040a', borderTop:'1px solid rgba(255,255,255,0.04)', padding:'40px 28px 32px' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:20, marginBottom:28 }}>
+          <ConectaAIWordmark />
+          <div style={{ display:'flex', gap:28 }}>
+            {['Funcionalidades','Precios','Ingresar'].map(l => (
+              <a key={l} href={l==='Ingresar'?'/login':`#${l.toLowerCase()}`} style={{ fontSize:13, color:'rgba(255,255,255,0.22)', textDecoration:'none', transition:'color 0.2s' }}
+                onMouseEnter={e => (e.currentTarget.style.color='rgba(255,255,255,0.6)')} onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.22)')}>{l}</a>
+            ))}
+          </div>
         </div>
-        <span style={{ fontSize: 14, fontWeight: 700, color: '#334155' }}>ConectaAI Condominios</span>
+        <div style={{ borderTop:'1px solid rgba(255,255,255,0.04)', paddingTop:20, display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:12 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:20, flexWrap:'wrap' }}>
+            <p style={{ fontSize:12, color:'rgba(255,255,255,0.14)', margin:0 }}>© {new Date().getFullYear()} ConectaAI · Todos los derechos reservados</p>
+            <VisitCounter />
+          </div>
+          <a href={WA_URL} target="_blank" rel="noopener noreferrer" style={{ display:'flex', alignItems:'center', gap:6, fontSize:12, color:'#25d366', textDecoration:'none', opacity:0.65, transition:'opacity 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.opacity='1')} onMouseLeave={e => (e.currentTarget.style.opacity='0.65')}>
+            <WA /> +56 9 9810 1891
+          </a>
+        </div>
       </div>
-      <p style={{ fontSize: 12, color: '#1e293b' }}>© {new Date().getFullYear()} ConectaAI · Sistema Integral de Condominios · Chile</p>
     </footer>
   )
 }
 
-/* ─── Page ─── */
+/* ─── PAGE ─── */
 export default function Page() {
   return (
-    <div style={{ background: '#07090f', color: '#e2e8f0', fontFamily: "'Inter',-apple-system,sans-serif", minHeight: '100vh' }}>
+    <div style={{ background:'#06060a', color:'#e2e8f0', fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif", minHeight:'100vh' }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        * { box-sizing: border-box; }
-        @media (max-width: 900px) {
-          .ca-hero-grid, .ca-conserje-grid, .ca-features-grid, .ca-plans-grid, .ca-testi-grid { grid-template-columns: 1fr !important; }
-          .ca-stats-grid { grid-template-columns: repeat(2,1fr) !important; }
-          .ca-hero-title { font-size: 38px !important; }
+        *{box-sizing:border-box;margin:0;padding:0}
+        html{scroll-behavior:smooth}
+        @media (max-width:860px) {
+          .ca-steps-grid{grid-template-columns:1fr!important}
+          .ca-step{border-right:none!important;border-bottom:1px solid rgba(255,255,255,0.05);padding:28px 0!important}
+          .ca-stats-grid{grid-template-columns:repeat(2,1fr)!important}
         }
       `}</style>
       <Navbar />
       <Hero />
-      <Stats />
+      <TrustBar />
+      <HowItWorks />
       <Features />
-      <Conserje />
-      <Pricing />
+      <Modules />
+      <Stats />
       <Testimonials />
+      <Pricing />
       <CTA />
       <Footer />
     </div>

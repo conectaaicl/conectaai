@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.core.database import get_db
 from app.models import ResidentePortal
 from datetime import datetime, timedelta
 import bcrypt, jwt, os
 
 router = APIRouter(prefix="/api/portal/auth", tags=["portal_auth"])
-SECRET = os.getenv("SECRET_KEY", "secret")
+SECRET = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET_KEY", "")
 security = HTTPBearer(auto_error=False)
 
 def make_token(rid: int, rut: str, tenant_id: int, depto_id: int) -> str:
@@ -39,6 +40,13 @@ def registro(data: dict, db: Session=Depends(get_db)):
     if len(password) < 6: raise HTTPException(400, "Contraseña mínimo 6 caracteres")
     if db.query(ResidentePortal).filter(ResidentePortal.rut==rut, ResidentePortal.tenant_id==tenant_id).first():
         raise HTTPException(400, "Ya existe una cuenta con ese RUT")
+    # Validate that departamento_id belongs to this tenant (CRIT-04 fix)
+    depto_check = db.execute(
+        text("SELECT id FROM departamentos WHERE id=:did AND tenant_id=:tid"),
+        {"did": depto_id, "tid": tenant_id}
+    ).fetchone()
+    if not depto_check:
+        raise HTTPException(status_code=400, detail="Departamento no pertenece a este condominio")
     pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     r = ResidentePortal(tenant_id=tenant_id, rut=rut, nombre_completo=nombre,
                         email=data.get("email"), telefono=data.get("telefono"),

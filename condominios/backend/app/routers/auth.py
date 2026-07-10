@@ -17,7 +17,7 @@ if not SECRET_KEY:
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 7
 MAIL_API_URL = _os.getenv("MAIL_API_URL", "http://localhost:3004/api/send")
-MAIL_API_KEY = _os.getenv("MAIL_API_KEY", "sk_live_6pplo4eac1j6m26z2j9np")
+MAIL_API_KEY = _os.getenv("MAIL_API_KEY", "")
 APP_URL = _os.getenv("APP_URL", "https://conectaai.cl")
 MAX_FAILED = 5
 LOCKOUT_MIN = 15

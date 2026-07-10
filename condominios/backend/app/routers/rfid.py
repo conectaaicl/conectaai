@@ -66,9 +66,10 @@ def listar_tarjetas(activa: Optional[bool] = None, db: Session = Depends(get_db)
 
 @router.post("/rfid")
 def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
     existing = db.execute(
         text("SELECT id FROM tarjetas_rfid WHERE uid = :uid AND tenant_id = :tid"),
-        {"uid": data.uid.upper().strip(), "tid": data.tenant_id}
+        {"uid": data.uid.upper().strip(), "tid": tenant_id}
     ).fetchone()
     if existing:
         raise HTTPException(status_code=409, detail="UID ya registrado en este sistema")
@@ -79,7 +80,7 @@ def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db), current_us
         "VALUES (:tid, :uid, :tipo, :desc, :nombre, :pid, :cat, :fv, :notas) "
         "RETURNING id, uid, tipo_tarjeta, descripcion, nombre_titular, categoria, activa"
     ), {
-        "tid": data.tenant_id, "uid": data.uid.upper().strip(),
+        "tid": tenant_id, "uid": data.uid.upper().strip(),
         "tipo": data.tipo_tarjeta, "desc": data.descripcion,
         "nombre": data.nombre_titular, "pid": data.persona_id,
         "cat": data.categoria, "fv": data.fecha_vencimiento, "notas": data.notas,
@@ -95,8 +96,9 @@ def actualizar_tarjeta(tarjeta_id: int, data: dict, db: Session = Depends(get_db
     if not updates:
         raise HTTPException(status_code=400, detail="Nada que actualizar")
     sets = ", ".join(f"{k} = :{k}" for k in updates)
-    updates["tid"] = tarjeta_id
-    db.execute(text(f"UPDATE tarjetas_rfid SET {sets}, updated_at = NOW() WHERE id = :tid"), updates)
+    updates["_id"] = tarjeta_id
+    updates["_tenant_id"] = current_user["tenant_id"]  # HIGH-03: filtrar por tenant
+    db.execute(text(f"UPDATE tarjetas_rfid SET {sets}, updated_at = NOW() WHERE id = :_id AND tenant_id = :_tenant_id"), updates)
     db.commit()
     return {"success": True}
 
@@ -104,7 +106,7 @@ def actualizar_tarjeta(tarjeta_id: int, data: dict, db: Session = Depends(get_db
 @router.delete("/rfid/{tarjeta_id}")
 def eliminar_tarjeta(tarjeta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     db.execute(text("DELETE FROM permisos_acceso_rfid WHERE tarjeta_id = :id"), {"id": tarjeta_id})
-    db.execute(text("DELETE FROM tarjetas_rfid WHERE id = :id"), {"id": tarjeta_id})
+    db.execute(text("DELETE FROM tarjetas_rfid WHERE id = :id AND tenant_id = :tid"), {"id": tarjeta_id, "tid": current_user["tenant_id"]})  # HIGH-03
     db.commit()
     return {"success": True}
 
@@ -161,7 +163,7 @@ async def verificar_acceso(data: VerificarAcceso, db: Session = Depends(get_db),
     tarjeta = db.execute(text(
         "SELECT t.id, t.activa, t.fecha_vencimiento, t.nombre_titular, t.categoria "
         "FROM tarjetas_rfid t WHERE t.uid = :uid AND t.tenant_id = :tid"
-    ), {"uid": uid, "tid": data.tenant_id}).fetchone()
+    ), {"uid": uid, "tid": tenant_id}).fetchone()
 
     if not tarjeta:
         db.execute(text(

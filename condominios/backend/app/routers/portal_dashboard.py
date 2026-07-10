@@ -148,14 +148,14 @@ def eliminar_visita(visita_id: int, clave: str, r: ResidentePortal=Depends(get_r
         raise HTTPException(500, f"Error eliminando visita: {str(e)}")
 
 @router.get("/cuenta/pdf")
-async def download_estado_cuenta_pdf(rut: str, db: Session = Depends(get_db)):
-    """Download estado de cuenta as PDF (no auth required for kiosk use)."""
+async def download_estado_cuenta_pdf(db: Session = Depends(get_db),
+                                     r: ResidentePortal = Depends(get_residente)):
+    """Download estado de cuenta as PDF — requires authenticated resident session."""
     from fastapi.responses import StreamingResponse
     from app.services.pdf_service import generar_estado_cuenta_pdf
     from app.models.estructura import Departamento
-    r = db.query(ResidentePortal).filter(ResidentePortal.rut == rut, ResidentePortal.activo == True).first()
-    if not r:
-        raise HTTPException(404, "Residente no encontrado")
+    if not r.activo:
+        raise HTTPException(401, "Cuenta inactiva")
     gastos = []
     if r.departamento_id:
         raw = db.query(GastoComun).filter(

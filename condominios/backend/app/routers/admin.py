@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.core.database import get_db
-from app.routers.auth import get_current_user
+from app.core.dependencies import get_current_user, require_superadmin
 from app.models.tenant import Tenant
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantResponse, TenantConfig
 import shutil
@@ -43,7 +43,8 @@ def listar_tenants(
     skip: int = 0,
     limit: int = 100,
     estado: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_superadmin)
 ):
     """Listar todos los tenants"""
     query = db.query(Tenant)
@@ -54,7 +55,7 @@ def listar_tenants(
     return query.offset(skip).limit(limit).all()
 
 @router.get("/{tenant_id}", response_model=TenantResponse)
-def obtener_tenant(tenant_id: int, db: Session = Depends(get_db)):
+def obtener_tenant(tenant_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_superadmin)):
     """Obtener tenant por ID"""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
@@ -65,7 +66,8 @@ def obtener_tenant(tenant_id: int, db: Session = Depends(get_db)):
 def actualizar_tenant(
     tenant_id: int,
     tenant_update: TenantUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_superadmin)
 ):
     """Actualizar tenant"""
     db_tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
@@ -80,7 +82,7 @@ def actualizar_tenant(
     return db_tenant
 
 @router.delete("/{tenant_id}")
-def eliminar_tenant(tenant_id: int, db: Session = Depends(get_db)):
+def eliminar_tenant(tenant_id: int, db: Session = Depends(get_db), current_user: dict = Depends(require_superadmin)):
     """Eliminar tenant (CUIDADO: Elimina todos sus datos en cascada)"""
     if tenant_id == 1:
         raise HTTPException(status_code=403, detail="No se puede eliminar el tenant demo")
@@ -100,7 +102,8 @@ def eliminar_tenant(tenant_id: int, db: Session = Depends(get_db)):
 async def upload_logo(
     tenant_id: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_superadmin)
 ):
     """Upload logo del tenant"""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
@@ -132,7 +135,8 @@ async def upload_logo(
 async def upload_favicon(
     tenant_id: int,
     file: UploadFile = File(...),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(require_superadmin)
 ):
     """Upload favicon del tenant"""
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
