@@ -4,6 +4,8 @@ from typing import Optional
 MAIL_URL = os.getenv("MAIL_API_URL", "http://mailsaas_web:3000")
 # NOTE: from outside Docker use http://localhost:3004
 MAIL_KEY = os.getenv("MAIL_API_KEY", "sk_live_6pplo4eac1j6m26z2j9np")
+MAIL_FROM = os.getenv("MAIL_FROM", "ConectaAI Condominios <corp@conectaai.cl>")
+MAIL_REPLY_TO = os.getenv("MAIL_REPLY_TO", "corp.conectaai@gmail.com")
 
 async def send_email(to: str, subject: str, html: str, text: str = "") -> bool:
     """Send email via mail.conectaai.cl"""
@@ -11,7 +13,7 @@ async def send_email(to: str, subject: str, html: str, text: str = "") -> bool:
         async with httpx.AsyncClient() as client:
             r = await client.post(
                 f"http://localhost:3004/api/send",  # direct port, not Docker service name
-                json={"to": to, "subject": subject, "html": html, "text": text},
+                json={"to": to, "subject": subject, "html": html, "text": text, "from": MAIL_FROM, "reply_to": MAIL_REPLY_TO},
                 headers={"Authorization": f"Bearer {MAIL_KEY}"},
                 timeout=10
             )

@@ -96,6 +96,8 @@ async def _send_welcome_email(
                 headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"},
                 json={
                     "to": user_email,
+                    "from": "corp@conectaai.cl",
+                    "reply_to": "corp.conectaai@gmail.com",
                     "subject": "Bienvenido a ConectaAI - " + tenant_nombre,
                     "html": html,
                     "text": "Bienvenido " + user_nombre + ". Email: " + user_email + " / Contrasena: " + password + ". Accede en: " + APP_URL + "/login"

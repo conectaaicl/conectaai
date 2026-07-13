@@ -139,6 +139,9 @@ app.include_router(scanner_router.router)
 from app.routers import biometrico as biometrico_router
 app.include_router(biometrico_router.router)
 
+from app.routers import facial_web as facial_web_router
+app.include_router(facial_web_router.router)
+
 from app.routers import notificaciones_auto
 from app.routers.mail_config import router as mail_config_router
 from app.routers.wa_platform import router as wa_router
