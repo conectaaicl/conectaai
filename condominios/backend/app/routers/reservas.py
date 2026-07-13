@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.reserva import EspacioComun, Reserva
@@ -40,12 +41,43 @@ class EstadoUpdate(BaseModel):
     estado: str  # confirmada | cancelada | pendiente
 
 
+# ─── Helpers de aislamiento por tenant ──────────────────────────────────────
+
+def _condominio_del_tenant(db: Session, condominio_id: int, tenant_id: int) -> bool:
+    row = db.execute(
+        text("SELECT id FROM condominios WHERE id=:cid AND tenant_id=:tid"),
+        {"cid": condominio_id, "tid": tenant_id},
+    ).fetchone()
+    return row is not None
+
+
+def _espacio_del_tenant(db: Session, espacio_id: int, tenant_id: int):
+    """Devuelve la fila del espacio si pertenece a un condominio de este tenant, si no None."""
+    return db.execute(text(
+        "SELECT ec.id, ec.condominio_id FROM espacios_comunes ec "
+        "JOIN condominios c ON c.id = ec.condominio_id "
+        "WHERE ec.id=:eid AND c.tenant_id=:tid"
+    ), {"eid": espacio_id, "tid": tenant_id}).fetchone()
+
+
+def _reserva_del_tenant(db: Session, reserva_id: int, tenant_id: int):
+    """Devuelve la fila de la reserva si su espacio pertenece a un condominio de este tenant, si no None."""
+    return db.execute(text(
+        "SELECT r.* FROM reservas r "
+        "JOIN espacios_comunes ec ON ec.id = r.espacio_id "
+        "JOIN condominios c ON c.id = ec.condominio_id "
+        "WHERE r.id=:rid AND c.tenant_id=:tid"
+    ), {"rid": reserva_id, "tid": tenant_id}).fetchone()
+
+
 # ─── Espacios ───────────────────────────────────────────────────────────────
 
 @router.get("/espacios")
 def list_espacios(condominio_id: int = Query(...), current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """List all common spaces for a condominio."""
     tenant_id = current_user["tenant_id"]
+    if not _condominio_del_tenant(db, condominio_id, tenant_id):
+        raise HTTPException(status_code=404, detail="Condominio no encontrado")
     espacios = (
         db.query(EspacioComun)
         .filter(EspacioComun.condominio_id == condominio_id)
@@ -72,6 +104,8 @@ def list_espacios(condominio_id: int = Query(...), current_user: dict = Depends(
 def create_espacio(body: EspacioCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a new common space."""
     tenant_id = current_user["tenant_id"]
+    if not _condominio_del_tenant(db, body.condominio_id, tenant_id):
+        raise HTTPException(status_code=404, detail="Condominio no encontrado")
     espacio = EspacioComun(**body.dict())
     db.add(espacio)
     db.commit()
@@ -90,22 +124,22 @@ def list_reservas(
 ):
     """List reservations for a space, optionally filtered by day."""
     tenant_id = current_user["tenant_id"]
-    from sqlalchemy import text as _t
     sql = ("SELECT r.id,r.espacio_id,r.departamento_id,r.persona_id,"
            "r.fecha_inicio::text,r.fecha_fin::text,r.estado,"
            "r.monto_cobrado::float,r.notas,r.created_at::text,"
            "ec.nombre as espacio_nombre,"
            "p.nombre_completo as persona_nombre,p.rut as persona_rut,p.telefono as persona_telefono "
            "FROM reservas r "
-           "LEFT JOIN espacios_comunes ec ON ec.id=r.espacio_id "
+           "JOIN espacios_comunes ec ON ec.id=r.espacio_id "
+           "JOIN condominios cnd ON cnd.id=ec.condominio_id "
            "LEFT JOIN personas p ON p.id=r.persona_id "
-           "WHERE r.espacio_id=:eid")
-    params = {"eid": espacio_id}
+           "WHERE r.espacio_id=:eid AND cnd.tenant_id=:tid")
+    params = {"eid": espacio_id, "tid": tenant_id}
     if fecha:
         sql += " AND DATE(r.fecha_inicio)=:fecha"
         params["fecha"] = fecha
     sql += " ORDER BY r.fecha_inicio DESC"
-    rows = db.execute(_t(sql), params).fetchall()
+    rows = db.execute(text(sql), params).fetchall()
     return [dict(r._mapping) for r in rows]
 
 
@@ -113,6 +147,8 @@ def list_reservas(
 def create_reserva(body: ReservaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a reservation; checks for time conflicts first."""
     tenant_id = current_user["tenant_id"]
+    if not _espacio_del_tenant(db, body.espacio_id, tenant_id):
+        raise HTTPException(status_code=404, detail="Espacio no encontrado")
     if body.fecha_fin <= body.fecha_inicio:
         raise HTTPException(status_code=400, detail="fecha_fin debe ser posterior a fecha_inicio")
 
@@ -145,12 +181,12 @@ def create_reserva(body: ReservaCreate, current_user: dict = Depends(get_current
 def update_estado(reserva_id: int, body: EstadoUpdate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Confirm or cancel a reservation."""
     tenant_id = current_user["tenant_id"]
-    reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
-    if not reserva:
+    if not _reserva_del_tenant(db, reserva_id, tenant_id):
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
     allowed = {"pendiente", "confirmada", "cancelada", "rechazada", "aprobada"}
     if body.estado not in allowed:
         raise HTTPException(status_code=400, detail=f"Estado debe ser uno de: {allowed}")
+    reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
     reserva.estado = body.estado
     db.commit()
     return {"id": reserva.id, "estado": reserva.estado}
@@ -160,9 +196,9 @@ def update_estado(reserva_id: int, body: EstadoUpdate, current_user: dict = Depe
 def delete_reserva(reserva_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Delete a reservation."""
     tenant_id = current_user["tenant_id"]
-    reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
-    if not reserva:
+    if not _reserva_del_tenant(db, reserva_id, tenant_id):
         raise HTTPException(status_code=404, detail="Reserva no encontrada")
+    reserva = db.query(Reserva).filter(Reserva.id == reserva_id).first()
     db.delete(reserva)
     db.commit()
 
@@ -170,9 +206,9 @@ def delete_reserva(reserva_id: int, current_user: dict = Depends(get_current_use
 @router.delete("/espacios/{espacio_id}")
 def delete_espacio(espacio_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = current_user["tenant_id"]
-    espacio = db.query(EspacioComun).filter(EspacioComun.id == espacio_id).first()
-    if not espacio:
+    if not _espacio_del_tenant(db, espacio_id, tenant_id):
         raise HTTPException(404, "Espacio no encontrado")
+    espacio = db.query(EspacioComun).filter(EspacioComun.id == espacio_id).first()
     db.delete(espacio)
     db.commit()
     return {"ok": True}
@@ -182,13 +218,13 @@ def delete_espacio(espacio_id: int, current_user: dict = Depends(get_current_use
 def enviar_confirmacion_reserva(reserva_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = current_user["tenant_id"]
     import os as _os, httpx as _hx
-    from sqlalchemy import text as _t
-    row = db.execute(_t(
+    row = db.execute(text(
         "SELECT r.id,r.estado,r.fecha_inicio::text,r.fecha_fin::text,r.monto_cobrado::float,r.notas,"
         "ec.nombre as espacio_nombre,p.nombre_completo as persona_nombre,p.email as persona_email "
-        "FROM reservas r LEFT JOIN espacios_comunes ec ON ec.id=r.espacio_id "
-        "LEFT JOIN personas p ON p.id=r.persona_id WHERE r.id=:rid"
-    ), {"rid": reserva_id}).fetchone()
+        "FROM reservas r JOIN espacios_comunes ec ON ec.id=r.espacio_id "
+        "JOIN condominios cnd ON cnd.id=ec.condominio_id "
+        "LEFT JOIN personas p ON p.id=r.persona_id WHERE r.id=:rid AND cnd.tenant_id=:tid"
+    ), {"rid": reserva_id, "tid": tenant_id}).fetchone()
     if not row:
         raise HTTPException(404, "Reserva no encontrada")
     d = dict(row._mapping)
@@ -205,7 +241,7 @@ def enviar_confirmacion_reserva(reserva_id: int, current_user: dict = Depends(ge
     )
     try:
         _hx.post(_os.getenv("MAIL_API_URL", "http://localhost:3004/api/send"),
-            json={"to": d["persona_email"], "from": "condominios@conectaai.cl",
+            json={"to": d["persona_email"], "from": "corp@conectaai.cl", "reply_to": "corp.conectaai@gmail.com",
                   "subject": f"Confirmación Reserva - {d['espacio_nombre']}", "html": html},
             headers={"Authorization": "Bearer " + _os.getenv("MAIL_API_KEY", "")}, timeout=5)
     except Exception as e:
@@ -217,7 +253,7 @@ def enviar_confirmacion_reserva(reserva_id: int, current_user: dict = Depends(ge
 def aprobar_reserva(reserva_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Admin approves a conserje/residente reservation request."""
     tenant_id = current_user["tenant_id"]
-    row = db.execute(text("SELECT * FROM reservas WHERE id=:id"), {"id": reserva_id}).fetchone()
+    row = _reserva_del_tenant(db, reserva_id, tenant_id)
     if not row:
         raise HTTPException(404, "Reserva no encontrada")
     db.execute(text("UPDATE reservas SET estado='confirmada' WHERE id=:id"), {"id": reserva_id})
@@ -234,15 +270,15 @@ def aprobar_reserva(reserva_id: int, current_user: dict = Depends(get_current_us
     # Send email notification if persona has email
     if d.get("persona_id"):
         try:
-            p = db.execute(text("SELECT email, nombre_completo FROM personas WHERE id=:pid"),
-                          {"pid": d["persona_id"]}).fetchone()
+            p = db.execute(text("SELECT email, nombre_completo FROM personas WHERE id=:pid AND tenant_id=:tid"),
+                          {"pid": d["persona_id"], "tid": tenant_id}).fetchone()
             if p and p._mapping.get("email"):
                 import httpx, os
                 mail_url = os.getenv("MAIL_API_URL", "")
                 mail_key = os.getenv("MAIL_API_KEY", "")
                 if mail_url:
                     httpx.post(mail_url,
-                        json={"to": p._mapping["email"], "from": "no-reply@conectaai.cl",
+                        json={"to": p._mapping["email"], "from": "corp@conectaai.cl", "reply_to": "corp.conectaai@gmail.com",
                               "subject": "Reserva aprobada",
                               "html": "<p>Hola <b>" + (p._mapping.get("nombre_completo") or "") + "</b>, tu reserva ha sido <b style=\'color:green\'>aprobada</b>.</p>"},
                         headers={"Authorization": "Bearer " + mail_key}, timeout=5)
@@ -254,7 +290,7 @@ def aprobar_reserva(reserva_id: int, current_user: dict = Depends(get_current_us
 def rechazar_reserva(reserva_id: int, motivo: str = "", current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Admin rejects a reservation request."""
     tenant_id = current_user["tenant_id"]
-    row = db.execute(text("SELECT * FROM reservas WHERE id=:id"), {"id": reserva_id}).fetchone()
+    row = _reserva_del_tenant(db, reserva_id, tenant_id)
     if not row:
         raise HTTPException(404, "Reserva no encontrada")
     db.execute(text("UPDATE reservas SET estado='rechazada' WHERE id=:id"), {"id": reserva_id})
@@ -269,15 +305,15 @@ def rechazar_reserva(reserva_id: int, motivo: str = "", current_user: dict = Dep
     except Exception: db.rollback()
     if d.get("persona_id"):
         try:
-            p = db.execute(text("SELECT email, nombre_completo FROM personas WHERE id=:pid"),
-                          {"pid": d["persona_id"]}).fetchone()
+            p = db.execute(text("SELECT email, nombre_completo FROM personas WHERE id=:pid AND tenant_id=:tid"),
+                          {"pid": d["persona_id"], "tid": tenant_id}).fetchone()
             if p and p._mapping.get("email"):
                 import httpx, os
                 mail_url = os.getenv("MAIL_API_URL", "")
                 mail_key = os.getenv("MAIL_API_KEY", "")
                 if mail_url:
                     httpx.post(mail_url,
-                        json={"to": p._mapping["email"], "from": "no-reply@conectaai.cl",
+                        json={"to": p._mapping["email"], "from": "corp@conectaai.cl", "reply_to": "corp.conectaai@gmail.com",
                               "subject": "Reserva rechazada",
                               "html": "<p>Hola, tu reserva fue <b style=\'color:red\'>rechazada</b>" + (". Motivo: " + motivo if motivo else "") + ".</p>"},
                         headers={"Authorization": "Bearer " + mail_key}, timeout=5)

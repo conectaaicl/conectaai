@@ -25,15 +25,21 @@ def _log(db, tenant_id, accion, descripcion, entidad_id=None):
         db.rollback()
 
 
+def _persona_del_tenant(db: Session, persona_id: int, tenant_id: int):
+    """Devuelve la persona SOLO si pertenece a este tenant -- nunca confiar en persona_id a secas."""
+    return db.query(Persona).filter(Persona.id == persona_id, Persona.tenant_id == tenant_id).first()
+
+
 @router.post("", response_model=PersonaResponse)
 def crear_persona(persona: PersonaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    existing = db.query(Persona).filter(Persona.rut == persona.rut).first()
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
+
+    existing = db.query(Persona).filter(Persona.rut == persona.rut, Persona.tenant_id == tenant_id).first()
     if existing:
         raise HTTPException(status_code=400, detail="RUT ya existe")
 
     persona_data = persona.model_dump()
-    if not persona_data.get("tenant_id"):
-        persona_data["tenant_id"] = 1
+    persona_data["tenant_id"] = tenant_id  # ignora cualquier tenant_id que venga en el body
 
     datos_contacto = persona_data.get("datos_contacto", {})
     if datos_contacto.get("torre") and datos_contacto.get("piso") and datos_contacto.get("departamento"):
@@ -43,14 +49,19 @@ def crear_persona(persona: PersonaCreate, db: Session = Depends(get_db), current
         depto_numero = datos_contacto["departamento"]
         condominio_id = datos_contacto.get("condominio_id")
         if condominio_id:
-            torre = db.query(Torre).filter(Torre.condominio_id == int(condominio_id), Torre.nombre == torre_nombre).first()
-            if torre:
-                piso = db.query(Piso).filter(Piso.torre_id == torre.id, Piso.numero == piso_numero).first()
-                if piso:
-                    depto_existente = db.query(Departamento).filter(Departamento.piso_id == piso.id, Departamento.numero == depto_numero).first()
-                    if not depto_existente:
-                        db.add(Departamento(piso_id=piso.id, tenant_id=persona_data["tenant_id"], numero=depto_numero, estado="ocupado"))
-                        db.commit()
+            condominio_ok = db.execute(
+                text("SELECT id FROM condominios WHERE id=:cid AND tenant_id=:tid"),
+                {"cid": int(condominio_id), "tid": tenant_id},
+            ).fetchone()
+            if condominio_ok:
+                torre = db.query(Torre).filter(Torre.condominio_id == int(condominio_id), Torre.nombre == torre_nombre).first()
+                if torre:
+                    piso = db.query(Piso).filter(Piso.torre_id == torre.id, Piso.numero == piso_numero).first()
+                    if piso:
+                        depto_existente = db.query(Departamento).filter(Departamento.piso_id == piso.id, Departamento.numero == depto_numero).first()
+                        if not depto_existente:
+                            db.add(Departamento(piso_id=piso.id, tenant_id=tenant_id, numero=depto_numero, estado="ocupado"))
+                            db.commit()
 
     db_persona = Persona(**persona_data)
     db.add(db_persona)
@@ -81,7 +92,7 @@ def listar_personas(
 
 @router.get("/{persona_id}", response_model=PersonaResponse)
 def obtener_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, current_user["tenant_id"])
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
     return persona
@@ -89,10 +100,11 @@ def obtener_persona(persona_id: int, db: Session = Depends(get_db), current_user
 
 @router.put("/{persona_id}", response_model=PersonaResponse)
 def actualizar_persona(persona_id: int, persona_update: PersonaUpdate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, current_user["tenant_id"])
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
     update_data = persona_update.model_dump(exclude_unset=True)
+    update_data.pop("tenant_id", None)  # el tenant de una persona no se cambia desde este endpoint
     for field, value in update_data.items():
         setattr(persona, field, value)
     db.commit()
@@ -104,7 +116,7 @@ def actualizar_persona(persona_id: int, persona_update: PersonaUpdate, db: Sessi
 
 @router.delete("/{persona_id}")
 def eliminar_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, current_user["tenant_id"])
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
     nombre = persona.nombre_completo
@@ -118,6 +130,8 @@ def eliminar_persona(persona_id: int, db: Session = Depends(get_db), current_use
 @router.get("/{persona_id}/historial")
 def historial_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    if not _persona_del_tenant(db, persona_id, tenant_id):
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
     from sqlalchemy import desc
     items = (
         db.query(HistorialEvento)
@@ -136,6 +150,8 @@ def historial_persona(persona_id: int, db: Session = Depends(get_db), current_us
 @router.get("/{persona_id}/acceso")
 def get_acceso_persona(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    if not _persona_del_tenant(db, persona_id, tenant_id):
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
     rows = db.execute(text(
         "SELECT t.id, t.uid, t.tipo_tarjeta, t.nombre_titular, t.categoria, "
         "t.activa, t.created_at::text, t.fecha_vencimiento::text "
@@ -148,15 +164,14 @@ def get_acceso_persona(persona_id: int, db: Session = Depends(get_db), current_u
 
 @router.post("/{persona_id}/acceso")
 def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
+    persona = _persona_del_tenant(db, persona_id, tenant_id)
     if not persona:
         raise HTTPException(404, "Persona no encontrada")
 
     uid = data.get("uid", "").upper().strip()
     if not uid:
         raise HTTPException(400, "UID de tarjeta requerido")
-
-    tenant_id = data.get("tenant_id", persona.tenant_id)
 
     cat_map = {
         "propietario": "propietario", "residente": "residente", "arrendatario": "residente",
@@ -188,6 +203,12 @@ def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_
 
     puertas = data.get("puertas", [])
     for puerta_id in puertas:
+        puerta_ok = db.execute(
+            text("SELECT id FROM puertas WHERE id=:pid AND tenant_id=:tid"),
+            {"pid": puerta_id, "tid": tenant_id},
+        ).fetchone()
+        if not puerta_ok:
+            continue
         try:
             db.execute(text(
                 "INSERT INTO permisos_acceso_rfid (tarjeta_id, puerta_id, habilitado) "
@@ -207,20 +228,21 @@ def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_
 @router.delete("/{persona_id}/acceso/{tarjeta_id}")
 def eliminar_acceso_persona(persona_id: int, tarjeta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, tenant_id)
+    if not persona:
+        raise HTTPException(404, "Persona no encontrada")
     db.execute(text(
-        "UPDATE tarjetas_rfid SET activa = false, updated_at = NOW() WHERE id = :id AND persona_id = :pid"
-    ), {"id": tarjeta_id, "pid": persona_id})
+        "UPDATE tarjetas_rfid SET activa = false, updated_at = NOW() WHERE id = :id AND persona_id = :pid AND tenant_id = :tid"
+    ), {"id": tarjeta_id, "pid": persona_id, "tid": tenant_id})
     db.commit()
-    if persona:
-        _log(db, persona.tenant_id, "acceso_revocado",
-             "Tarjeta RFID desactivada para " + persona.nombre_completo, persona_id)
+    _log(db, persona.tenant_id, "acceso_revocado",
+         "Tarjeta RFID desactivada para " + persona.nombre_completo, persona_id)
     return {"ok": True}
 
 
 @router.post("/{persona_id}/roles")
 def agregar_rol(persona_id: int, rol: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, current_user["tenant_id"])
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
     if rol not in persona.roles:
@@ -232,7 +254,7 @@ def agregar_rol(persona_id: int, rol: str, db: Session = Depends(get_db), curren
 
 @router.delete("/{persona_id}/roles/{rol}")
 def quitar_rol(persona_id: int, rol: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, current_user["tenant_id"])
     if not persona:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
     if rol in persona.roles:
@@ -245,7 +267,7 @@ def quitar_rol(persona_id: int, rol: str, db: Session = Depends(get_db), current
 @router.get("/{persona_id}/portal-cuenta")
 def get_portal_cuenta(persona_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    persona = _persona_del_tenant(db, persona_id, tenant_id)
     if not persona:
         raise HTTPException(404, "Persona no encontrada")
     row = db.execute(text(
@@ -261,13 +283,13 @@ def get_portal_cuenta(persona_id: int, db: Session = Depends(get_db), current_us
 
 @router.post("/{persona_id}/portal-cuenta")
 def crear_portal_cuenta(persona_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    persona = db.query(Persona).filter(Persona.id == persona_id).first()
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
+    persona = _persona_del_tenant(db, persona_id, tenant_id)
     if not persona:
         raise HTTPException(404, "Persona no encontrada")
     if not persona.rut:
         raise HTTPException(400, "El residente no tiene RUT registrado")
 
-    tenant_id = data.get("tenant_id", persona.tenant_id)
     depto_id = data.get("departamento_id")
     password = data.get("password", "")
     if not password or len(password) < 6:
@@ -284,12 +306,12 @@ def crear_portal_cuenta(persona_id: int, data: dict, db: Session = Depends(get_d
         db.execute(text(
             "UPDATE residentes_portal SET nombre_completo = :nombre, email = :email, "
             "password_hash = :pw, departamento_id = COALESCE(:did, departamento_id), "
-            "activo = true, failed_attempts = 0, locked_until = NULL WHERE id = :id"
+            "activo = true, failed_attempts = 0, locked_until = NULL WHERE id = :id AND tenant_id = :tid"
         ), {"nombre": persona.nombre_completo, "email": persona.email,
-             "pw": pw_hash, "did": depto_id, "id": existing._mapping["id"]})
+             "pw": pw_hash, "did": depto_id, "id": existing._mapping["id"], "tid": tenant_id})
         db.commit()
         _log(db, tenant_id, "portal_actualizado", "Cuenta portal actualizada para " + persona.nombre_completo, persona_id)
-        return {"ok": True, "accion": "actualizada", "rut": persona.rut, "password": password}
+        return {"ok": True, "accion": "actualizada", "rut": persona.rut}
     else:
         db.execute(text(
             "INSERT INTO residentes_portal (tenant_id, rut, nombre_completo, email, telefono, password_hash, departamento_id, activo) "
@@ -298,4 +320,4 @@ def crear_portal_cuenta(persona_id: int, data: dict, db: Session = Depends(get_d
              "email": persona.email, "tel": persona.telefono, "pw": pw_hash, "did": depto_id})
         db.commit()
         _log(db, tenant_id, "portal_creado", "Cuenta portal creada para " + persona.nombre_completo, persona_id)
-        return {"ok": True, "accion": "creada", "rut": persona.rut, "password": password}
+        return {"ok": True, "accion": "creada", "rut": persona.rut}

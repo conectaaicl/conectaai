@@ -144,7 +144,7 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
             SELECT r.id, r.tipo_evento, r.metodo, r.uid_tarjeta, r.exitoso, r.created_at,
                    COALESCE(u.nombre_completo, r.uid_tarjeta, 'Tarjeta') as persona,
                    COALESCE(p.nombre, 'Puerta') as ubicacion,
-                   COALESCE(p.zona, p.ubicacion, '') as zona
+                   COALESCE(p.ubicacion, '') as zona
             FROM registros_acceso_puertas r
             LEFT JOIN usuarios u ON u.id = r.usuario_id
             LEFT JOIN puertas p ON p.id = r.puerta_id

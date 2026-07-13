@@ -41,7 +41,6 @@ class PermisoCreate(BaseModel):
 class VerificarAcceso(BaseModel):
     uid: str
     puerta_id: int
-    tenant_id: int
 
 
 @router.get("/rfid")
@@ -158,6 +157,7 @@ def revocar_permiso(tarjeta_id: int, puerta_id: int, db: Session = Depends(get_d
 @router.post("/rfid/verificar")
 async def verificar_acceso(data: VerificarAcceso, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Called by RFID reader hardware to check if UID has access to a door."""
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
     uid = data.uid.upper().strip()
 
     tarjeta = db.execute(text(
