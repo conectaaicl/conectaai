@@ -95,6 +95,8 @@ async def login(
         raise HTTPException(status_code=401, detail=f"Credenciales incorrectas. {remaining} intento(s) restante(s).")
 
     db.execute(text("UPDATE usuarios SET failed_attempts=0, locked_until=NULL, last_login=NOW() WHERE id=:id"), {"id": uid})
+    if rol == "conserje":
+        db.execute(text("UPDATE usuarios SET en_turno=true, turno_desde=NOW() WHERE id=:id"), {"id": uid})
     db.commit()
 
     token = create_token({"sub": str(uid), "email": uemail, "rol": rol, "tenant_id": tid})
@@ -104,7 +106,16 @@ async def login(
 
 
 @router.post("/logout")
-async def logout(response: Response):
+async def logout(request: Request, response: Response, db: Session = Depends(get_db)):
+    token = request.cookies.get("session")
+    if token:
+        try:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            if payload.get("rol") == "conserje":
+                db.execute(text("UPDATE usuarios SET en_turno=false WHERE id=:id"), {"id": int(payload["sub"])})
+                db.commit()
+        except Exception:
+            pass
     response.delete_cookie("session", path="/")
     return {"success": True}
 
@@ -130,7 +141,8 @@ async def get_me(request: Request, db: Session = Depends(get_db)):
 
     row = db.execute(text("""
         SELECT u.id, u.email, u.nombre_completo, u.rol, u.activo, u.tenant_id, u.last_login,
-               t.nombre, t.plan, t.logo_url, t.color_primario, t.color_secundario, t.telefono
+               t.nombre, t.plan, t.logo_url, t.color_primario, t.color_secundario, t.telefono,
+               u.en_turno, u.turno_desde
         FROM usuarios u JOIN tenants t ON t.id=u.tenant_id
         WHERE u.id=:uid AND u.activo=true
     """), {"uid": uid}).fetchone()
@@ -145,6 +157,8 @@ async def get_me(request: Request, db: Session = Depends(get_db)):
         "tenant": {"nombre": row[7], "plan": row[8], "logo_url": row[9],
                    "color_primario": row[10], "color_secundario": row[11],
                    "telefono": row[12], "modulos_activos": []},
+        "en_turno": bool(row[13]) if row[13] is not None else False,
+        "turno_desde": row[14].isoformat() if row[14] else None,
     }
 
 
@@ -228,3 +242,25 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> dict:
         "id": row[0], "email": row[1], "nombre_completo": row[2],
         "role": row[3], "rol": row[3], "activo": row[4], "tenant_id": row[5],
     }
+
+
+@router.get("/conserjes-turno")
+def conserjes_turno(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    Lista los usuarios con rol conserje del tenant actual y si estan
+    actualmente en turno (con sesion iniciada y sin cerrarla). Usado por
+    el panel del administrador y por la central de conserjeria.
+    """
+    rows = db.execute(text("""
+        SELECT id, nombre_completo, email, en_turno, turno_desde
+        FROM usuarios
+        WHERE tenant_id = :tid AND rol = 'conserje' AND activo = true
+        ORDER BY en_turno DESC, nombre_completo
+    """), {"tid": current_user["tenant_id"]}).fetchall()
+    return [
+        {
+            "id": r[0], "nombre_completo": r[1], "email": r[2],
+            "en_turno": bool(r[3]), "turno_desde": r[4].isoformat() if r[4] else None,
+        }
+        for r in rows
+    ]

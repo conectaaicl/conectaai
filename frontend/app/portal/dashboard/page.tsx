@@ -120,8 +120,12 @@ export default function PortalDashboard() {
           <div>
             <p className="text-brand-200 text-sm">Bienvenido/a</p>
             <h1 className="text-xl font-bold">{data.residente?.nombre?.split(' ')[0]}</h1>
-            {data.residente?.departamento_id && (
-              <p className="text-brand-200 text-xs mt-0.5">Depto {data.residente.departamento_id}</p>
+            {(data.residente?.condominio || data.residente?.depto_numero) && (
+              <p className="text-brand-200 text-xs mt-0.5">
+                {data.residente?.condominio}
+                {data.residente?.torre ? ' - Torre ' + data.residente.torre : ''}
+                {data.residente?.depto_numero ? ' - Depto ' + data.residente.depto_numero : ''}
+              </p>
             )}
           </div>
           <button onClick={logout} className="flex items-center gap-1.5 text-brand-200 hover:text-white text-sm transition-colors">

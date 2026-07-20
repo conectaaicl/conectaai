@@ -8,6 +8,7 @@ interface Camara { id: number; nombre: string; ip: string; activa?: boolean }
 interface Visita { id: number; nombre_visitante: string; depto_destino?: string; estado: string; creado_en: string }
 interface Paquete { id: number; descripcion?: string; depto?: string; residente_nombre?: string; estado: string; creado_en: string; carrier?: string }
 interface EventoAcceso { id: number | string; nombre: string; accion: string; puerta?: string; timestamp: string; fuente: string }
+interface ConserjeTurno { id: number; nombre_completo: string; en_turno: boolean; turno_desde: string | null }
 
 const DOOR_STATE: Record<string, { label: string; dot: string; bg: string; text: string }> = {
   libre_paso: { label: 'Paso Libre', dot: 'bg-blue-400 animate-pulse', bg: 'rgba(59,130,246,0.1)', text: '#60a5fa' },
@@ -35,6 +36,7 @@ export default function DashboardHome() {
   const [visitas, setVisitas] = useState<Visita[]>([])
   const [paquetes, setPaquetes] = useState<Paquete[]>([])
   const [eventos, setEventos] = useState<EventoAcceso[]>([])
+  const [conserjesTurno, setConserjesTurno] = useState<ConserjeTurno[]>([])
   const [condCount, setCondCount] = useState(0)
   const [deptCount, setDeptCount] = useState(0)
   const [personaCount, setPersonaCount] = useState(0)
@@ -49,7 +51,7 @@ export default function DashboardHome() {
     if (!tenantId) return
     const tid = String(tenantId)
     try {
-      const [cRes, dRes, pRes, camRes, vRes, pqRes, evRes] = await Promise.allSettled([
+      const [cRes, dRes, pRes, camRes, vRes, pqRes, evRes, ctRes] = await Promise.allSettled([
         fetch('/api/condominios?tenant_id=' + tid),
         fetch('/api/personas?tenant_id=' + tid + '&limit=1'),
         fetch('/api/condominios/puertas?tenant_id=' + tid),
@@ -57,6 +59,7 @@ export default function DashboardHome() {
         fetch('/api/visitas?tenant_id=' + tid + '&limit=6'),
         fetch('/api/paquetes?tenant_id=' + tid + '&limit=6'),
         fetch('/api/accesos/live?tenant_id=' + tid + '&limit=10'),
+        fetch('/api/auth/conserjes-turno', { credentials: 'include' }),
       ])
       if (cRes.status === 'fulfilled' && cRes.value.ok) {
         const cd = await cRes.value.json()
@@ -84,6 +87,10 @@ export default function DashboardHome() {
       if (evRes.status === 'fulfilled' && evRes.value.ok) {
         const ed = await evRes.value.json()
         setEventos(Array.isArray(ed) ? ed : [])
+      }
+      if (ctRes.status === 'fulfilled' && ctRes.value.ok) {
+        const ctd = await ctRes.value.json()
+        setConserjesTurno(Array.isArray(ctd) ? ctd : [])
       }
     } finally { setLoading(false) }
   }, [tenantId])
@@ -332,6 +339,29 @@ export default function DashboardHome() {
                   </div>
                 ))}
                 {camaras.length > 4 && <p className="text-xs text-slate-600">+{camaras.length - 4} mas...</p>}
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl p-5" style={cardBg2}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-[1.5px]">Conserjes en turno</h2>
+              <Link href="/dashboard/condominios/conserjes" className="text-xs text-indigo-400 hover:text-indigo-300">Ver</Link>
+            </div>
+            {conserjesTurno.filter(c => c.en_turno).length === 0 ? (
+              <p className="text-slate-600 text-xs">Ningun conserje con sesion activa</p>
+            ) : (
+              <div className="space-y-2.5">
+                {conserjesTurno.filter(c => c.en_turno).map(c => (
+                  <div key={c.id} className="flex items-center gap-2.5">
+                    <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse shrink-0" />
+                    <span className="text-xs text-slate-200 truncate flex-1">{c.nombre_completo}</span>
+                    {c.turno_desde && (
+                      <span className="text-xs text-slate-600 shrink-0">
+                        desde {new Date(c.turno_desde).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    )}
+                  </div>
+                ))}
               </div>
             )}
           </div>

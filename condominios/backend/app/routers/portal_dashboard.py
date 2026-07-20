@@ -32,12 +32,30 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
     }
     avisos_total = db.query(Aviso).filter(Aviso.tenant_id==r.tenant_id).count()
     leidos = db.query(AvisoLectura).filter(AvisoLectura.residente_rut==r.rut).count()
+
+    condo_info = {"condominio": None, "torre": None, "depto_numero": None}
+    if r.departamento_id:
+        from sqlalchemy import text as _text
+        row = db.execute(_text("""
+            SELECT c.nombre AS condominio, t.nombre AS torre, d.numero AS depto_numero
+            FROM departamentos d
+            JOIN pisos p ON p.id = d.piso_id
+            JOIN torres t ON t.id = p.torre_id
+            JOIN condominios c ON c.id = t.condominio_id
+            WHERE d.id = :did
+        """), {"did": r.departamento_id}).fetchone()
+        if row:
+            condo_info = {"condominio": row[0], "torre": row[1], "depto_numero": row[2]}
+
     return {
         "semaforo": semaforo, "semaforo_msg": msgs[semaforo],
         "meses_vencidos": vencidos, "monto_pendiente": monto,
         "gastos_pendientes": len(gastos),
         "avisos_no_leidos": max(0, avisos_total - leidos),
-        "residente": {"nombre": r.nombre_completo, "rut": r.rut, "departamento_id": r.departamento_id}
+        "residente": {
+            "nombre": r.nombre_completo, "rut": r.rut, "departamento_id": r.departamento_id,
+            **condo_info,
+        }
     }
 
 @router.get("/cuenta")

@@ -28,6 +28,28 @@ def get_residente(creds: HTTPAuthorizationCredentials=Depends(security), db: Ses
     except HTTPException: raise
     except: raise HTTPException(401, "Token inválido")
 
+@router.get("/departamentos-publico")
+def departamentos_publico(tenant_id: int = 1, db: Session = Depends(get_db)):
+    """
+    Lista minima de departamentos para el formulario de auto-registro de
+    residentes (sin sesion). No expone propietario_id/residente_id ni otros
+    datos sensibles del modelo Departamento completo.
+    """
+    rows = db.execute(text("""
+        SELECT d.id, d.numero, t.nombre AS torre, c.nombre AS condominio
+        FROM departamentos d
+        JOIN pisos p ON p.id = d.piso_id
+        JOIN torres t ON t.id = p.torre_id
+        JOIN condominios c ON c.id = t.condominio_id
+        WHERE d.tenant_id = :tid
+        ORDER BY c.nombre, t.nombre, d.numero
+    """), {"tid": tenant_id}).fetchall()
+    return [
+        {"id": r[0], "numero": r[1], "torre": r[2], "condominio": r[3]}
+        for r in rows
+    ]
+
+
 @router.post("/registro")
 def registro(data: dict, db: Session=Depends(get_db)):
     rut = data.get("rut","").strip()

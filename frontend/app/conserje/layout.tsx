@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   LayoutGrid, QrCode, DoorClosed, Users, Package,
   CalendarDays, AlertTriangle, History, Siren,
-  Menu, LogOut, Camera, ShieldCheck,
+  Menu, LogOut, Camera, ShieldCheck, CircleDot,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -138,6 +138,12 @@ export default function ConserjeLayout({ children }: { children: React.ReactNode
             <Menu size={20} />
           </button>
           <span className="text-slate-100 font-semibold text-sm flex-1">{currentLabel}</span>
+          {user?.en_turno && (
+            <span className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/15 text-emerald-300 text-xs font-medium mr-2">
+              <CircleDot size={11} className="animate-pulse" />
+              En turno{user?.turno_desde ? ' desde ' + new Date(user.turno_desde).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : ''}
+            </span>
+          )}
           <button
             onClick={() => window.open('/conserje/camaras', '_blank')}
             title="Abrir monitor de camaras en nueva ventana"

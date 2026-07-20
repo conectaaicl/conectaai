@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Building2, Eye, EyeOff } from 'lucide-react'
 
-interface Depto { id: number; numero: string; torre?: string; piso?: string }
+interface Depto { id: number; numero: string; torre?: string; condominio?: string }
 
 export default function PortalRegistro() {
   const router = useRouter()
@@ -21,7 +21,7 @@ export default function PortalRegistro() {
   const [deptos, setDeptos] = useState<Depto[]>([])
 
   useEffect(() => {
-    fetch('/api/condominios/departamentos?tenant_id=1')
+    fetch('/api/portal/auth/departamentos-publico?tenant_id=1')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         if (Array.isArray(data)) setDeptos(data)
@@ -104,7 +104,7 @@ export default function PortalRegistro() {
               <option value="">Seleccione su departamento</option>
               {deptos.map(d => (
                 <option key={d.id} value={d.id}>
-                  {d.numero}{d.torre ? ' - Torre ' + d.torre : ''}{d.piso ? ' - Piso ' + d.piso : ''}
+                  {d.condominio ? d.condominio + ' - ' : ''}Depto {d.numero}{d.torre ? ' (Torre ' + d.torre + ')' : ''}
                 </option>
               ))}
             </select>
