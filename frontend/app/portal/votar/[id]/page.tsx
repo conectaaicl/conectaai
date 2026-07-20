@@ -63,7 +63,7 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600" />
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-brand-600" />
     </div>
   )
 
@@ -71,17 +71,17 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
   const maxVotos = resultados ? Math.max(...Object.values(resultados.votos), 1) : 1
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 py-10 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-purple-50 py-10 px-4">
       <div className="max-w-lg mx-auto">
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white text-center">
+          <div className="bg-brand-700 p-6 text-white text-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
               <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
               </svg>
             </div>
             <h1 className="text-xl font-bold">Votación en línea</h1>
-            <p className="text-indigo-100 text-sm">ConectaAI — Portal Residentes</p>
+            <p className="text-brand-100 text-sm">ConectaAI — Portal Residentes</p>
           </div>
 
           <div className="p-6">
@@ -109,7 +109,7 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
                             <span className="font-medium">{count}</span>
                           </div>
                           <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full transition-all" style={{ width: `${(count / maxVotos) * 100}%` }} />
+                            <div className="h-full bg-brand-500 rounded-full transition-all" style={{ width: `${(count / maxVotos) * 100}%` }} />
                           </div>
                         </div>
                       ))}
@@ -123,8 +123,8 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
                       <label className="block text-sm font-medium text-slate-700 mb-2">Tu voto</label>
                       <div className="space-y-2">
                         {votacion.opciones.map(op => (
-                          <label key={op} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${opcion === op ? 'border-indigo-400 bg-indigo-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                            <input type="radio" name="opcion" value={op} checked={opcion === op} onChange={() => setOpcion(op)} className="text-indigo-600" />
+                          <label key={op} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition ${opcion === op ? 'border-brand-400 bg-brand-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                            <input type="radio" name="opcion" value={op} checked={opcion === op} onChange={() => setOpcion(op)} className="text-brand-600" />
                             <span className="text-sm font-medium text-slate-700">{op}</span>
                           </label>
                         ))}
@@ -132,10 +132,10 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-1">Nº de departamento</label>
-                      <input type="number" required value={deptoId} onChange={e => setDeptoId(e.target.value)} placeholder="Ej: 101" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      <input type="number" required value={deptoId} onChange={e => setDeptoId(e.target.value)} placeholder="Ej: 101" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
                     </div>
                     {voteError && <p className="text-red-500 text-sm">{voteError}</p>}
-                    <button type="submit" disabled={voting} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-60">
+                    <button type="submit" disabled={voting} className="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition disabled:opacity-60">
                       {voting ? 'Enviando...' : 'Votar'}
                     </button>
                   </form>

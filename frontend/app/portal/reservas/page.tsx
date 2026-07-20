@@ -29,7 +29,7 @@ function BottomNav() {
         { href: '/portal/qr', icon: '🔑', label: 'QR' },
       ].map(n => (
         <a key={n.href} href={n.href}
-          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-indigo-600 transition-colors">
+          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-brand-600 transition-colors">
           <span className="text-xl">{n.icon}</span>
           <span className="text-xs mt-0.5">{n.label}</span>
         </a>
@@ -104,7 +104,7 @@ export default function PortalReservas() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
@@ -129,7 +129,7 @@ export default function PortalReservas() {
                 <select
                   value={selected ?? ''}
                   onChange={e => setSelected(Number(e.target.value) || null)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value="">Seleccionar...</option>
                   {amenidades.map(a => (
@@ -144,25 +144,25 @@ export default function PortalReservas() {
                   value={fecha}
                   min={new Date().toISOString().split('T')[0]}
                   onChange={e => setFecha(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Hora inicio</label>
                   <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Hora fin</label>
                   <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? 'Reservando...' : 'Confirmar reserva'}
               </button>

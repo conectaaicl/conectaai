@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { Building2, Eye, EyeOff } from 'lucide-react'
 
 interface Depto { id: number; numero: string; torre?: string; piso?: string }
 
@@ -67,79 +68,85 @@ export default function PortalRegistro() {
 
   const fe = fieldErrors
   const inputClass = (err?: string) =>
-    `w-full border rounded-xl px-4 py-3 text-sm bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${err ? 'border-red-400' : 'border-slate-200'}`
+    `w-full border rounded-xl px-4 py-3 text-sm bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent ${err ? 'border-red-400' : 'border-slate-300'}`
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-4 py-10">
+    <div className="min-h-screen bg-brand-900 flex flex-col items-center justify-center p-4 py-10">
       <div className="mb-6 text-center">
-        <h1 className="text-3xl font-bold text-white">ConectaAI</h1>
-        <p className="text-indigo-200 mt-1">Portal Residentes</p>
+        <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mx-auto mb-4">
+          <Building2 size={24} className="text-white" strokeWidth={1.75} />
+        </div>
+        <h1 className="text-2xl font-bold text-white tracking-tight">ConectaAI</h1>
+        <p className="text-brand-200 mt-1 text-sm">Portal de residentes</p>
       </div>
-      <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl">
-        <h2 className="text-xl font-semibold text-slate-800 mb-6">Crear cuenta</h2>
+      <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-xl">
+        <h2 className="text-lg font-semibold text-slate-900 mb-6">Crear cuenta</h2>
         {error && (
-          <div className="bg-red-50 text-red-600 border border-red-200 rounded-lg p-3 text-sm mb-4">{error}</div>
+          <div className="bg-red-50 text-red-700 border border-red-200 rounded-lg p-3 text-sm mb-4">{error}</div>
         )}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">RUT *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">RUT *</label>
             <input value={rut} onChange={e => setRut(e.target.value)} placeholder="12.345.678-9"
               className={inputClass(fe.rut)}/>
-            {fe.rut && <p className="text-red-500 text-xs mt-1">{fe.rut}</p>}
+            {fe.rut && <p className="text-red-600 text-xs mt-1">{fe.rut}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Nombre completo *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre completo *</label>
             <input value={nombre} onChange={e => setNombre(e.target.value)} placeholder="Juan Perez"
               className={inputClass(fe.nombre)}/>
-            {fe.nombre && <p className="text-red-500 text-xs mt-1">{fe.nombre}</p>}
+            {fe.nombre && <p className="text-red-600 text-xs mt-1">{fe.nombre}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Departamento *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Departamento *</label>
             <select value={deptoId} onChange={e => setDeptoId(e.target.value)}
               className={inputClass(fe.depto)}>
               <option value="">Seleccione su departamento</option>
               {deptos.map(d => (
                 <option key={d.id} value={d.id}>
-                  {d.numero}{d.torre ? ' — Torre ' + d.torre : ''}{d.piso ? ' — Piso ' + d.piso : ''}
+                  {d.numero}{d.torre ? ' - Torre ' + d.torre : ''}{d.piso ? ' - Piso ' + d.piso : ''}
                 </option>
               ))}
             </select>
-            {fe.depto && <p className="text-red-500 text-xs mt-1">{fe.depto}</p>}
+            {fe.depto && <p className="text-red-600 text-xs mt-1">{fe.depto}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Email (opcional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email (opcional)</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com"
               className={inputClass()}/>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Telefono (opcional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Telefono (opcional)</label>
             <input value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+56 9 1234 5678"
               className={inputClass()}/>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Contrasena *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Contrasena *</label>
             <div className="relative">
               <input type={showPw ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)}
-                className={inputClass(fe.password) + ' pr-16'}/>
+                className={inputClass(fe.password) + ' pr-11'}/>
               <button type="button" onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 text-xs font-medium">{showPw ? 'Ocultar' : 'Ver'}</button>
+                aria-label={showPw ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-            {fe.password && <p className="text-red-500 text-xs mt-1">{fe.password}</p>}
+            {fe.password && <p className="text-red-600 text-xs mt-1">{fe.password}</p>}
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Confirmar contrasena *</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirmar contrasena *</label>
             <input type={showPw ? 'text' : 'password'} value={confirm} onChange={e => setConfirm(e.target.value)}
               className={inputClass(fe.confirm)}/>
-            {fe.confirm && <p className="text-red-500 text-xs mt-1">{fe.confirm}</p>}
+            {fe.confirm && <p className="text-red-600 text-xs mt-1">{fe.confirm}</p>}
           </div>
           <button type="submit" disabled={loading}
-            className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors">
+            className="w-full bg-brand-700 text-white py-3 rounded-xl font-semibold hover:bg-brand-800 disabled:opacity-50 transition-colors">
             {loading ? 'Registrando...' : 'Crear cuenta'}
           </button>
         </form>
         <p className="text-center text-sm text-slate-500 mt-6">
           Ya tienes cuenta?{' '}
-          <a href="/portal/login" className="text-indigo-600 font-medium hover:underline">Inicia sesion</a>
+          <a href="/portal/login" className="text-brand-700 font-semibold hover:underline">Inicia sesion</a>
         </p>
       </div>
     </div>

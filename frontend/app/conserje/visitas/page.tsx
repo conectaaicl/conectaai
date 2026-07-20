@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { Home, Car, ClipboardList, Clock } from 'lucide-react'
 
 interface Visita {
   id: number
@@ -90,10 +91,10 @@ export default function ConserjeVisitas() {
             </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs text-slate-400 mb-3">
-              <span>🏠 Depto: <span className="text-slate-200">{v.depto_destino || '—'}</span></span>
-              {v.vehiculo_patente && <span>🚗 Patente: <span className="text-slate-200">{v.vehiculo_patente}</span></span>}
-              {v.motivo && <span className="col-span-2">📋 {v.motivo}</span>}
-              <span className="col-span-2">🕐 {formatDateTime(v.creado_en)}</span>
+              <span className="flex items-center gap-1.5"><Home size={13} className="shrink-0" />Depto: <span className="text-slate-200">{v.depto_destino || '—'}</span></span>
+              {v.vehiculo_patente && <span className="flex items-center gap-1.5"><Car size={13} className="shrink-0" />Patente: <span className="text-slate-200">{v.vehiculo_patente}</span></span>}
+              {v.motivo && <span className="col-span-2 flex items-center gap-1.5"><ClipboardList size={13} className="shrink-0" />{v.motivo}</span>}
+              <span className="col-span-2 flex items-center gap-1.5"><Clock size={13} className="shrink-0" />{formatDateTime(v.creado_en)}</span>
             </div>
 
             {v.estado === 'pendiente' && (

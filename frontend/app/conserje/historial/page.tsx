@@ -39,7 +39,7 @@ export default function ConserjeHistorial() {
 
   return (
     <div className="p-4 space-y-4">
-      {loading && <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" /></div>}
+      {loading && <div className="flex justify-center py-12"><div className="w-6 h-6 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" /></div>}
 
       {!loading && eventos.length === 0 && <p className="text-center text-slate-500 py-12">Sin eventos registrados</p>}
 

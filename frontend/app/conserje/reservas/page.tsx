@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { ClipboardList } from 'lucide-react'
 
 interface Reserva {
   id: number
@@ -80,7 +81,7 @@ export default function ConserjeReservas() {
             <div className="text-xs text-slate-400 space-y-0.5">
               <p>⏰ Inicio: <span className="text-slate-200">{formatDT(r.fecha_inicio)}</span></p>
               {r.fecha_fin && <p>⏰ Fin: <span className="text-slate-200">{formatDT(r.fecha_fin)}</span></p>}
-              {r.observaciones && <p>📋 {r.observaciones}</p>}
+              {r.observaciones && <p className="flex items-center gap-1.5"><ClipboardList size={13} className="shrink-0" />{r.observaciones}</p>}
             </div>
           </div>
         ))}

@@ -67,26 +67,26 @@ export default function PortalMensajes() {
 
   if (loading || fetching) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/>
+      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"/>
     </div>
   )
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-4 pt-8 pb-6">
+      <div className="bg-brand-800 text-white px-4 pt-8 pb-6">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="text-indigo-200 hover:text-white">
+            <button onClick={() => router.back()} className="text-brand-200 hover:text-white">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
               </svg>
             </button>
             <div>
               <h1 className="text-lg font-bold">Mensajes</h1>
-              <p className="text-indigo-200 text-xs">Comunicación con administración</p>
+              <p className="text-brand-200 text-xs">Comunicación con administración</p>
             </div>
           </div>
-          <button onClick={logout} className="text-indigo-200 hover:text-white text-xs">Salir</button>
+          <button onClick={logout} className="text-brand-200 hover:text-white text-xs">Salir</button>
         </div>
       </div>
 
@@ -99,7 +99,7 @@ export default function PortalMensajes() {
 
         <button
           onClick={() => setShowForm(!showForm)}
-          className="w-full flex items-center justify-center gap-2 bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition-colors"
+          className="w-full flex items-center justify-center gap-2 bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4"/>
@@ -114,18 +114,18 @@ export default function PortalMensajes() {
               <label className="block text-xs font-medium text-slate-600 mb-1">Asunto</label>
               <input value={form.asunto} onChange={e => setForm(f => ({...f, asunto: e.target.value}))}
                 required maxLength={200} placeholder="Tema del mensaje"
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"/>
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none"/>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Mensaje</label>
               <textarea value={form.mensaje} onChange={e => setForm(f => ({...f, mensaje: e.target.value}))}
                 required rows={4} placeholder="Escribe tu consulta o solicitud..."
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none"/>
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none resize-none"/>
             </div>
             <div>
               <label className="block text-xs font-medium text-slate-600 mb-1">Prioridad</label>
               <select value={form.prioridad} onChange={e => setForm(f => ({...f, prioridad: e.target.value}))}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none">
+                className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none">
                 <option value="baja">Baja</option>
                 <option value="normal">Normal</option>
                 <option value="alta">Alta</option>
@@ -137,7 +137,7 @@ export default function PortalMensajes() {
                 Cancelar
               </button>
               <button type="submit" disabled={sending}
-                className="flex-1 bg-indigo-600 text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
+                className="flex-1 bg-brand-600 text-white py-2 rounded-xl text-sm font-semibold disabled:opacity-50">
                 {sending ? 'Enviando...' : 'Enviar'}
               </button>
             </div>
@@ -162,7 +162,7 @@ export default function PortalMensajes() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         {!item.leido_residente && item.respuesta && (
-                          <span className="w-2 h-2 bg-indigo-500 rounded-full flex-shrink-0"/>
+                          <span className="w-2 h-2 bg-brand-500 rounded-full flex-shrink-0"/>
                         )}
                         <h3 className="font-semibold text-slate-800 text-sm truncate">{item.asunto}</h3>
                       </div>
@@ -189,14 +189,14 @@ export default function PortalMensajes() {
                       <p className="text-sm text-slate-700 whitespace-pre-wrap">{item.mensaje}</p>
                     </div>
                     {item.respuesta && (
-                      <div className="mt-3 bg-indigo-50 rounded-xl p-3 border-l-3 border-indigo-400">
+                      <div className="mt-3 bg-brand-50 rounded-xl p-3 border-l-3 border-brand-400">
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-xs font-medium text-indigo-700">Respuesta de {item.respondido_por || 'Administración'}:</p>
+                          <p className="text-xs font-medium text-brand-700">Respuesta de {item.respondido_por || 'Administración'}:</p>
                           {item.respondido_at && (
-                            <p className="text-xs text-indigo-400">{fmt(item.respondido_at)}</p>
+                            <p className="text-xs text-brand-400">{fmt(item.respondido_at)}</p>
                           )}
                         </div>
-                        <p className="text-sm text-indigo-800 whitespace-pre-wrap">{item.respuesta}</p>
+                        <p className="text-sm text-brand-800 whitespace-pre-wrap">{item.respuesta}</p>
                       </div>
                     )}
                   </div>
@@ -216,7 +216,7 @@ export default function PortalMensajes() {
           {href:'/portal/avisos', icon:'📢', label:'Avisos'},
         ].map(item => (
           <a key={item.href} href={item.href}
-            className="flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-indigo-600 transition-colors">
+            className="flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-brand-600 transition-colors">
             <span className="text-xl">{item.icon}</span>
             <span className="text-[10px] mt-0.5">{item.label}</span>
           </a>

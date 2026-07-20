@@ -18,7 +18,7 @@ function BottomNav() {
         {href:'/portal/qr',       icon:'🔑',label:'QR Acceso'},
       ].map(n => (
         <a key={n.href} href={n.href}
-          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-indigo-600 transition-colors">
+          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-brand-600 transition-colors">
           <span className="text-xl">{n.icon}</span>
           <span className="text-xs mt-0.5">{n.label}</span>
         </a>
@@ -169,7 +169,7 @@ export default function PortalQR() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/>
+      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"/>
     </div>
   )
 
@@ -187,16 +187,16 @@ export default function PortalQR() {
         {/* QR personal del residente */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
           <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <span className="text-indigo-500">🔑</span> Mi QR de Acceso
+            <span className="text-brand-500">🔑</span> Mi QR de Acceso
           </h2>
           {residente ? (
             <div className="flex flex-col items-center gap-4">
               {miQR && <QRDisplay value={miQR} size={200} />}
-              <div className="bg-indigo-50 rounded-xl px-5 py-3 text-center w-full">
-                <p className="text-indigo-700 font-bold text-base">{residente.nombre}</p>
-                <p className="text-indigo-400 text-sm mt-0.5">RUT: {residente.rut}</p>
+              <div className="bg-brand-50 rounded-xl px-5 py-3 text-center w-full">
+                <p className="text-brand-700 font-bold text-base">{residente.nombre}</p>
+                <p className="text-brand-400 text-sm mt-0.5">RUT: {residente.rut}</p>
                 {residente.departamento_id && (
-                  <p className="text-indigo-400 text-xs mt-0.5">Departamento {residente.departamento_id}</p>
+                  <p className="text-brand-400 text-xs mt-0.5">Departamento {residente.departamento_id}</p>
                 )}
               </div>
               <p className="text-xs text-slate-400 text-center">
@@ -219,22 +219,22 @@ export default function PortalQR() {
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Nombre del visitante *</label>
                 <input value={nombreVisita} onChange={e => setNombreVisita(e.target.value)} placeholder="Nombre completo"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"/>
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"/>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">RUT (opcional)</label>
                 <input value={rutVisita} onChange={e => setRutVisita(e.target.value)} placeholder="12.345.678-9"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"/>
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"/>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Motivo</label>
                 <input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Familiar, delivery, técnico..."
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"/>
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"/>
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Válido por</label>
                 <select value={validez} onChange={e => setValidez(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500">
                   <option value="4">4 horas</option>
                   <option value="8">8 horas</option>
                   <option value="24">24 horas</option>
@@ -242,7 +242,7 @@ export default function PortalQR() {
                 </select>
               </div>
               <button type="submit" disabled={generating}
-                className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                className="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
                 {generating
                   ? <><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> Generando...</>
                   : <><span>📲</span> Generar QR de Acceso</>}

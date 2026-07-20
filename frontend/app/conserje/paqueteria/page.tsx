@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { PackageX, Package } from 'lucide-react'
 
 interface Paquete {
   id: number
@@ -176,7 +177,7 @@ export default function ConserjePaqueteriaPage() {
         </div>
         <div className="flex gap-2">
           <button onClick={openScan}
-            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-xl text-sm font-semibold transition">
+            className="flex items-center gap-1.5 bg-brand-600 hover:bg-brand-500 text-white px-3 py-2 rounded-xl text-sm font-semibold transition">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8H4a1 1 0 00-1 1v10a1 1 0 001 1h3M9 4H5a1 1 0 00-1 1v3" />
             </svg>
@@ -199,12 +200,12 @@ export default function ConserjePaqueteriaPage() {
 
       {/* Formulario registro (manual o escáner) */}
       {showForm && (
-        <div className={`border rounded-2xl p-4 space-y-3 transition-all ${scanning ? 'bg-indigo-900/30 border-indigo-500/50' : 'bg-slate-800 border-slate-700'}`}>
+        <div className={`border rounded-2xl p-4 space-y-3 transition-all ${scanning ? 'bg-brand-900/30 border-brand-500/50' : 'bg-slate-800 border-slate-700'}`}>
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-white flex items-center gap-2">
               {scanning ? (
                 <>
-                  <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                  <span className="w-2 h-2 rounded-full bg-brand-400 animate-pulse" />
                   Listo para escanear
                 </>
               ) : 'Registrar paquete'}
@@ -240,7 +241,7 @@ export default function ConserjePaqueteriaPage() {
                 onChange={e => handleTrackingInput(e.target.value)}
                 onKeyDown={handleTrackingKeyDown}
                 placeholder={scanning ? 'Apunta y dispara el lector...' : 'Opcional'}
-                className={`w-full rounded-xl px-3 py-2.5 text-sm font-mono text-white placeholder-slate-500 border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${scanning ? 'bg-indigo-950 border-indigo-500/50' : 'bg-slate-700 border-slate-600'}`}
+                className={`w-full rounded-xl px-3 py-2.5 text-sm font-mono text-white placeholder-slate-500 border focus:outline-none focus:ring-2 focus:ring-brand-500 ${scanning ? 'bg-brand-950 border-brand-500/50' : 'bg-slate-700 border-slate-600'}`}
                 autoComplete="off"
               />
             </div>
@@ -248,12 +249,12 @@ export default function ConserjePaqueteriaPage() {
             {/* Carrier auto-detected */}
             <div>
               <label className="block text-xs text-slate-400 mb-1">
-                Transportista {form.tracking_number && <span className="text-indigo-400 ml-1">(detectado automáticamente)</span>}
+                Transportista {form.tracking_number && <span className="text-brand-400 ml-1">(detectado automáticamente)</span>}
               </label>
               <select
                 value={form.carrier}
                 onChange={e => setForm(f => ({ ...f, carrier: e.target.value }))}
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
                 {Object.entries(CARRIERS).map(([val, { label }]) => (
                   <option key={val} value={val}>{label}</option>
@@ -272,7 +273,7 @@ export default function ConserjePaqueteriaPage() {
                 value={form.depto_destino}
                 onChange={e => setForm(f => ({ ...f, depto_destino: e.target.value }))}
                 placeholder="Ej: 304, 12A, Casa 5"
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
@@ -281,14 +282,14 @@ export default function ConserjePaqueteriaPage() {
                 value={form.nombre_destinatario}
                 onChange={e => setForm(f => ({ ...f, nombre_destinatario: e.target.value }))}
                 placeholder="Nombre destinatario (opcional)"
-                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full bg-slate-700 border border-slate-600 rounded-xl px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             )}
 
             <button
               type="submit"
               disabled={saving || !form.depto_destino.trim()}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition"
+              className="w-full py-2.5 bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white rounded-xl text-sm font-bold transition"
             >
               {saving ? 'Registrando...' : scanning ? '③ Registrar y notificar residente' : 'Registrar paquete'}
             </button>
@@ -309,7 +310,7 @@ export default function ConserjePaqueteriaPage() {
 
       {!loading && paquetes.length === 0 && (
         <div className="text-center py-16 text-slate-500">
-          <div className="text-4xl mb-3">📭</div>
+          <div className="flex justify-center mb-3"><PackageX size={36} className="text-slate-600" strokeWidth={1.5} /></div>
           <p className="text-sm">Sin paquetes en este filtro</p>
         </div>
       )}
@@ -320,7 +321,7 @@ export default function ConserjePaqueteriaPage() {
           return (
             <div key={p.id} className={`border rounded-2xl p-4 transition ${p.estado === 'pendiente' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-slate-800/60 border-slate-700/40'}`}>
               <div className="flex items-start gap-3">
-                <div className="text-2xl flex-shrink-0">📦</div>
+                <div className="flex-shrink-0"><Package size={22} className="text-amber-400" strokeWidth={1.75} /></div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${carrier.color}`}>{carrier.label}</span>

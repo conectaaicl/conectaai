@@ -2,6 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePortalSession } from '../usePortalSession'
+import BottomNav from '../components/BottomNav'
+import PortalHeader from '../components/PortalHeader'
+import { ChevronDown, ChevronUp, Megaphone } from 'lucide-react'
 
 interface Aviso {
   id: number
@@ -13,29 +16,10 @@ interface Aviso {
 }
 
 const tipoBadge: Record<string,string> = {
-  informativo: 'bg-blue-100 text-blue-700',
+  informativo: 'bg-accent-100 text-accent-800',
   urgente: 'bg-red-100 text-red-700',
-  mantencion: 'bg-amber-100 text-amber-700',
+  mantencion: 'bg-amber-100 text-amber-800',
   reserva: 'bg-emerald-100 text-emerald-700',
-}
-
-function BottomNav() {
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex">
-      {[
-        {href:'/portal/dashboard', icon:'🏠', label:'Inicio'},
-        {href:'/portal/cuenta', icon:'💰', label:'Cuenta'},
-        {href:'/portal/avisos', icon:'📢', label:'Avisos'},
-        {href:'/portal/qr', icon:'🔑', label:'QR'}
-      ].map(n => (
-        <a key={n.href} href={n.href}
-          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-indigo-600 transition-colors">
-          <span className="text-xl">{n.icon}</span>
-          <span className="text-xs mt-0.5">{n.label}</span>
-        </a>
-      ))}
-    </nav>
-  )
 }
 
 export default function PortalAvisos() {
@@ -71,7 +55,7 @@ export default function PortalAvisos() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/>
+      <div className="w-8 h-8 border-4 border-brand-700 border-t-transparent rounded-full animate-spin"/>
     </div>
   )
 
@@ -79,20 +63,12 @@ export default function PortalAvisos() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="bg-white border-b border-slate-100 px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <a href="/portal/dashboard" className="text-slate-400 hover:text-slate-700 text-lg">←</a>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-slate-800">Mis Avisos</h1>
-            {noLeidos > 0 && <p className="text-xs text-indigo-500">{noLeidos} sin leer</p>}
-          </div>
-        </div>
-      </div>
+      <PortalHeader title="Mis avisos" subtitle={noLeidos > 0 ? `${noLeidos} sin leer` : undefined} />
 
       <div className="max-w-lg mx-auto p-4 space-y-3">
         {loadingData && (
           <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"/>
+            <div className="w-6 h-6 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"/>
           </div>
         )}
 
@@ -100,18 +76,18 @@ export default function PortalAvisos() {
           <div
             key={aviso.id}
             className={`rounded-2xl border overflow-hidden cursor-pointer transition-colors ${
-              aviso.leido ? 'bg-white border-slate-100' : 'bg-indigo-50 border-indigo-200'
+              aviso.leido ? 'bg-white border-slate-200' : 'bg-brand-50 border-brand-200'
             }`}
             onClick={() => handleExpand(aviso)}
           >
             <div className="p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex-1">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${tipoBadge[aviso.tipo] || 'bg-slate-100 text-slate-600'}`}>
+                  <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-semibold ${tipoBadge[aviso.tipo] || 'bg-slate-100 text-slate-600'}`}>
                       {aviso.tipo}
                     </span>
-                    {!aviso.leido && <span className="w-2 h-2 bg-indigo-500 rounded-full inline-block"/>}
+                    {!aviso.leido && <span className="w-2 h-2 bg-brand-600 rounded-full inline-block" aria-label="No leido" />}
                   </div>
                   <p className={`text-sm font-semibold ${aviso.leido ? 'text-slate-700' : 'text-slate-900'}`}>{aviso.titulo}</p>
                   {aviso.fecha && (
@@ -120,7 +96,9 @@ export default function PortalAvisos() {
                     </p>
                   )}
                 </div>
-                <span className="text-slate-400 text-xs">{expanded === aviso.id ? '▲' : '▼'}</span>
+                {expanded === aviso.id
+                  ? <ChevronUp size={16} className="text-slate-400 shrink-0 mt-0.5" />
+                  : <ChevronDown size={16} className="text-slate-400 shrink-0 mt-0.5" />}
               </div>
             </div>
             {expanded === aviso.id && (
@@ -132,7 +110,10 @@ export default function PortalAvisos() {
         ))}
 
         {!loadingData && avisos.length === 0 && (
-          <div className="text-center py-12 text-slate-400">No hay avisos disponibles</div>
+          <div className="text-center py-16 text-slate-400 flex flex-col items-center gap-2">
+            <Megaphone size={28} strokeWidth={1.5} />
+            <p className="text-sm">No hay avisos por ahora</p>
+          </div>
         )}
       </div>
 
