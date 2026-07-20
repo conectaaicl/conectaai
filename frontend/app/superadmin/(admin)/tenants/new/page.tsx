@@ -28,16 +28,27 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
   )
 }
 
+interface ConserjeForm {
+  nombre: string
+  email: string
+  password: string
+  turno: string
+}
+
+const CONSERJE_VACIO: ConserjeForm = { nombre: '', email: '', password: '', turno: '' }
+
 export default function NewTenantPage() {
   const router = useRouter()
   const [form, setForm] = useState({
     nombre: '', subdominio: '', email_contacto: '', telefono: '',
+    rut: '', direccion: '', ciudad: '',
     plan: 'basico', limite_condominios: '1', limite_departamentos: '50', fecha_vencimiento: '',
     admin_email: '', admin_password: '', admin_nombre: '',
   })
+  const [conserjes, setConserjes] = useState<ConserjeForm[]>([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [success, setSuccess] = useState<{tenant_id:number;subdominio:string}|null>(null)
+  const [success, setSuccess] = useState<{tenant_id:number;subdominio:string; conserjes: {nombre:string;email:string;password:string}[]}|null>(null)
   const [showPw, setShowPw] = useState(false)
 
   function set(k: string, v: string) {
@@ -47,18 +58,45 @@ export default function NewTenantPage() {
     }
   }
 
+  function setConserje(i: number, k: keyof ConserjeForm, v: string) {
+    setConserjes(list => list.map((c, idx) => idx === i ? { ...c, [k]: v } : c))
+  }
+
+  function agregarConserje() {
+    setConserjes(list => [...list, { ...CONSERJE_VACIO }])
+  }
+
+  function quitarConserje(i: number) {
+    setConserjes(list => list.filter((_, idx) => idx !== i))
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
     if (form.admin_password.length < 8) { setError('La contraseña del admin debe tener al menos 8 caracteres.'); return }
+    for (const c of conserjes) {
+      if (!c.nombre.trim() || !c.email.trim() || c.password.length < 8) {
+        setError('Cada conserje necesita nombre, email y contraseña de al menos 8 caracteres.')
+        return
+      }
+    }
     setLoading(true)
     try {
-      const fd = new FormData()
-      Object.entries(form).forEach(([k,v]) => fd.append(k, v))
-      const res = await fetch('/api/superadmin/tenants', { method: 'POST', body: fd, credentials: 'include' })
+      const payload = {
+        ...form,
+        limite_condominios: parseInt(form.limite_condominios) || 1,
+        limite_departamentos: parseInt(form.limite_departamentos) || 50,
+        conserjes: conserjes.map(c => ({ nombre: c.nombre, email: c.email, password: c.password, turno: c.turno || undefined })),
+      }
+      const res = await fetch('/api/superadmin/tenants', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        credentials: 'include',
+      })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Error al crear tenant'); return }
-      setSuccess({ tenant_id: data.tenant_id, subdominio: data.subdominio })
+      setSuccess({ tenant_id: data.tenant_id, subdominio: data.subdominio, conserjes: data.conserjes || [] })
     } catch { setError('Error de conexión') }
     finally { setLoading(false) }
   }
@@ -72,15 +110,25 @@ export default function NewTenantPage() {
       </div>
       <h2 className="text-xl font-bold text-white mb-2">Tenant creado exitosamente</h2>
       <p className="text-slate-400 text-sm mb-6">ID #{success.tenant_id} · <span className="font-mono text-slate-300">{success.subdominio}</span></p>
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left text-sm mb-6">
-        <p className="text-slate-400 mb-1">El admin puede acceder con:</p>
-        <p className="text-white"><strong>Email:</strong> {form.admin_email}</p>
-        <p className="text-white"><strong>Contraseña:</strong> la que ingresaste</p>
-        <p className="text-slate-500 text-xs mt-2">Recuerda compartir estas credenciales de forma segura.</p>
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left text-sm mb-6 space-y-3">
+        <div>
+          <p className="text-slate-400 mb-1">El admin puede acceder con:</p>
+          <p className="text-white"><strong>Email:</strong> {form.admin_email}</p>
+          <p className="text-white"><strong>Contraseña:</strong> la que ingresaste</p>
+        </div>
+        {success.conserjes.length > 0 && (
+          <div className="border-t border-slate-800 pt-3">
+            <p className="text-slate-400 mb-1">Conserjes creados:</p>
+            {success.conserjes.map((c, i) => (
+              <p key={i} className="text-white text-xs">{c.nombre} — {c.email}</p>
+            ))}
+          </div>
+        )}
+        <p className="text-slate-500 text-xs mt-2">Se envió un correo de bienvenida con las credenciales a cada uno.</p>
       </div>
       <div className="flex gap-3 justify-center">
         <Link href="/superadmin/tenants" className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm rounded-xl transition">Ver todos los tenants</Link>
-        <button onClick={() => { setSuccess(null); setForm({ nombre:'',subdominio:'',email_contacto:'',telefono:'',plan:'basico',limite_condominios:'1',limite_departamentos:'50',fecha_vencimiento:'',admin_email:'',admin_password:'',admin_nombre:'' }) }}
+        <button onClick={() => { setSuccess(null); setConserjes([]); setForm({ nombre:'',subdominio:'',email_contacto:'',telefono:'',rut:'',direccion:'',ciudad:'',plan:'basico',limite_condominios:'1',limite_departamentos:'50',fecha_vencimiento:'',admin_email:'',admin_password:'',admin_nombre:'' }) }}
           className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-xl transition">
           Crear otro
         </button>
@@ -124,6 +172,17 @@ export default function NewTenantPage() {
             <Field label="Teléfono (opcional)">
               <Input value={form.telefono} onChange={e => set('telefono', e.target.value)} placeholder="+56 9 1234 5678" />
             </Field>
+            <Field label="RUT del condominio (opcional)">
+              <Input value={form.rut} onChange={e => set('rut', e.target.value)} placeholder="76.123.456-7" />
+            </Field>
+            <Field label="Ciudad (opcional)">
+              <Input value={form.ciudad} onChange={e => set('ciudad', e.target.value)} placeholder="Santiago" />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Dirección (opcional)">
+                <Input value={form.direccion} onChange={e => set('direccion', e.target.value)} placeholder="Av. Siempre Viva 742" />
+              </Field>
+            </div>
           </div>
         </div>
 
@@ -177,6 +236,54 @@ export default function NewTenantPage() {
               </div>
             </Field>
           </div>
+        </div>
+
+        {/* Conserjes */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <div>
+              <h2 className="font-semibold text-white">Conserjes (opcional)</h2>
+              <p className="text-slate-400 text-xs mt-0.5">Se crean junto con el tenant y reciben su clave por correo</p>
+            </div>
+            <button type="button" onClick={agregarConserje}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-medium rounded-lg transition">
+              + Agregar conserje
+            </button>
+          </div>
+
+          {conserjes.length === 0 ? (
+            <p className="text-slate-500 text-sm">Sin conserjes agregados todavía.</p>
+          ) : (
+            <div className="space-y-4">
+              {conserjes.map((c, i) => (
+                <div key={i} className="bg-slate-800/50 border border-slate-800 rounded-xl p-4 relative">
+                  <button type="button" onClick={() => quitarConserje(i)}
+                    className="absolute top-3 right-3 text-slate-500 hover:text-red-400 transition">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pr-8">
+                    <Field label="Nombre">
+                      <Input value={c.nombre} onChange={e => setConserje(i, 'nombre', e.target.value)} placeholder="Nombre completo" />
+                    </Field>
+                    <Field label="Email">
+                      <Input type="email" value={c.email} onChange={e => setConserje(i, 'email', e.target.value)} placeholder="conserje@condominio.cl" />
+                    </Field>
+                    <Field label="Contraseña" hint="Mínimo 8 caracteres">
+                      <Input type="text" value={c.password} onChange={e => setConserje(i, 'password', e.target.value)} placeholder="••••••••" />
+                    </Field>
+                    <Field label="Turno (opcional)">
+                      <Select value={c.turno} onChange={e => setConserje(i, 'turno', e.target.value)}>
+                        <option value="">Sin especificar</option>
+                        <option value="dia">Día</option>
+                        <option value="noche">Noche</option>
+                        <option value="rotativo">Rotativo</option>
+                      </Select>
+                    </Field>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3">

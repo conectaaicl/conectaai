@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/admin/integraciones", tags=["integraciones"])
 
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 FERNET_KEY = os.getenv("FERNET_KEY", "")
-META_SYSTEM_TOKEN = os.getenv("META_SYSTEM_TOKEN", "")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 MAIL_API_KEY = os.getenv("MAIL_API_KEY", "")
 ALGORITHM = "HS256"
 
@@ -72,7 +72,7 @@ def get_config(request: Request, db: Session = Depends(get_db)):
         "wa": {
             "activo": bool(t["wa_activo"]),
             "phone_number_id": t["wa_phone_number_id"],
-            "token_configured": bool(META_SYSTEM_TOKEN),
+            "token_configured": bool(EVOLUTION_API_KEY),
         },
         "flow": {
             "activo": bool(t["flow_activo"]),

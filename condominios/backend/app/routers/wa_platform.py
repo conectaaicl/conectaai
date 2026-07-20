@@ -1,7 +1,10 @@
 """
-WhatsApp Meta Cloud API — Platform-level router.
-The platform is a Meta Tech Provider with ONE System User Token.
-Multiple tenants each have their own wa_phone_number_id stored in the tenants table.
+WhatsApp via Evolution API — Platform-level router.
+Evolution runs as a shared service (container evolution_api, docker network
+evolution_default). Each tenant has its own Evolution "instance" (a paired
+WhatsApp number via QR). The instance name is stored in tenants.wa_phone_number_id
+(field name kept for backward compat — it now holds the Evolution instance name,
+not a Meta phone_number_id).
 
 Prefix:  /api/wa
 Tags:    ["whatsapp"]
@@ -29,7 +32,8 @@ router = APIRouter(prefix="/api/wa", tags=["whatsapp"])
 # Config
 # ---------------------------------------------------------------------------
 
-META_SYSTEM_TOKEN: str = os.getenv("META_SYSTEM_TOKEN", "")
+EVOLUTION_API_URL: str = os.getenv("EVOLUTION_API_URL", "http://evolution_api:8080")
+EVOLUTION_API_KEY: str = os.getenv("EVOLUTION_API_KEY", "")
 META_VERIFY_TOKEN: str = os.getenv("META_VERIFY_TOKEN", "conectaai_wa_2026")
 APP_URL: str = os.getenv("APP_URL", "https://condominios.conectaai.cl")
 SECRET_KEY: str = os.getenv("SECRET_KEY", "")
@@ -63,43 +67,41 @@ def _require_admin(payload: dict) -> dict:
 # Core WhatsApp send helper
 # ---------------------------------------------------------------------------
 
-def _send_wa_text(phone_number_id: str, to: str, text_body: str) -> tuple:
+def _send_wa_text(instance_name: str, to: str, text_body: str) -> tuple:
     """
-    Send a plain-text WhatsApp message via the Meta Cloud API.
+    Send a plain-text WhatsApp message via Evolution API.
+
+    `instance_name` is the tenant's paired Evolution instance (stored in
+    tenants.wa_phone_number_id). `to` should be digits-only, with country code
+    (e.g. "56912345678").
 
     Returns (True, message_id) on success or (False, error_detail) on failure.
     """
-    if not META_SYSTEM_TOKEN:
-        return (False, "META_SYSTEM_TOKEN no configurado")
+    if not EVOLUTION_API_KEY:
+        return (False, "EVOLUTION_API_KEY no configurado")
+    if not instance_name:
+        return (False, "Instancia de Evolution no configurada para este tenant")
 
-    url = "https://graph.facebook.com/v20.0/{}/messages".format(phone_number_id)
+    digits = "".join(c for c in to if c.isdigit())
+    url = "{}/message/sendText/{}".format(EVOLUTION_API_URL, instance_name)
     headers = {
-        "Authorization": "Bearer " + META_SYSTEM_TOKEN,
+        "apikey": EVOLUTION_API_KEY,
         "Content-Type": "application/json",
     }
     body = {
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": to,
-        "type": "text",
-        "text": {
-            "preview_url": False,
-            "body": text_body,
-        },
+        "number": digits,
+        "text": text_body,
     }
 
     try:
         resp = httpx.post(url, json=body, headers=headers, timeout=10.0)
         data = resp.json()
-        if resp.status_code == 200:
-            # Successful response: {"messages": [{"id": "wamid.xxx"}]}
-            messages = data.get("messages", [])
-            message_id = messages[0].get("id", "") if messages else ""
+        if resp.status_code in (200, 201):
+            message_id = (data.get("key") or {}).get("id", "")
             return (True, message_id)
         else:
-            error = data.get("error", {})
-            detail = error.get("message", str(data))
-            return (False, detail)
+            detail = data.get("message") or data.get("error") or str(data)
+            return (False, str(detail))
     except Exception as exc:
         return (False, str(exc))
 

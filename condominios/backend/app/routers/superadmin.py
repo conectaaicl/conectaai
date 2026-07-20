@@ -348,7 +348,7 @@ async def create_tenant(body: OnboardingRequest, db: Session = Depends(get_db), 
                              limite_condominios, limite_departamentos, fecha_vencimiento,
                              metadata, created_at, updated_at)
         VALUES (:n, :s, :e, :t, :p, 'activo', :lc, :ld, :fv,
-                :meta::jsonb, NOW(), NOW())
+                CAST(:meta AS jsonb), NOW(), NOW())
         RETURNING id
     """), {
         "n": body.nombre, "s": slug, "e": body.email_contacto,
@@ -371,7 +371,7 @@ async def create_tenant(body: OnboardingRequest, db: Session = Depends(get_db), 
         extra_val = json.dumps({"turno": c.turno}) if c.turno else None
         cr = db.execute(text("""
             INSERT INTO usuarios (email, password_hash, nombre_completo, rol, activo, tenant_id, extra, created_at, updated_at)
-            VALUES (:e, :pw, :n, 'conserje', true, :tid, :extra::jsonb, NOW(), NOW())
+            VALUES (:e, :pw, :n, 'conserje', true, :tid, CAST(:extra AS jsonb), NOW(), NOW())
             RETURNING id
         """), {
             "e": c.email.lower().strip(),
@@ -436,7 +436,7 @@ async def patch_tenant(tid: int, body: TenantPatch, db: Session = Depends(get_db
     if body.ciudad is not None:
         meta["ciudad"] = body.ciudad; meta_changed = True
     if meta_changed:
-        fields.append("metadata=:meta::jsonb"); params["meta"] = json.dumps(meta)
+        fields.append("metadata=CAST(:meta AS jsonb)"); params["meta"] = json.dumps(meta)
 
     if fields:
         db.execute(text("UPDATE tenants SET " + ", ".join(fields) + ", updated_at=NOW() WHERE id=:tid"), params)

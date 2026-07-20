@@ -39,9 +39,11 @@ _ip_lock = threading.Lock()
 _LOGIN_WINDOW = 300
 _LOGIN_MAX = 20
 
+_RATE_LIMITED_PATHS = {"/api/auth/login", "/api/portal/auth/login", "/api/portal/auth/registro"}
+
 class LoginRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next):
-        if request.url.path == "/api/auth/login" and request.method == "POST":
+        if request.url.path in _RATE_LIMITED_PATHS and request.method == "POST":
             ip = request.headers.get("X-Forwarded-For", request.client.host or "").split(",")[0].strip()
             now = time.time()
             with _ip_lock:

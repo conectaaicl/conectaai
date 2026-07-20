@@ -58,7 +58,8 @@ def listar_todos_departamentos(db: Session = Depends(get_db), current_user: dict
 @router.get("/{condominio_id}", response_model=CondominioResponse)
 def obtener_condominio(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Obtener condominio por ID"""
-    condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
+    tenant_id = current_user["tenant_id"]
+    condominio = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
     if not condominio:
         raise HTTPException(status_code=404, detail="Condominio no encontrado")
     return condominio
@@ -72,15 +73,16 @@ def actualizar_condominio(
     current_user: dict = Depends(get_current_user)
 ):
     """Actualizar condominio"""
-    db_condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
+    tenant_id = current_user["tenant_id"]
+    db_condominio = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
     if not db_condominio:
         raise HTTPException(status_code=404, detail="Condominio no encontrado")
-    
+
     # Actualizar campos
     update_data = condominio.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_condominio, field, value)
-    
+
     db.commit()
     db.refresh(db_condominio)
     return db_condominio
@@ -89,10 +91,11 @@ def actualizar_condominio(
 @router.delete("/{condominio_id}")
 def eliminar_condominio(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar condominio"""
-    condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
+    tenant_id = current_user["tenant_id"]
+    condominio = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
     if not condominio:
         raise HTTPException(status_code=404, detail="Condominio no encontrado")
-    
+
     db.delete(condominio)
     db.commit()
     return {"message": "Condominio eliminado exitosamente"}
@@ -143,9 +146,10 @@ def crear_torre(
     current_user: dict = Depends(get_current_user)
 ):
     """Crear torre con sus pisos automáticamente"""
+    tenant_id = current_user["tenant_id"]
 
-    # Verificar que el condominio existe
-    condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
+    # Verificar que el condominio existe y pertenece al tenant
+    condominio = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
     if not condominio:
         raise HTTPException(status_code=404, detail="Condominio no encontrado")
 
@@ -177,24 +181,26 @@ def crear_torre(
 @router.get("/{condominio_id}/torres", response_model=List[TorreResponse])
 def listar_torres(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Listar torres de un condominio"""
-    torres = db.query(Torre).filter(Torre.condominio_id == condominio_id).all()
+    tenant_id = current_user["tenant_id"]
+    torres = db.query(Torre).filter(Torre.condominio_id == condominio_id, Torre.tenant_id == tenant_id).all()
     return torres
 
 
 @router.delete("/torres/{torre_id}")
 def eliminar_torre(torre_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar torre y todos sus pisos y departamentos"""
-    torre = db.query(Torre).filter(Torre.id == torre_id).first()
+    tenant_id = current_user["tenant_id"]
+    torre = db.query(Torre).filter(Torre.id == torre_id, Torre.tenant_id == tenant_id).first()
     if not torre:
         raise HTTPException(status_code=404, detail="Torre no encontrada")
-    
+
     # Eliminar pisos asociados (y departamentos en cascada)
     db.query(Piso).filter(Piso.torre_id == torre_id).delete()
-    
+
     # Eliminar torre
     db.delete(torre)
     db.commit()
-    
+
     return {"message": "Torre eliminada exitosamente"}
 
 
@@ -205,10 +211,11 @@ def eliminar_torre(torre_id: int, db: Session = Depends(get_db), current_user: d
 @router.get("/torres/{torre_id}/pisos")
 def listar_pisos(torre_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Listar pisos de una torre con sus departamentos"""
-    torre = db.query(Torre).filter(Torre.id == torre_id).first()
+    tenant_id = current_user["tenant_id"]
+    torre = db.query(Torre).filter(Torre.id == torre_id, Torre.tenant_id == tenant_id).first()
     if not torre:
         raise HTTPException(status_code=404, detail="Torre no encontrada")
-    
+
     pisos = db.query(Piso).filter(Piso.torre_id == torre_id).order_by(Piso.numero.desc()).all()
     
     # Agregar departamentos a cada piso
@@ -257,8 +264,9 @@ def crear_departamento(
     current_user: dict = Depends(get_current_user)
 ):
     """Crear departamento"""
-    # Verificar que el piso existe
-    piso = db.query(Piso).filter(Piso.id == piso_id).first()
+    tenant_id = current_user["tenant_id"]
+    # Verificar que el piso existe y pertenece al tenant
+    piso = db.query(Piso).filter(Piso.id == piso_id, Piso.tenant_id == tenant_id).first()
     if not piso:
         raise HTTPException(status_code=404, detail="Piso no encontrado")
 
@@ -277,7 +285,8 @@ def crear_departamento(
 @router.get("/pisos/{piso_id}/departamentos", response_model=List[DepartamentoResponse])
 def listar_departamentos(piso_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Listar departamentos de un piso"""
-    deptos = db.query(Departamento).filter(Departamento.piso_id == piso_id).all()
+    tenant_id = current_user["tenant_id"]
+    deptos = db.query(Departamento).filter(Departamento.piso_id == piso_id, Departamento.tenant_id == tenant_id).all()
     return deptos
 
 
@@ -289,15 +298,16 @@ def actualizar_departamento(
     current_user: dict = Depends(get_current_user)
 ):
     """Actualizar departamento"""
-    db_depto = db.query(Departamento).filter(Departamento.id == depto_id).first()
+    tenant_id = current_user["tenant_id"]
+    db_depto = db.query(Departamento).filter(Departamento.id == depto_id, Departamento.tenant_id == tenant_id).first()
     if not db_depto:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
-    
+
     # Actualizar campos
     update_data = depto.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_depto, field, value)
-    
+
     db.commit()
     db.refresh(db_depto)
     return db_depto
@@ -306,10 +316,11 @@ def actualizar_departamento(
 @router.delete("/departamentos/{depto_id}")
 def eliminar_departamento(depto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Eliminar departamento"""
-    depto = db.query(Departamento).filter(Departamento.id == depto_id).first()
+    tenant_id = current_user["tenant_id"]
+    depto = db.query(Departamento).filter(Departamento.id == depto_id, Departamento.tenant_id == tenant_id).first()
     if not depto:
         raise HTTPException(status_code=404, detail="Departamento no encontrado")
-    
+
     db.delete(depto)
     db.commit()
     return {"message": "Departamento eliminado exitosamente"}
@@ -326,20 +337,36 @@ os.makedirs(LOGO_DIR, exist_ok=True)
 @router.post("/{condominio_id}/upload-logo")
 async def upload_condominio_logo(condominio_id: int, file: UploadFile = FastFile(...), db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     """Subir logo para un condominio"""
-    condominio = db.query(Condominio).filter(Condominio.id == condominio_id).first()
+    tenant_id = current_user["tenant_id"]
+    condominio = db.query(Condominio).filter(Condominio.id == condominio_id, Condominio.tenant_id == tenant_id).first()
     if not condominio:
         raise HTTPException(status_code=404, detail="Condominio no encontrado")
 
-    ext = os.path.splitext(file.filename or "logo.png")[1].lower()
-    if ext not in [".png", ".jpg", ".jpeg", ".webp"]:
-        raise HTTPException(status_code=400, detail="Solo se aceptan PNG, JPG o WebP")
-
-    filename = f"cond_{condominio_id}_{uuid.uuid4().hex[:8]}{ext}"
-    path = os.path.join(LOGO_DIR, filename)
+    # El nombre/extension del archivo lo controla quien sube -- se valida la
+    # firma binaria real (ver app.utils.images) en vez de confiar en el filename.
+    from app.utils.images import sniff_image_ext
 
     content = await file.read()
-    with open(path, "wb") as f:
-        f.write(content)
+    ext = sniff_image_ext(content)
+    if ext is None:
+        raise HTTPException(status_code=400, detail="Solo se aceptan PNG, JPG o WebP")
+
+    # Se re-codifica la imagen (sin metadata EXIF -- puede traer GPS del celular
+    # que la tomo) antes de guardarla, salvo WebP que Pillow no siempre puede
+    # reabrir sin dependencias extra; para WebP se guarda tal cual.
+    filename = f"cond_{condominio_id}_{uuid.uuid4().hex[:8]}{ext}"
+    path = os.path.join(LOGO_DIR, filename)
+    if ext != ".webp":
+        from io import BytesIO
+        from PIL import Image
+        img = Image.open(BytesIO(content))
+        img.load()
+        if img.mode in ("RGBA", "P") and ext in (".jpg", ".jpeg"):
+            img = img.convert("RGB")
+        img.save(path)
+    else:
+        with open(path, "wb") as f:
+            f.write(content)
 
     logo_url = f"/uploads/logos/{filename}"
     condominio.logo_url = logo_url

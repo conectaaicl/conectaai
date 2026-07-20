@@ -17,11 +17,9 @@ UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 # ============ CRUD TENANTS ============
 
 @router.post("", response_model=TenantResponse)
-def crear_tenant(tenant: TenantCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    if current_user.get('role') not in ('superadmin', 'admin'):
-        raise HTTPException(status_code=403, detail='Acceso denegado')
+def crear_tenant(tenant: TenantCreate, db: Session = Depends(get_db), current_user: dict = Depends(require_superadmin)):
     """Crear nuevo tenant (cliente)"""
-    
+
     # Verificar que subdominio no exista
     existing = db.query(Tenant).filter(Tenant.subdominio == tenant.subdominio).first()
     if existing:
@@ -109,21 +107,27 @@ async def upload_logo(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
-    
-    # Validar tipo de archivo
-    if not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="Solo se permiten imágenes")
-    
+
+    # content_type y el nombre de archivo los controla quien sube -- se valida
+    # la firma binaria real (evita que un .svg con content-type falsificado
+    # quede servido como image/svg+xml, XSS almacenado en el logo del tenant).
+    from app.utils.images import sniff_image_ext, strip_metadata
+    content = await file.read()
+    safe_ext = sniff_image_ext(content)
+    if safe_ext is None:
+        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes JPG, PNG, GIF o WebP")
+    content = strip_metadata(content, safe_ext)
+
     # Guardar archivo
     tenant_dir = UPLOAD_DIR / str(tenant_id)
     tenant_dir.mkdir(exist_ok=True)
-    
-    file_extension = file.filename.split('.')[-1]
+
+    file_extension = safe_ext.lstrip(".")
     file_path = tenant_dir / f"logo.{file_extension}"
-    
+
     with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
+        buffer.write(content)
+
     # Actualizar URL en BD
     logo_url = f"/uploads/tenants/{tenant_id}/logo.{file_extension}"
     tenant.logo_url = logo_url
@@ -142,17 +146,24 @@ async def upload_favicon(
     tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
     if not tenant:
         raise HTTPException(status_code=404, detail="Tenant no encontrado")
-    
+
+    from app.utils.images import sniff_image_ext, strip_metadata
+    content = await file.read()
+    safe_ext = sniff_image_ext(content)
+    if safe_ext is None:
+        raise HTTPException(status_code=400, detail="Solo se aceptan imágenes JPG, PNG, GIF o WebP")
+    content = strip_metadata(content, safe_ext)
+
     # Guardar archivo
     tenant_dir = UPLOAD_DIR / str(tenant_id)
     tenant_dir.mkdir(exist_ok=True)
-    
-    file_extension = file.filename.split('.')[-1]
+
+    file_extension = safe_ext.lstrip(".")
     file_path = tenant_dir / f"favicon.{file_extension}"
-    
+
     with file_path.open("wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
+        buffer.write(content)
+
     # Actualizar URL en BD
     favicon_url = f"/uploads/tenants/{tenant_id}/favicon.{file_extension}"
     tenant.favicon_url = favicon_url

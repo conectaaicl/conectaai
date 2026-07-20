@@ -28,6 +28,7 @@ services:
         condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY}
+      FACIAL_ENCRYPTION_KEY: ${FACIAL_ENCRYPTION_KEY}
       DATABASE_URL: postgresql://conectaai_user:${DB_PASSWORD}@db/conectaai
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_DAYS: "7"
@@ -43,6 +44,8 @@ services:
       CRON_SECRET: "${CRON_SECRET}"
       ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
       META_SYSTEM_TOKEN: ""
+      EVOLUTION_API_URL: "http://evolution_api:8080"
+      EVOLUTION_API_KEY: "${EVOLUTION_API_KEY}"
       FERNET_KEY: "${FERNET_KEY}"
       META_APP_ID: ""
       META_VERIFY_TOKEN: "${META_VERIFY_TOKEN}"
@@ -53,6 +56,9 @@ services:
       VAPID_EMAIL: "mailto:admin@conectaai.cl"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - evolution_default
     ports:
       - "127.0.0.1:8003:8003"
 
@@ -68,6 +74,7 @@ services:
         condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY}
+      FACIAL_ENCRYPTION_KEY: ${FACIAL_ENCRYPTION_KEY}
       DATABASE_URL: postgresql://conectaai_user:${DB_PASSWORD}@db/conectaai
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_DAYS: "7"
@@ -106,6 +113,7 @@ services:
         condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY}
+      FACIAL_ENCRYPTION_KEY: ${FACIAL_ENCRYPTION_KEY}
       DATABASE_URL: postgresql://conectaai_user:${DB_PASSWORD}@db/conectaai
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_DAYS: "7"
@@ -144,6 +152,7 @@ services:
         condition: service_healthy
     environment:
       SECRET_KEY: ${SECRET_KEY}
+      FACIAL_ENCRYPTION_KEY: ${FACIAL_ENCRYPTION_KEY}
       DATABASE_URL: postgresql://conectaai_user:${DB_PASSWORD}@db/conectaai
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_DAYS: "7"
@@ -159,6 +168,8 @@ services:
       CRON_SECRET: "${CRON_SECRET}"
       ANTHROPIC_API_KEY: ""
       META_SYSTEM_TOKEN: ""
+      EVOLUTION_API_URL: "http://evolution_api:8080"
+      EVOLUTION_API_KEY: "${EVOLUTION_API_KEY}"
       FERNET_KEY: "${FERNET_KEY}"
       META_APP_ID: ""
       META_VERIFY_TOKEN: "${META_VERIFY_TOKEN}"
@@ -169,6 +180,9 @@ services:
       VAPID_EMAIL: "mailto:admin@conectaai.cl"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - default
+      - evolution_default
     ports:
       - "127.0.0.1:8015:8000"
 
@@ -215,3 +229,5 @@ volumes:
 networks:
   default:
     name: cai_condominios_net
+  evolution_default:
+    external: true

@@ -8,6 +8,7 @@ GET  /api/condominios/facial-web/personas   -> lista personas y si ya tienen ros
 """
 import base64
 import io
+import os as _os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -19,6 +20,12 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
 router = APIRouter(prefix="/api/condominios/facial-web", tags=["facial_web"])
+
+# El embedding facial es un dato biometrico ("dato sensible" bajo la Ley 21.719) y
+# se guarda cifrado en reposo (pgcrypto) en la columna encoding_enc, nunca en texto plano.
+FACIAL_ENCRYPTION_KEY = _os.getenv("FACIAL_ENCRYPTION_KEY", "")
+if not FACIAL_ENCRYPTION_KEY:
+    raise RuntimeError("FACIAL_ENCRYPTION_KEY env var no configurada")
 
 UMBRAL_DISTANCIA = 1.1  # menor = mas parecido; facenet-pytorch/vggface2 tipico ~0.9-1.1
 
@@ -103,9 +110,10 @@ def enrolar_rostro(data: EnrolarBody, db: Session = Depends(get_db), current_use
 
     import json
     db.execute(text(
-        "INSERT INTO facial_encodings (tenant_id, persona_id, encoding) VALUES (:tid, :pid, :enc) "
-        "ON CONFLICT (tenant_id, persona_id) DO UPDATE SET encoding = :enc, created_at = NOW()"
-    ), {"tid": tenant_id, "pid": data.persona_id, "enc": json.dumps(embedding)})
+        "INSERT INTO facial_encodings (tenant_id, persona_id, encoding_enc) "
+        "VALUES (:tid, :pid, pgp_sym_encrypt(:enc, :key)) "
+        "ON CONFLICT (tenant_id, persona_id) DO UPDATE SET encoding_enc = pgp_sym_encrypt(:enc, :key), created_at = NOW()"
+    ), {"tid": tenant_id, "pid": data.persona_id, "enc": json.dumps(embedding), "key": FACIAL_ENCRYPTION_KEY})
     db.commit()
     return {"success": True}
 
@@ -122,16 +130,17 @@ def verificar_rostro(data: VerificarBody, db: Session = Depends(get_db), current
         return {"acceso": False, "razon": "No se detectó ningún rostro en la foto"}
 
     rows = db.execute(text(
-        "SELECT f.persona_id, f.encoding, p.nombre_completo "
+        "SELECT f.persona_id, pgp_sym_decrypt(f.encoding_enc, :key), p.nombre_completo "
         "FROM facial_encodings f JOIN personas p ON p.id = f.persona_id "
         "WHERE f.tenant_id = :tid"
-    ), {"tid": tenant_id}).fetchall()
+    ), {"tid": tenant_id, "key": FACIAL_ENCRYPTION_KEY}).fetchall()
 
+    import json
     mejor_persona_id = None
     mejor_nombre = None
     mejor_dist = None
-    for pid, enc, nombre in rows:
-        dist = _distancia(embedding, enc)
+    for pid, enc_json, nombre in rows:
+        dist = _distancia(embedding, json.loads(enc_json))
         if mejor_dist is None or dist < mejor_dist:
             mejor_dist, mejor_persona_id, mejor_nombre = dist, pid, nombre
 
