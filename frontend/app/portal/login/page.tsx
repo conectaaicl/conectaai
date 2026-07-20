@@ -45,7 +45,7 @@ export default function PortalLogin() {
             <input
               value={rut} onChange={e => setRut(e.target.value)}
               placeholder="12.345.678-9" required
-              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
+              className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white text-slate-900 font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none"
             />
           </div>
           <div>
@@ -55,7 +55,7 @@ export default function PortalLogin() {
                 type={showPw ? 'text' : 'password'}
                 value={password} onChange={e => setPassword(e.target.value)}
                 required
-                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none pr-16"
+                className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm bg-white text-slate-900 font-semibold focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none pr-16"
               />
               <button
                 type="button" onClick={() => setShowPw(!showPw)}

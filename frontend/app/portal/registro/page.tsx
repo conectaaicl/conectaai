@@ -67,7 +67,7 @@ export default function PortalRegistro() {
 
   const fe = fieldErrors
   const inputClass = (err?: string) =>
-    `w-full border rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${err ? 'border-red-400' : 'border-slate-200'}`
+    `w-full border rounded-xl px-4 py-3 text-sm bg-white text-slate-900 font-semibold outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent ${err ? 'border-red-400' : 'border-slate-200'}`
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-4 py-10">

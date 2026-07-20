@@ -157,7 +157,7 @@ export default function PortalPage() {
                   onChange={handleRutChange}
                   placeholder="12.345.678-9"
                   maxLength={12}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg focus:border-purple-500 outline-none transition"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl text-lg bg-white text-gray-900 font-semibold focus:border-purple-500 outline-none transition"
                   required
                 />
                 {rutError && (
@@ -184,7 +184,7 @@ export default function PortalPage() {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="tu@correo.cl"
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-purple-500 outline-none transition"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl bg-white text-gray-900 font-semibold focus:border-purple-500 outline-none transition"
                 />
               </div>
             )}

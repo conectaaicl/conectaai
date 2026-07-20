@@ -3,6 +3,7 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  color-scheme: light;
 }
 
 @theme inline {
@@ -41,3 +42,17 @@ body {
 /* Pulse dot animation */
 @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
 .pulse-dot { animation: pulse-dot 2s ease infinite; }
+
+/* Evita que el navegador pinte inputs/selects/textareas con estilos nativos
+   de modo oscuro (texto gris claro casi invisible) cuando el OS del usuario
+   esta en dark mode. La app esta disenada en tema claro; sin esto, algunos
+   campos (login, portal residentes, registro) se veian con letras
+   transparentes al escribir. */
+input, select, textarea {
+  color: #0f172a;
+  font-weight: 700;
+}
+input::placeholder, textarea::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
