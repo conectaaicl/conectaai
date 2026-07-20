@@ -272,5 +272,4 @@ def eliminar_paquete(paquete_id: int, current_user: dict = Depends(get_current_u
 
 @router.get("/carriers")
 def get_carriers():
-    tenant_id = current_user["tenant_id"]
     return [{"value": k, "label": v} for k, v in CARRIER_LABELS.items()]

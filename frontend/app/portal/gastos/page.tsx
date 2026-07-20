@@ -152,7 +152,7 @@ function PaymentButtons({
       <button
         onClick={handleFlow}
         disabled={loadingFlow || loadingMp}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-brand-600 text-white hover:bg-brand-700 disabled:opacity-60 transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 transition-colors"
       >
         {loadingFlow ? <Spinner /> : '💳'}
         Flow
@@ -232,7 +232,7 @@ export default function PortalGastosPage() {
   if (sessionLoading || loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -256,11 +256,11 @@ export default function PortalGastosPage() {
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
-      <div className="bg-brand-800 text-white px-4 pt-8 pb-6">
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-4 pt-8 pb-6">
         <div className="max-w-lg mx-auto">
           <button
             onClick={() => router.push('/portal/dashboard')}
-            className="flex items-center gap-1.5 text-brand-200 hover:text-white text-sm mb-4 transition-colors"
+            className="flex items-center gap-1.5 text-indigo-200 hover:text-white text-sm mb-4 transition-colors"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -268,7 +268,7 @@ export default function PortalGastosPage() {
             Volver al inicio
           </button>
           <h1 className="text-2xl font-bold">Gastos Comunes</h1>
-          <p className="text-brand-200 text-sm mt-1">{residente?.nombre_completo}</p>
+          <p className="text-indigo-200 text-sm mt-1">{residente?.nombre_completo}</p>
         </div>
       </div>
 
@@ -474,7 +474,7 @@ export default function PortalGastosPage() {
             href={n.href}
             className={
               'flex-1 flex flex-col items-center py-3 transition-colors ' +
-              (n.active ? 'text-brand-600' : 'text-slate-500 hover:text-brand-600')
+              (n.active ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600')
             }
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

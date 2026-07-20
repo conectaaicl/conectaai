@@ -106,24 +106,35 @@ def _push_residente(residente_id: int, titulo: str, mensaje: str, url: str, db: 
 
 # ─── INCIDENCIAS ─────────────────────────────────────────────────────────────
 
+def _condominio_id_de(r: ResidentePortal, db: Session) -> Optional[int]:
+    if r.condominio_id:
+        return r.condominio_id
+    if not r.departamento_id:
+        return None
+    row = db.execute(text("""
+        SELECT c.id FROM departamentos d
+        JOIN pisos p ON p.id = d.piso_id
+        JOIN torres t ON t.id = p.torre_id
+        JOIN condominios c ON c.id = t.condominio_id
+        WHERE d.id = :did
+    """), {"did": r.departamento_id}).fetchone()
+    return row[0] if row else None
+
+
 @router.get("/mis-incidencias")
 def mis_incidencias(
     r: ResidentePortal = Depends(get_residente),
     db: Session = Depends(get_db)
 ):
-    depto = _depto_numero(r, db)
     params: dict = {"tid": r.tenant_id}
     filters = "WHERE tenant_id=:tid"
 
-    if depto:
-        filters += " AND (departamento_num=:dnum OR datos_json->>'departamento'=:dnum)"
-        params["dnum"] = depto
-    elif r.condominio_id:
-        filters += " AND condominio_id=:cid"
-        params["cid"] = r.condominio_id
+    if r.departamento_id:
+        filters += " AND departamento_id=:did"
+        params["did"] = r.departamento_id
 
     rows = db.execute(text(f"""
-        SELECT id, titulo, tipo, prioridad, estado, created_at, fecha_resolucion, descripcion
+        SELECT id, titulo, categoria AS tipo, prioridad, estado, created_at, fecha_resolucion, descripcion
         FROM incidencias {filters}
         ORDER BY created_at DESC LIMIT 20
     """), params).fetchall()
@@ -145,23 +156,21 @@ def crear_incidencia_portal(
     db: Session = Depends(get_db)
 ):
     depto = _depto_numero(r, db)
+    cid = _condominio_id_de(r, db)
+    descripcion_completa = body.descripcion + (chr(10)*2) + f'Reportado por {r.nombre_completo} - Depto {depto or "-"} via portal'
     res = db.execute(text("""
         INSERT INTO incidencias
-        (tenant_id, condominio_id, titulo, descripcion, tipo, prioridad, estado,
-         reportado_por, departamento_num, datos_json)
-        VALUES (:tid, :cid, :titulo, :desc, :tipo, :prio, 'abierta',
-                :nombre, :depto, :datos)
+        (tenant_id, condominio_id, departamento_id, titulo, descripcion, categoria, prioridad, estado)
+        VALUES (:tid, :cid, :did, :titulo, :desc, :categoria, :prio, 'abierta')
         RETURNING id
     """), {
         "tid": r.tenant_id,
-        "cid": r.condominio_id,
+        "cid": cid,
+        "did": r.departamento_id,
         "titulo": body.titulo,
-        "desc": body.descripcion,
-        "tipo": body.tipo,
+        "desc": descripcion_completa,
+        "categoria": body.tipo,
         "prio": body.prioridad,
-        "nombre": r.nombre_completo,
-        "depto": depto,
-        "datos": f'{{"departamento":"{depto}","fuente":"portal"}}'
     })
     inc_id = res.fetchone()[0]
     db.commit()
@@ -175,6 +184,103 @@ def crear_incidencia_portal(
     )
 
     return {"ok": True, "incidencia_id": inc_id}
+
+
+# ─── RESERVAS ────────────────────────────────────────────────────────────────
+
+@router.get("/reservas/espacios")
+def portal_espacios(r: ResidentePortal = Depends(get_residente), db: Session = Depends(get_db)):
+    """Espacios comunes disponibles para el condominio del residente."""
+    cid = _condominio_id_de(r, db)
+    if not cid:
+        return []
+    rows = db.execute(text("""
+        SELECT id, nombre, descripcion, capacidad, precio_hora, requiere_pago,
+               horario_inicio, horario_fin
+        FROM espacios_comunes
+        WHERE condominio_id = :cid AND activo = 'si'
+        ORDER BY nombre
+    """), {"cid": cid}).fetchall()
+    return [dict(row._mapping) for row in rows]
+
+
+@router.get("/reservas/mis-reservas")
+def portal_mis_reservas(r: ResidentePortal = Depends(get_residente), db: Session = Depends(get_db)):
+    """Reservas hechas desde el departamento del residente."""
+    if not r.departamento_id:
+        return []
+    rows = db.execute(text("""
+        SELECT res.id, ec.nombre AS espacio_nombre,
+               res.fecha_inicio::text, res.fecha_fin::text, res.estado, res.notas
+        FROM reservas res
+        JOIN espacios_comunes ec ON ec.id = res.espacio_id
+        WHERE res.departamento_id = :did
+        ORDER BY res.fecha_inicio DESC LIMIT 20
+    """), {"did": r.departamento_id}).fetchall()
+    return [dict(row._mapping) for row in rows]
+
+
+class ReservaPortalCreate(BaseModel):
+    espacio_id: int
+    fecha: str          # YYYY-MM-DD
+    hora_inicio: str     # HH:MM
+    hora_fin: str        # HH:MM
+    notas: Optional[str] = None
+
+
+@router.post("/reservas", status_code=201)
+def portal_crear_reserva(
+    body: ReservaPortalCreate,
+    r: ResidentePortal = Depends(get_residente),
+    db: Session = Depends(get_db),
+):
+    if not r.departamento_id:
+        raise HTTPException(400, "Tu cuenta no tiene un departamento asignado")
+
+    espacio = db.execute(text(
+        "SELECT id FROM espacios_comunes WHERE id=:eid AND activo='si'"
+    ), {"eid": body.espacio_id}).fetchone()
+    if not espacio:
+        raise HTTPException(404, "Espacio no encontrado")
+
+    fecha_inicio_str = f"{body.fecha} {body.hora_inicio}:00"
+    fecha_fin_str = f"{body.fecha} {body.hora_fin}:00"
+    if fecha_fin_str <= fecha_inicio_str:
+        raise HTTPException(400, "La hora de termino debe ser posterior a la de inicio")
+
+    conflicto = db.execute(text("""
+        SELECT id FROM reservas
+        WHERE espacio_id = :eid AND estado IN ('pendiente', 'confirmada')
+          AND fecha_inicio < :fin AND fecha_fin > :inicio
+    """), {"eid": body.espacio_id, "inicio": fecha_inicio_str, "fin": fecha_fin_str}).fetchone()
+    if conflicto:
+        raise HTTPException(409, f"Ya existe una reserva #{conflicto[0]} que se cruza con ese horario")
+
+    notas = f"Solicitado por {r.nombre_completo} via portal"
+    if body.notas:
+        notas += " - " + body.notas
+
+    res = db.execute(text("""
+        INSERT INTO reservas (espacio_id, departamento_id, fecha_inicio, fecha_fin, estado, notas)
+        VALUES (:eid, :did, :inicio, :fin, 'pendiente', :notas)
+        RETURNING id
+    """), {
+        "eid": body.espacio_id, "did": r.departamento_id,
+        "inicio": fecha_inicio_str, "fin": fecha_fin_str, "notas": notas,
+    })
+    reserva_id = res.fetchone()[0]
+    db.commit()
+
+    depto = _depto_numero(r, db)
+    _push_admin(
+        r.tenant_id,
+        "Nueva solicitud de reserva",
+        f"Depto {depto}: {r.nombre_completo} solicito una reserva",
+        "/dashboard/condominios/reservas",
+        db
+    )
+
+    return {"ok": True, "reserva_id": reserva_id, "estado": "pendiente"}
 
 
 # ─── DOCUMENTOS ──────────────────────────────────────────────────────────────

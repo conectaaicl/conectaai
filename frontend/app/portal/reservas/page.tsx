@@ -29,7 +29,7 @@ function BottomNav() {
         { href: '/portal/qr', icon: '🔑', label: 'QR' },
       ].map(n => (
         <a key={n.href} href={n.href}
-          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-brand-600 transition-colors">
+          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-indigo-600 transition-colors">
           <span className="text-xl">{n.icon}</span>
           <span className="text-xs mt-0.5">{n.label}</span>
         </a>
@@ -58,15 +58,20 @@ export default function PortalReservas() {
 
   useEffect(() => {
     if (!token) return
-    const tenantId = residente?.tenant_id ?? 1
-    authFetch(`/api/reservas/amenidades?tenant_id=${tenantId}`)
+    authFetch('/api/portal/reservas/espacios')
       .then(r => r.ok ? r.json() : [])
       .then(data => setAmenidades(Array.isArray(data) ? data : []))
       .catch(() => {})
 
-    authFetch(`/api/reservas/mis-reservas?tenant_id=${tenantId}`)
+    authFetch('/api/portal/reservas/mis-reservas')
       .then(r => r.ok ? r.json() : [])
-      .then(data => setReservas(Array.isArray(data) ? data : []))
+      .then(data => setReservas(Array.isArray(data) ? data.map((x: any) => ({
+        id: x.id, amenidad_nombre: x.espacio_nombre,
+        fecha: (x.fecha_inicio || '').split(' ')[0],
+        hora_inicio: (x.fecha_inicio || '').split(' ')[1]?.slice(0, 5) || '',
+        hora_fin: (x.fecha_fin || '').split(' ')[1]?.slice(0, 5) || '',
+        estado: x.estado,
+      })) : []))
       .catch(() => {})
       .finally(() => setLoadingData(false))
   }, [token, residente])
@@ -76,21 +81,23 @@ export default function PortalReservas() {
     if (!selected || !fecha) { setError('Seleccione amenidad y fecha'); return }
     setSubmitting(true); setError(''); setSuccess('')
     try {
-      const res = await authFetch('/api/reservas', {
+      const res = await authFetch('/api/portal/reservas', {
         method: 'POST',
         body: JSON.stringify({
-          amenidad_id: selected,
+          espacio_id: selected,
           fecha,
           hora_inicio: horaInicio,
           hora_fin: horaFin,
-          tenant_id: residente?.tenant_id ?? 1,
-          departamento_id: residente?.departamento_id,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Error al realizar reserva'); return }
-      setSuccess('Reserva realizada correctamente')
-      setReservas(prev => [data, ...prev])
+      setSuccess('Solicitud enviada. Quedara pendiente hasta que la administracion la confirme.')
+      setReservas(prev => [{
+        id: data.reserva_id,
+        amenidad_nombre: amenidades.find(a => a.id === selected)?.nombre || '',
+        fecha, hora_inicio: horaInicio, hora_fin: horaFin, estado: data.estado,
+      }, ...prev])
       setSelected(null); setFecha('')
     } catch { setError('Error de conexion') }
     finally { setSubmitting(false) }
@@ -104,7 +111,7 @@ export default function PortalReservas() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
     </div>
   )
 
@@ -129,7 +136,7 @@ export default function PortalReservas() {
                 <select
                   value={selected ?? ''}
                   onChange={e => setSelected(Number(e.target.value) || null)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">Seleccionar...</option>
                   {amenidades.map(a => (
@@ -144,25 +151,25 @@ export default function PortalReservas() {
                   value={fecha}
                   min={new Date().toISOString().split('T')[0]}
                   onChange={e => setFecha(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500"
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Hora inicio</label>
                   <input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-600 mb-1">Hora fin</label>
                   <input type="time" value={horaFin} onChange={e => setHoraFin(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-brand-500" />
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full bg-brand-600 text-white py-3 rounded-xl font-semibold hover:bg-brand-700 disabled:opacity-50 transition-colors"
+                className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
               >
                 {submitting ? 'Reservando...' : 'Confirmar reserva'}
               </button>

@@ -31,7 +31,7 @@ function BottomNav() {
         {href:'/portal/qr',        icon:'🔑', label:'QR'},
       ].map(n => (
         <a key={n.href} href={n.href}
-          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-brand-600 transition-colors">
+          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-indigo-600 transition-colors">
           <span className="text-xl">{n.icon}</span>
           <span className="text-xs mt-0.5">{n.label}</span>
         </a>
@@ -100,7 +100,7 @@ export default function PortalCuenta() {
 
   if (loading) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"/>
+      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/>
     </div>
   )
 
@@ -148,7 +148,7 @@ export default function PortalCuenta() {
 
         {loadingData && (
           <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"/>
+            <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"/>
           </div>
         )}
 
@@ -203,8 +203,8 @@ export default function PortalCuenta() {
                           onClick={() => pagar(g.id, 'flow')}
                           disabled={payingId === g.id}
                           className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm
-                            bg-gradient-to-r from-brand-600 to-brand-700 text-white
-                            hover:from-brand-500 hover:to-brand-600
+                            bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
+                            hover:from-indigo-500 hover:to-indigo-600
                             disabled:opacity-50 disabled:cursor-not-allowed
                             transition-all active:scale-95 shadow"
                         >

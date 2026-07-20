@@ -105,6 +105,7 @@ def listar_incidencias(
     condominio_id: Optional[int] = Query(None),
     skip: int = 0,
     limit: int = 100,
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """List incidences with optional filters."""

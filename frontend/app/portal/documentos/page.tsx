@@ -50,26 +50,26 @@ export default function PortalDocumentos() {
 
   if (loading || fetching) return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin"/>
+      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/>
     </div>
   )
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="bg-brand-800 text-white px-4 pt-8 pb-6">
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-4 pt-8 pb-6">
         <div className="max-w-lg mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => router.back()} className="text-brand-200 hover:text-white">
+            <button onClick={() => router.back()} className="text-indigo-200 hover:text-white">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
               </svg>
             </button>
             <div>
               <h1 className="text-lg font-bold">Documentos</h1>
-              <p className="text-brand-200 text-xs">Documentos del condominio</p>
+              <p className="text-indigo-200 text-xs">Documentos del condominio</p>
             </div>
           </div>
-          <button onClick={logout} className="text-brand-200 hover:text-white text-xs">Salir</button>
+          <button onClick={logout} className="text-indigo-200 hover:text-white text-xs">Salir</button>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export default function PortalDocumentos() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Buscar documentos..."
-            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-brand-500 outline-none bg-white"
+            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
           />
         </div>
 
@@ -108,7 +108,7 @@ export default function PortalDocumentos() {
                 </div>
                 {doc.url && (
                   <a href={doc.url} target="_blank" rel="noopener noreferrer"
-                    className="flex-shrink-0 p-2 bg-brand-50 text-brand-600 rounded-xl hover:bg-brand-100 transition-colors">
+                    className="flex-shrink-0 p-2 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
                     </svg>
@@ -129,7 +129,7 @@ export default function PortalDocumentos() {
           {href:'/portal/avisos', icon:'📢', label:'Avisos'},
         ].map(item => (
           <a key={item.href} href={item.href}
-            className="flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-brand-600 transition-colors">
+            className="flex-1 flex flex-col items-center py-2 text-slate-400 hover:text-indigo-600 transition-colors">
             <span className="text-xl">{item.icon}</span>
             <span className="text-[10px] mt-0.5">{item.label}</span>
           </a>
