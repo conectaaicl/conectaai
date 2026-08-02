@@ -94,6 +94,7 @@ def startup_event():
 from app.routers import auth, personas, sistema, condominios, finanzas, personal, admin, whatsapp360, usuarios, portal, reservas, avisos, accesos, incidencias, votaciones, puertas, rfid
 from app.routers import paquetes, ordenes, documentos, avisos_lectura, recordatorios
 from app.routers import rfid_solicitudes
+from app.routers import rfid_keys
 
 # Registrar routers
 app.include_router(auth.router)
@@ -103,6 +104,7 @@ app.include_router(personas.router)
 app.include_router(puertas.router)
 app.include_router(rfid.router)
 app.include_router(rfid_solicitudes.router)
+app.include_router(rfid_keys.router)
 app.include_router(paquetes.router)
 app.include_router(ordenes.router)
 app.include_router(documentos.router)
