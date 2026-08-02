@@ -178,7 +178,7 @@ function Hero() {
             <span style={{ background:'linear-gradient(135deg,#a78bfa 0%,#818cf8 50%,#34d399 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>gestionado por IA</span>
           </h1>
           <p style={{ fontSize:18, color:'rgba(255,255,255,0.55)', lineHeight:1.75, marginBottom:40, maxWidth:560 }}>
-            Control de acceso RFID, cámaras integradas, bot WhatsApp, portal del residente y gestión financiera — todo en una plataforma diseñada para edificios y condominios chilenos.
+            Control de acceso RFID, duplicado de tarjetas, smart locks integrados, bot WhatsApp, portal del residente y gestión financiera — todo en una plataforma diseñada para edificios y condominios chilenos.
           </p>
           <div style={{ display:'flex', gap:16, flexWrap:'wrap', alignItems:'center', marginBottom:56 }}>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer"
@@ -195,7 +195,7 @@ function Hero() {
             </a>
           </div>
           <div style={{ display:'flex', gap:0, flexWrap:'wrap' }}>
-            {[{v:'12',s:'+',l:'módulos integrados'},{v:'98',s:'%',l:'satisfacción clientes'},{v:'24',s:'/7',l:'soporte técnico'}].map((s,i) => (
+            {[{v:'15',s:'+',l:'módulos integrados'},{v:'98',s:'%',l:'satisfacción clientes'},{v:'24',s:'/7',l:'soporte técnico'}].map((s,i) => (
               <div key={s.l} style={{ paddingRight:28, marginRight:28, borderRight:i<2?'1px solid rgba(255,255,255,0.1)':'none' }}>
                 <div style={{ fontSize:26, fontWeight:900, color:'#f8fafc', letterSpacing:'-0.03em', lineHeight:1 }}>{s.v}<span style={{ color:'#a78bfa' }}>{s.s}</span></div>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', fontWeight:500, marginTop:4 }}>{s.l}</div>
@@ -218,7 +218,7 @@ function Hero() {
 
 /* ─── TRUST BAR ─── */
 function TrustBar() {
-  const items = ['Control de acceso TCP/IP','RFID + Biometría','Bot WhatsApp integrado','Panel conserje táctil','Portal del residente','Gestión financiera','Reserva de espacios','Alertas IoT']
+  const items = ['Control de acceso TCP/IP','RFID + Biometría','Duplicado de tarjetas RFID','Tarjeta banco como llave','Bot WhatsApp integrado','Panel conserje táctil','Portal del residente','Gestión financiera','Reserva de espacios','Smart Locks API','Alertas IoT','ZKTeco · Hikvision API']
   return (
     <div style={{ background:'#0a0a12', borderTop:'1px solid rgba(255,255,255,0.04)', borderBottom:'1px solid rgba(255,255,255,0.04)', padding:'18px 0', overflow:'hidden' }}>
       <div style={{ display:'flex', gap:56, animation:'marquee 22s linear infinite', width:'max-content' }}>
@@ -311,9 +311,95 @@ function Features() {
         <FeatureRow img="https://images.unsplash.com/photo-1697382608786-bcf4c113b86e?w=900&q=80&auto=format&fit=crop" tag="Control de Acceso" tagColor="#7c3aed" title="Acceso inteligente sin llaves físicas" desc="Controla puertas y portones remotamente desde cualquier dispositivo. Tarjetas RFID, llaveros, biometría de huella y apertura remota desde el celular." bullets={['Apertura TCP/IP desde panel web, tablet o smartphone','Acceso RFID, llaveros y huella dactilar biométrica','Historial completo de cada acceso con fecha y hora','Alertas de puertas forzadas o abiertas por tiempo excesivo']} reverse={false} />
         <FeatureRow img="https://images.unsplash.com/photo-1759038085950-1234ca8f5fed?w=900&q=80&auto=format&fit=crop" tag="Panel Conserje" tagColor="#06b6d4" title="Interfaz táctil para conserjería" desc="Una tablet en recepción y el conserje tiene todo el control. Botones grandes, información clara, sin necesidad de capacitación técnica previa." bullets={['Registro de visitas con foto y pre-autorización del residente','Gestión de encomiendas con notificación automática por WhatsApp','Control de puertas y acceso a cámaras en vivo','Comunicación directa con residentes desde la pantalla']} reverse={true} />
         <FeatureRow img="https://images.unsplash.com/photo-1592890288564-76628a30a657?w=900&q=80&auto=format&fit=crop" tag="Portal del Residente" tagColor="#f97316" title="Los residentes conectados desde su celular" desc="App web y móvil para que cada residente gestione visitas, reciba notificaciones, vote en asambleas y acceda a todos los documentos del condominio." bullets={['Pre-autorización digital de visitas desde el celular','Notificaciones de paquetes, comunicados y alertas en tiempo real','Acceso a estados de cuenta y gastos comunes','Votaciones y asambleas virtuales integradas']} reverse={false} />
+        <FeatureRow img="https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=900&q=80&auto=format&fit=crop" tag="RFID & Accesos" tagColor="#0891B2" title="Duplicado de tarjetas y enrolamiento inteligente" desc="¿Perdiste tu tarjeta de acceso? La clonamos en minutos. Tu tarjeta de débito también puede ser tu llave — los sistemas UID-only leen cualquier NFC a 13.56 MHz, incluyendo tarjetas bancarias." bullets={['Duplicado Mifare Classic 1K/4K y EM4100 125 kHz','Tarjeta débito Santander, BCI, Chile como llave de acceso','Integración ZKTeco ZKAccess API e Hikvision ISAPI','Diagnóstico gratuito — sabemos si es clonable antes de cobrar']} reverse={false} />
         <FeatureRow img="https://images.unsplash.com/photo-1496368077930-c1e31b4e5b44?w=900&q=80&auto=format&fit=crop" tag="Cámaras e IoT" tagColor="#10b981" title="Seguridad visual integrada al sistema" desc="Vincula las grabaciones de CCTV a cada evento. Cuando ocurre un incidente, accede directamente al video del momento exacto." bullets={['CCTV integrado con log de eventos del sistema','Alertas IoT por movimiento, intrusión o humo','Sensores de temperatura y humedad en áreas comunes','Acceso remoto a cámaras en vivo desde cualquier dispositivo']} reverse={true} />
       </div>
       <style>{`@media (max-width:860px){.ca-feature-row{grid-template-columns:1fr!important;gap:32px!important} .ca-feature-row>div{order:unset!important}}`}</style>
+    </section>
+  )
+}
+
+
+/* ─── RFID SERVICE ─── */
+function RFIDService() {
+  return (
+    <section style={{ padding:'100px 28px', borderTop:'1px solid rgba(8,145,178,0.12)', background:'linear-gradient(180deg,rgba(8,145,178,0.04) 0%,rgba(0,0,0,0) 100%)' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto' }}>
+        <div style={{ textAlign:'center', marginBottom:64 }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 16px', borderRadius:100, background:'rgba(8,145,178,0.1)', border:'1px solid rgba(8,145,178,0.25)', marginBottom:20 }}>
+            <span style={{ width:6, height:6, borderRadius:'50%', background:'#22d3ee', boxShadow:'0 0 8px #22d3ee', display:'inline-block', animation:'pulse 2s infinite' }}/>
+            <span style={{ fontSize:11, fontWeight:700, color:'#67e8f9', letterSpacing:'0.1em', textTransform:'uppercase' }}>Nuevo · Servicio RFID & Accesos</span>
+          </div>
+          <h2 style={{ fontSize:'clamp(28px,4vw,48px)', fontWeight:900, letterSpacing:'-0.03em', color:'#f1f5f9', lineHeight:1.15, marginBottom:16 }}>
+            {'¿Perdiste tu tarjeta de acceso?'}<br/>
+            <span style={{ background:'linear-gradient(135deg,#22d3ee,#0891B2)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>La duplicamos en minutos.</span>
+          </h2>
+          <p style={{ fontSize:16, color:'rgba(255,255,255,0.42)', maxWidth:580, margin:'0 auto', lineHeight:1.75 }}>
+            Servicio profesional de duplicado de tarjetas RFID, enrolamiento en cerraduras inteligentes y gestión de accesos para condominios de Santiago.
+          </p>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, marginBottom:40 }} className="ca-rfid-grid">
+          <div style={{ background:'rgba(8,145,178,0.06)', border:'1px solid rgba(8,145,178,0.2)', borderRadius:20, padding:'28px 24px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:0, right:0, width:140, height:140, background:'radial-gradient(circle,rgba(8,145,178,0.12),transparent)', borderRadius:'50%', transform:'translate(30%,-30%)' }}/>
+            <div style={{ fontSize:32, marginBottom:16 }}>{'📋'}</div>
+            <h3 style={{ fontSize:18, fontWeight:800, color:'#67e8f9', marginBottom:10 }}>Duplicado de tarjetas</h3>
+            <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.42)', lineHeight:1.7, marginBottom:18 }}>Clonamos tu tarjeta de acceso en una nueva. Compatible con los sistemas más comunes en condominios chilenos.</p>
+            <ul style={{ listStyle:'none', padding:0, display:'flex', flexDirection:'column', gap:9 }}>
+              {['Mifare Classic 1K/4K (13.56 MHz)','EM4100 / HID 125 kHz','Llaveros y tags RFID','Desde $3.000 / tarjeta'].map((item,idx) => (
+                <li key={idx} style={{ display:'flex', gap:9, alignItems:'flex-start', fontSize:13, color:'rgba(255,255,255,0.5)' }}>
+                  <Check color="#22d3ee" />{item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div style={{ background:'rgba(16,185,129,0.06)', border:'1px solid rgba(16,185,129,0.2)', borderRadius:20, padding:'28px 24px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:0, right:0, width:140, height:140, background:'radial-gradient(circle,rgba(16,185,129,0.12),transparent)', borderRadius:'50%', transform:'translate(30%,-30%)' }}/>
+            <div style={{ fontSize:32, marginBottom:16 }}>{'💳'}</div>
+            <h3 style={{ fontSize:18, fontWeight:800, color:'#34d399', marginBottom:10 }}>{'¿Tarjeta de banco como llave?'}</h3>
+            <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.42)', lineHeight:1.7, marginBottom:18 }}>En sistemas UID-only, tu tarjeta de débito o crédito puede ser tu llave de acceso. Sin costo de tarjeta nueva.</p>
+            <ul style={{ listStyle:'none', padding:0, display:'flex', flexDirection:'column', gap:9 }}>
+              {['Santander, BCI, Banco Chile y más','Visa y Mastercard con chip NFC','Compatible con ZKTeco, Hikvision','Enrolamiento incluido sin costo'].map((item,idx) => (
+                <li key={idx} style={{ display:'flex', gap:9, alignItems:'flex-start', fontSize:13, color:'rgba(255,255,255,0.5)' }}>
+                  <Check color="#34d399" />{item}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div style={{ background:'rgba(124,58,237,0.06)', border:'1px solid rgba(124,58,237,0.2)', borderRadius:20, padding:'28px 24px', position:'relative', overflow:'hidden' }}>
+            <div style={{ position:'absolute', top:0, right:0, width:140, height:140, background:'radial-gradient(circle,rgba(124,58,237,0.12),transparent)', borderRadius:'50%', transform:'translate(30%,-30%)' }}/>
+            <div style={{ fontSize:32, marginBottom:16 }}>{'🔓'}</div>
+            <h3 style={{ fontSize:18, fontWeight:800, color:'#a78bfa', marginBottom:10 }}>{'Integración Smart Locks'}</h3>
+            <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.42)', lineHeight:1.7, marginBottom:18 }}>Conectamos cerraduras inteligentes vía API al panel del condominio. Apertura remota y gestión centralizada.</p>
+            <ul style={{ listStyle:'none', padding:0, display:'flex', flexDirection:'column', gap:9 }}>
+              {['ZKTeco ZKAccess API','Hikvision ISAPI','Samsung / Yale Smart Home','Apertura remota desde el panel'].map((item,idx) => (
+                <li key={idx} style={{ display:'flex', gap:9, alignItems:'flex-start', fontSize:13, color:'rgba(255,255,255,0.5)' }}>
+                  <Check color="#a78bfa" />{item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:20, padding:'22px 28px', background:'rgba(8,145,178,0.05)', border:'1px solid rgba(8,145,178,0.15)', borderRadius:16 }}>
+          <p style={{ fontSize:14, color:'rgba(255,255,255,0.48)', margin:0, lineHeight:1.6, flex:1 }}>
+            <span style={{ color:'#22d3ee', fontWeight:700 }}>{'Diagnóstico GRATIS:'}</span> detectamos si tu tarjeta es clonable antes de cobrar. Si no se puede, te decimos por qué sin cobrarte nada.
+          </p>
+          <div style={{ display:'flex', gap:12, flexShrink:0 }}>
+            <a href="https://conectaai.cl/rfid.html"
+              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 22px', borderRadius:10, background:'linear-gradient(135deg,#0891B2,#0e7490)', color:'white', textDecoration:'none', fontSize:14, fontWeight:700, boxShadow:'0 4px 20px rgba(8,145,178,0.35)', whiteSpace:'nowrap', transition:'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.transform='translateY(-1px)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(8,145,178,0.45)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 4px 20px rgba(8,145,178,0.35)' }}>
+              {'Ver servicio completo →'}
+            </a>
+            <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+              style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'12px 20px', borderRadius:10, background:'rgba(37,211,102,0.12)', border:'1px solid rgba(37,211,102,0.25)', color:'#25d366', textDecoration:'none', fontSize:14, fontWeight:600, whiteSpace:'nowrap', transition:'all 0.2s' }}
+              onMouseEnter={e => { e.currentTarget.style.background='rgba(37,211,102,0.2)' }}
+              onMouseLeave={e => { e.currentTarget.style.background='rgba(37,211,102,0.12)' }}>
+              <WA /> Consultar
+            </a>
+          </div>
+        </div>
+      </div>
+      <style>{'@media (max-width:860px){.ca-rfid-grid{grid-template-columns:1fr!important}}'}</style>
     </section>
   )
 }
@@ -332,6 +418,9 @@ const MODULES = [
   {color:'#4ade80',label:'Gestión Financiera',desc:'Gastos comunes, morosidad y rendición de cuentas transparente.'},
   {color:'#25d366',label:'Bot WhatsApp',desc:'Notificaciones automáticas al residente directo en WhatsApp.'},
   {color:'#60a5fa',label:'Alertas y notificaciones',desc:'Push, email y WhatsApp. Nadie se pierde nada importante.'},
+  {color:'#0891B2',label:'Duplicado RFID',desc:'Clonación Mifare Classic, EM4100. Tarjeta bancaria como llave.'},
+  {color:'#34d399',label:'Smart Locks & ZKTeco',desc:'API ZKAccess + Hikvision ISAPI. Apertura remota centralizada.'},
+  {color:'#fb923c',label:'Diagnóstico de tarjetas',desc:'Detectamos el tipo antes de cobrar. Mifare, DESFire, EM4100.'},
 ]
 
 function Modules() {
@@ -339,8 +428,8 @@ function Modules() {
     <section style={{ padding:'80px 28px', background:'linear-gradient(180deg,rgba(124,58,237,0.04) 0%,transparent 100%)' }}>
       <div style={{ maxWidth:1200, margin:'0 auto' }}>
         <div style={{ textAlign:'center', marginBottom:52 }}>
-          <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#a78bfa', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(167,139,250,0.08)', borderRadius:100, border:'1px solid rgba(167,139,250,0.2)' }}>12 módulos integrados</div>
-          <h2 style={{ fontSize:'clamp(24px,3vw,36px)', fontWeight:800, letterSpacing:'-0.02em', color:'#f1f5f9' }}>Todos los módulos que necesita tu condominio</h2>
+          <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#a78bfa', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(167,139,250,0.08)', borderRadius:100, border:'1px solid rgba(167,139,250,0.2)' }}>15 módulos integrados</div>
+          <h2 style={{ fontSize:'clamp(24px,3vw,36px)', fontWeight:800, letterSpacing:'-0.02em', color:'#f1f5f9' }}>15 módulos integrados para tu condominio</h2>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10 }} className="ca-modules-grid">
           {MODULES.map((m,i) => (
@@ -373,7 +462,7 @@ function Stats() {
             {to:50,suffix:'+',label:'Edificios activos',sub:'en Chile'},
             {to:8000,suffix:'+',label:'Residentes gestionados',sub:'en la plataforma'},
             {to:98,suffix:'%',label:'Satisfacción',sub:'clientes encuestados'},
-            {to:12,suffix:'',label:'Módulos integrados',sub:'en una sola plataforma'},
+            {to:15,suffix:'',label:'Módulos integrados',sub:'en una sola plataforma'},
           ].map((s,i) => (
             <div key={i} style={{ textAlign:'center', padding:'28px 20px', borderRight:i<3?'1px solid rgba(255,255,255,0.07)':'none' }}>
               <div style={{ fontSize:'clamp(36px,5vw,56px)', fontWeight:900, letterSpacing:'-0.03em', background:'linear-gradient(135deg,#a78bfa,#34d399)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', lineHeight:1 }}>
@@ -596,6 +685,7 @@ export default function Page() {
       <TrustBar />
       <HowItWorks />
       <Features />
+      <RFIDService />
       <Modules />
       <Stats />
       <Testimonials />
