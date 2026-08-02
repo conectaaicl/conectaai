@@ -19,6 +19,7 @@ app.add_middleware(
         "http://localhost:3005",
         "https://conectaai.cl",
         "https://www.conectaai.cl",
+        "https://condo.conectaai.cl",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -92,6 +93,7 @@ def startup_event():
 # Importar routers
 from app.routers import auth, personas, sistema, condominios, finanzas, personal, admin, whatsapp360, usuarios, portal, reservas, avisos, accesos, incidencias, votaciones, puertas, rfid
 from app.routers import paquetes, ordenes, documentos, avisos_lectura, recordatorios
+from app.routers import rfid_solicitudes
 
 # Registrar routers
 app.include_router(auth.router)
@@ -100,6 +102,7 @@ app.include_router(whatsapp360.router)
 app.include_router(personas.router)
 app.include_router(puertas.router)
 app.include_router(rfid.router)
+app.include_router(rfid_solicitudes.router)
 app.include_router(paquetes.router)
 app.include_router(ordenes.router)
 app.include_router(documentos.router)
