@@ -240,3 +240,5 @@ def health():
 
 from app.routers import ventas as ventas_router
 app.include_router(ventas_router.router)
+from app.routers import egresos as egresos_router
+app.include_router(egresos_router.router)

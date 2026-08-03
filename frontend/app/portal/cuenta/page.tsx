@@ -3,37 +3,57 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePortalSession } from '../usePortalSession'
 
-interface Gasto {
+const fmt = (n: number) => '$' + Math.round(n).toLocaleString('es-CL')
+
+interface Cobro {
   id: number
   periodo: string | null
   descripcion: string | null
+  concepto?: string
   monto_total: number
   vencimiento: string | null
+  fecha_pago?: string | null
+  metodo_pago?: string | null
   estado: string
-  desglose: Record<string,any> | null
+  desglose: Record<string, any> | null
+  source?: string
 }
 
 interface Metodos { flow: boolean; mp: boolean }
 
-const estadoBadge: Record<string,string> = {
-  pagado:   'bg-emerald-100 text-emerald-700',
-  pendiente:'bg-amber-100 text-amber-700',
-  atrasado: 'bg-red-100 text-red-700',
+const ESTADO: Record<string, { label: string; cls: string; dot: string }> = {
+  pagado:   { label: '✓ Pagado',   cls: 'bg-emerald-100 text-emerald-700 border-emerald-200', dot: 'bg-emerald-400' },
+  pendiente:{ label: 'Pendiente',  cls: 'bg-amber-100 text-amber-700 border-amber-200',       dot: 'bg-amber-400' },
+  vencido:  { label: '⚠ Vencido', cls: 'bg-red-100 text-red-700 border-red-200',             dot: 'bg-red-500' },
+  atrasado: { label: '⚠ Atrasado',cls: 'bg-red-100 text-red-700 border-red-200',             dot: 'bg-red-500' },
+  exento:   { label: 'Exento',     cls: 'bg-slate-100 text-slate-500 border-slate-200',       dot: 'bg-slate-400' },
+}
+
+function EstadoBadge({ estado }: { estado: string }) {
+  const e = ESTADO[estado] || ESTADO.pendiente
+  return (
+    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${e.cls}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${e.dot}`} />
+      {e.label}
+    </span>
+  )
 }
 
 function BottomNav() {
+  const items = [
+    { href: '/portal/dashboard', icon: '🏠', label: 'Inicio' },
+    { href: '/portal/cuenta',    icon: '💰', label: 'Mi Cuenta' },
+    { href: '/portal/avisos',    icon: '📢', label: 'Avisos' },
+    { href: '/portal/qr',        icon: '🔑', label: 'Acceso QR' },
+  ]
+  const current = typeof window !== 'undefined' ? window.location.pathname : ''
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-40">
-      {[
-        {href:'/portal/dashboard', icon:'🏠', label:'Inicio'},
-        {href:'/portal/cuenta',    icon:'💰', label:'Cuenta'},
-        {href:'/portal/avisos',    icon:'📢', label:'Avisos'},
-        {href:'/portal/qr',        icon:'🔑', label:'QR'},
-      ].map(n => (
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex z-40 pb-safe">
+      {items.map(n => (
         <a key={n.href} href={n.href}
-          className="flex-1 flex flex-col items-center py-3 text-slate-500 hover:text-indigo-600 transition-colors">
+          className={`flex-1 flex flex-col items-center py-3 transition-colors ${current === n.href ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-500'}`}>
           <span className="text-xl">{n.icon}</span>
-          <span className="text-xs mt-0.5">{n.label}</span>
+          <span className="text-xs mt-0.5 font-medium">{n.label}</span>
         </a>
       ))}
     </nav>
@@ -43,12 +63,13 @@ function BottomNav() {
 export default function PortalCuenta() {
   const router = useRouter()
   const { token, loading, authFetch, residente } = usePortalSession()
-  const [gastos,        setGastos]   = useState<Gasto[]>([])
-  const [metodos,       setMetodos]  = useState<Metodos>({ flow: false, mp: false })
-  const [loadingData,   setLData]    = useState(true)
-  const [expanded,      setExpanded] = useState<number|null>(null)
-  const [payingId,      setPayingId] = useState<number|null>(null)
-  const [payError,      setPayError] = useState<string|null>(null)
+  const [cobros, setCobros] = useState<Cobro[]>([])
+  const [metodos, setMetodos] = useState<Metodos>({ flow: false, mp: false })
+  const [loadingData, setLoading2] = useState(true)
+  const [expanded, setExpanded] = useState<number | null>(null)
+  const [payingId, setPayingId] = useState<number | null>(null)
+  const [payError, setPayError] = useState<string | null>(null)
+  const [tab, setTab] = useState<'pendientes' | 'historial'>('pendientes')
 
   useEffect(() => {
     if (!loading && !token) router.push('/portal/login')
@@ -61,206 +82,206 @@ export default function PortalCuenta() {
       authFetch('/api/portal/pagos/metodos').then(r => r.json()),
     ])
       .then(([cuenta, mets]) => {
-        if (Array.isArray(cuenta)) setGastos(cuenta)
+        if (Array.isArray(cuenta)) setCobros(cuenta)
         if (mets && typeof mets === 'object') setMetodos(mets)
       })
       .catch(() => {})
-      .finally(() => setLData(false))
+      .finally(() => setLoading2(false))
   }, [token])
 
-  const formatCLP = (n: number) => '$' + Math.round(n).toLocaleString('es-CL')
-  const pendientes = gastos.filter(g => g.estado !== 'pagado')
-  const totalPendiente = pendientes.reduce((s, g) => s + (g.monto_total || 0), 0)
+  const pendientes = cobros.filter(c => !['pagado', 'exento'].includes(c.estado))
+  const pagados = cobros.filter(c => c.estado === 'pagado')
+  const totalPendiente = pendientes.reduce((s, c) => s + (c.monto_total || 0), 0)
 
-  async function pagar(gastoId: number, metodo: 'flow' | 'mp') {
-    setPayingId(gastoId)
+  async function pagar(cobroId: number, metodo: 'flow' | 'mp') {
+    setPayingId(cobroId)
     setPayError(null)
     try {
-      const endpoint = metodo === 'flow'
-        ? '/api/portal/pagos/flow/iniciar'
-        : '/api/portal/pagos/mp/iniciar'
+      const endpoint = metodo === 'flow' ? '/api/portal/pagos/flow/iniciar' : '/api/portal/pagos/mp/iniciar'
       const r = await authFetch(endpoint, {
         method: 'POST',
-        body: JSON.stringify({ gasto_comun_id: gastoId }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gasto_id: cobroId, monto: cobros.find(c => c.id === cobroId)?.monto_total }),
       })
       const data = await r.json()
-      if (!r.ok) {
-        setPayError(data.detail || 'Error al iniciar pago')
-        return
-      }
-      const url = data.url || data.sandbox_url
-      if (url) window.location.href = url
-      else setPayError('No se recibió URL de pago')
+      if (data.url) window.location.href = data.url
+      else setPayError(data.detail || 'Error al iniciar pago')
     } catch {
-      setPayError('Error de conexión. Intente nuevamente.')
-    } finally {
-      setPayingId(null)
+      setPayError('Error de conexión')
     }
+    setPayingId(null)
   }
 
-  if (loading) return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"/>
-    </div>
-  )
+  if (loading || loadingData) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
 
-  const hayPagos = metodos.flow || metodos.mp
+  const visible = tab === 'pendientes' ? pendientes : pagados
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-24">
-      <div className="bg-white border-b border-slate-100 px-4 py-4">
-        <div className="max-w-lg mx-auto flex items-center gap-3">
-          <a href="/portal/dashboard" className="text-slate-400 hover:text-slate-700 text-lg">←</a>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800">Estado de Cuenta</h1>
-            {residente?.nombre && <p className="text-xs text-slate-500">{residente.nombre}</p>}
-          </div>
+    <div className="min-h-screen bg-slate-50 pb-28">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white px-4 pt-8 pb-16">
+        <div className="max-w-lg mx-auto">
+          <h1 className="text-xl font-bold mb-0.5">Mi Cuenta</h1>
+          <p className="text-indigo-200 text-sm">{residente?.nombre_completo}</p>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto p-4 space-y-4">
-
-        {payError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-xl flex items-start gap-2">
-            <span className="text-base flex-shrink-0">⚠</span>
-            <span>{payError}</span>
-            <button onClick={() => setPayError(null)} className="ml-auto text-red-400 hover:text-red-600">✕</button>
+      {/* Balance card */}
+      <div className="max-w-lg mx-auto px-4 -mt-10 mb-4">
+        <div className={`rounded-2xl p-5 shadow-lg text-white ${totalPendiente > 0 ? 'bg-gradient-to-br from-red-500 to-red-700' : 'bg-gradient-to-br from-emerald-500 to-emerald-700'}`}>
+          <p className="text-sm font-medium opacity-80">
+            {totalPendiente > 0 ? 'Total pendiente de pago' : '¡Al día con sus pagos!'}
+          </p>
+          <p className="text-4xl font-black mt-1 tracking-tight">{fmt(totalPendiente)}</p>
+          <div className="flex items-center gap-4 mt-3 text-sm opacity-80">
+            <span>{pendientes.length} cuota{pendientes.length !== 1 ? 's' : ''} pendiente{pendientes.length !== 1 ? 's' : ''}</span>
+            <span>·</span>
+            <span>{pagados.length} pagada{pagados.length !== 1 ? 's' : ''}</span>
           </div>
-        )}
-
-        {totalPendiente > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-5">
-            <p className="text-sm text-red-500 font-medium">Total pendiente</p>
-            <p className="text-3xl font-bold text-red-600 mt-1">{formatCLP(totalPendiente)}</p>
-            <p className="text-xs text-red-400 mt-1">{pendientes.length} cargo(s) sin pagar</p>
-            {!hayPagos && (
-              <p className="text-xs text-red-400 mt-2 border-t border-red-100 pt-2">
-                Pago en línea no disponible — contacte a la administración
-              </p>
-            )}
-          </div>
-        )}
-        {totalPendiente === 0 && !loadingData && (
-          <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5">
-            <p className="text-emerald-700 font-semibold">✓ Al día con todos los pagos</p>
-          </div>
-        )}
-
-        {loadingData && (
-          <div className="flex justify-center py-10">
-            <div className="w-6 h-6 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"/>
-          </div>
-        )}
-
-        {gastos.map(g => (
-          <div key={g.id} className="bg-white rounded-2xl border border-slate-100 overflow-hidden shadow-sm">
-            <div
-              className="p-4 cursor-pointer flex items-start justify-between"
-              onClick={() => setExpanded(expanded === g.id ? null : g.id)}
-            >
-              <div className="flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  {g.periodo && <span className="text-sm font-semibold text-slate-800">{g.periodo}</span>}
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${estadoBadge[g.estado] || 'bg-slate-100 text-slate-600'}`}>
-                    {g.estado}
-                  </span>
-                </div>
-                {g.descripcion && <p className="text-xs text-slate-500 mt-0.5">{g.descripcion}</p>}
-                {g.vencimiento && (
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Vence: {new Date(g.vencimiento).toLocaleDateString('es-CL')}
-                  </p>
-                )}
-              </div>
-              <div className="text-right ml-4">
-                <p className="text-base font-bold text-slate-800">{formatCLP(g.monto_total)}</p>
-                <span className="text-xs text-slate-400">{expanded === g.id ? '▲' : '▼'}</span>
-              </div>
+          {totalPendiente > 0 && (
+            <div className="mt-3 pt-3 border-t border-white/20">
+              <p className="text-xs opacity-70">Pague con Flow o MercadoPago desde cada cuota</p>
             </div>
+          )}
+        </div>
+      </div>
 
-            {expanded === g.id && (
-              <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-3">
-                {g.desglose && Object.keys(g.desglose).length > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-slate-600 mb-2">Desglose</p>
-                    {Object.entries(g.desglose).map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-xs text-slate-600">
-                        <span className="capitalize">{k.replace(/_/g,' ')}</span>
-                        <span>{typeof v === 'number' ? formatCLP(v) : String(v)}</span>
-                      </div>
-                    ))}
+      {/* PDF Download */}
+      <div className="max-w-lg mx-auto px-4 mb-4">
+        <button
+          onClick={() => authFetch('/api/portal/cuenta/pdf').then(r => r.blob()).then(b => {
+            const url = URL.createObjectURL(b)
+            const a = document.createElement('a'); a.href = url; a.download = 'estado-cuenta.pdf'; a.click()
+          })}
+          className="w-full py-2.5 rounded-xl border border-indigo-200 text-indigo-700 text-sm font-semibold text-center bg-white hover:bg-indigo-50 transition-colors"
+        >
+          📄 Descargar estado de cuenta PDF
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="max-w-lg mx-auto px-4 mb-3">
+        <div className="flex rounded-xl overflow-hidden border border-slate-200 bg-white">
+          <button onClick={() => setTab('pendientes')}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${tab === 'pendientes' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+            Pendientes ({pendientes.length})
+          </button>
+          <button onClick={() => setTab('historial')}
+            className={`flex-1 py-2.5 text-sm font-semibold transition-colors ${tab === 'historial' ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-slate-50'}`}>
+            Historial ({pagados.length})
+          </button>
+        </div>
+      </div>
+
+      {/* List */}
+      <div className="max-w-lg mx-auto px-4 space-y-3">
+        {payError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700">{payError}</div>
+        )}
+        {visible.length === 0 && (
+          <div className="text-center py-10">
+            <div className="text-4xl mb-3">{tab === 'pendientes' ? '✅' : '📋'}</div>
+            <p className="text-slate-500 text-sm">
+              {tab === 'pendientes' ? '¡Sin cuotas pendientes!' : 'Sin pagos registrados aún'}
+            </p>
+          </div>
+        )}
+        {visible.map(c => {
+          const label = c.descripcion || c.concepto || 'Gasto común'
+          const isExpanded = expanded === c.id
+          return (
+            <div key={`${c.source}-${c.id}`} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+              <button
+                onClick={() => setExpanded(isExpanded ? null : c.id)}
+                className="w-full p-4 flex items-start gap-3 text-left hover:bg-slate-50 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap mb-1">
+                    <p className="font-semibold text-slate-800 text-sm truncate">{label}</p>
+                    <EstadoBadge estado={c.estado} />
                   </div>
-                ) : (
-                  <p className="text-xs text-slate-400">Sin desglose disponible</p>
-                )}
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    {c.periodo && <span>Período: {c.periodo}</span>}
+                    {c.vencimiento && (
+                      <span className={new Date(c.vencimiento) < new Date() && c.estado !== 'pagado' ? 'text-red-500 font-medium' : ''}>
+                        · Vence: {new Date(c.vencimiento).toLocaleDateString('es-CL')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className={`text-lg font-black ${c.estado === 'pagado' ? 'text-emerald-600' : 'text-slate-800'}`}>
+                    {fmt(c.monto_total)}
+                  </p>
+                  <span className="text-xs text-slate-400">{isExpanded ? '▲' : '▼'}</span>
+                </div>
+              </button>
 
-                {g.estado !== 'pagado' && hayPagos && (
-                  <div className="space-y-2 pt-1">
-                    <p className="text-xs font-semibold text-slate-600">Pagar con:</p>
-                    <div className="grid grid-cols-2 gap-2">
+              {isExpanded && (
+                <div className="border-t border-slate-100 p-4 space-y-3">
+                  {/* Desglose if available */}
+                  {c.desglose && Object.keys(c.desglose).length > 0 && (
+                    <div className="bg-slate-50 rounded-xl p-3 text-sm space-y-1.5">
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Desglose</p>
+                      {Object.entries(c.desglose).map(([k, v]) => (
+                        <div key={k} className="flex justify-between">
+                          <span className="text-slate-600">{k}</span>
+                          <span className="font-medium text-slate-800">{fmt(Number(v))}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Payment date if paid */}
+                  {c.estado === 'pagado' && c.fecha_pago && (
+                    <p className="text-xs text-emerald-600 font-medium">
+                      ✓ Pagado el {new Date(c.fecha_pago).toLocaleDateString('es-CL')}
+                      {c.metodo_pago && ` · ${c.metodo_pago}`}
+                    </p>
+                  )}
+
+                  {/* Pay buttons */}
+                  {c.estado !== 'pagado' && c.estado !== 'exento' && (
+                    <div className="space-y-2">
                       {metodos.flow && (
                         <button
-                          onClick={() => pagar(g.id, 'flow')}
-                          disabled={payingId === g.id}
-                          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm
-                            bg-gradient-to-r from-indigo-600 to-indigo-700 text-white
-                            hover:from-indigo-500 hover:to-indigo-600
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all active:scale-95 shadow"
+                          onClick={() => pagar(c.id, 'flow')}
+                          disabled={payingId === c.id}
+                          className="w-full py-3 rounded-xl bg-indigo-600 text-white text-sm font-bold hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                         >
-                          {payingId === g.id ? (
-                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
-                              </svg>
-                              Flow.cl
-                            </>
-                          )}
+                          {payingId === c.id ? 'Iniciando pago…' : `Pagar con Flow — ${fmt(c.monto_total)}`}
                         </button>
                       )}
                       {metodos.mp && (
                         <button
-                          onClick={() => pagar(g.id, 'mp')}
-                          disabled={payingId === g.id}
-                          className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm
-                            bg-gradient-to-r from-sky-500 to-blue-600 text-white
-                            hover:from-sky-400 hover:to-blue-500
-                            disabled:opacity-50 disabled:cursor-not-allowed
-                            transition-all active:scale-95 shadow"
+                          onClick={() => pagar(c.id, 'mp')}
+                          disabled={payingId === c.id}
+                          className="w-full py-3 rounded-xl bg-sky-600 text-white text-sm font-bold hover:bg-sky-700 disabled:opacity-50 transition-colors"
                         >
-                          {payingId === g.id ? (
-                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/>
-                          ) : (
-                            <>
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                              </svg>
-                              Mercado Pago
-                            </>
-                          )}
+                          {payingId === c.id ? 'Iniciando…' : `Pagar con MercadoPago — ${fmt(c.monto_total)}`}
                         </button>
                       )}
+                      {!metodos.flow && !metodos.mp && (
+                        <p className="text-xs text-slate-400 text-center">
+                          Contacte a la administración para realizar su pago.
+                        </p>
+                      )}
                     </div>
-                  </div>
-                )}
-
-                {g.estado !== 'pagado' && !hayPagos && (
-                  <p className="text-xs text-slate-400 italic pt-1">
-                    Pago en línea no habilitado — contacte a la administración
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
-        ))}
-
-        {!loadingData && gastos.length === 0 && (
-          <div className="text-center py-12 text-slate-400">Sin registros de gastos</div>
-        )}
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
-      <BottomNav/>
+
+      <BottomNav />
     </div>
   )
 }

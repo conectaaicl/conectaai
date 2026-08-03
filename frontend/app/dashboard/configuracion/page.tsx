@@ -42,8 +42,14 @@ export default function ConfiguracionPage() {
       const userResponse = await fetch('/api/auth/me', { credentials: 'include' })
       if (userResponse.ok) {
         const userData = await userResponse.json()
-        setCompanyId(userData.company_id)
-        await fetchBranding(userData.company_id)
+        // condominios usa tenant_id, fallback a company_id si existe
+        const cid = userData.company_id || userData.tenant_id || null
+        setCompanyId(cid)
+        if (cid) {
+          await fetchBranding(cid)
+        } else {
+          setLoading(false)
+        }
       } else {
         setLoading(false)
       }

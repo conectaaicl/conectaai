@@ -114,9 +114,36 @@ export default function CondominiosPage() {
       active: true
     },
     {
+      icon: '📈',
+      title: 'Dashboard Financiero',
+      description: 'KPIs, morosidad, egresos y tendencias',
+      href: '/dashboard/condominios/financiero',
+      color: 'from-emerald-500 to-emerald-700',
+      stat: 'Vista ejecutiva',
+      active: true
+    },
+    {
+      icon: '💳',
+      title: 'Cuentas Residentes',
+      description: 'Estado de cuenta por unidad, cobros y pagos',
+      href: '/dashboard/condominios/cuenta-residente',
+      color: 'from-indigo-500 to-indigo-700',
+      stat: 'Gestión completa',
+      active: true
+    },
+    {
+      icon: '📊',
+      title: 'Egresos',
+      description: 'Gastos del edificio por categoría y período',
+      href: '/dashboard/condominios/egresos',
+      color: 'from-orange-500 to-orange-700',
+      stat: 'Control total',
+      active: true
+    },
+    {
       icon: '💰',
       title: 'Finanzas',
-      description: 'Gastos comunes, pagos y morosidad',
+      description: 'Gastos comunes, pagos y morosidad detallada',
       href: '/dashboard/condominios/finanzas',
       color: 'from-green-500 to-green-700',
       stat: 'Gestión completa',

@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { Plus, Package, RefreshCw, ExternalLink, Radio } from 'lucide-react'
+import { Plus, Package, RefreshCw, ExternalLink, Radio, DollarSign } from 'lucide-react'
 
 interface Puerta { id: number; nombre: string; ubicacion: string; tipo: string; estado: string; modo: string; activa: boolean }
 interface Visita { id: number; nombre_visitante: string; rut_visitante?: string; depto_destino?: string; residente_nombre?: string; estado: string; creado_en: string }
@@ -114,6 +114,10 @@ export default function CentralConserje() {
           <Link href="/conserje/paqueteria"
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-amber-600 hover:bg-amber-500 border border-amber-400/40 transition-colors">
             <Package size={16} /> Registrar paquete
+          </Link>
+          <Link href="/conserje/cuentas"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-emerald-700 hover:bg-emerald-600 border border-emerald-500/40 transition-colors">
+            <DollarSign size={16} /> Cuentas
           </Link>
         </div>
       </div>

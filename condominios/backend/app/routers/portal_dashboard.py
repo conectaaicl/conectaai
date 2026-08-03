@@ -24,6 +24,16 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
         g.fecha_vencimiento.date() if hasattr(g.fecha_vencimiento,'date') else g.fecha_vencimiento
     ) < hoy.date())
     monto = sum(g.monto_total or 0 for g in gastos)
+    # Include gastos_cobros (new period system)
+    from sqlalchemy import text as _txt_cobros
+    if r.departamento_id:
+        _cr = db.execute(_txt_cobros(
+            "SELECT COALESCE(SUM(monto),0)::float as t, COUNT(*)::int as n "
+            "FROM gastos_cobros WHERE departamento_id=:did AND estado NOT IN ('pagado','exento')"
+        ), {"did": r.departamento_id}).fetchone()
+        if _cr and _cr.t:
+            monto += _cr.t
+            vencidos += _cr.n
     semaforo = "verde" if vencidos==0 else ("amarillo" if vencidos<=2 else "rojo")
     msgs = {
         "verde": "Al día con sus pagos",
@@ -58,22 +68,68 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
         }
     }
 
+@router.get("/cobros")
+def cobros_residente(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get_db)):
+    """Cobros del sistema por periodos (gastos_cobros)."""
+    if not r.departamento_id:
+        return []
+    from sqlalchemy import text as _tco
+    rows = db.execute(_tco("""
+        SELECT gc.id, gc.concepto, gc.monto::float, gc.estado,
+               gc.fecha_vencimiento, gc.fecha_pago, gc.metodo_pago,
+               gc.notas, gp.periodo
+        FROM gastos_cobros gc
+        LEFT JOIN gastos_periodos gp ON gp.id = gc.periodo_id
+        WHERE gc.departamento_id = :did
+        ORDER BY gc.created_at DESC
+        LIMIT 48
+    """), {"did": r.departamento_id}).fetchall()
+    return [
+        {
+            "id": rw[0], "concepto": rw[1], "monto_total": rw[2], "estado": rw[3],
+            "vencimiento": rw[4].isoformat() if rw[4] else None,
+            "fecha_pago": rw[5].isoformat() if rw[5] else None,
+            "metodo_pago": rw[6], "notas": rw[7],
+            "periodo": rw[8], "source": "cobros"
+        }
+        for rw in rows
+    ]
+
 @router.get("/cuenta")
 def cuenta(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get_db)):
     if not r.departamento_id:
         return []
+    from sqlalchemy import text as _tcc
+    # New system: gastos_cobros
+    cobros_rows = db.execute(_tcc("""
+        SELECT gc.id, gc.concepto, gc.monto::float, gc.estado,
+               gc.fecha_vencimiento, gc.fecha_pago, gc.metodo_pago, gp.periodo
+        FROM gastos_cobros gc
+        LEFT JOIN gastos_periodos gp ON gp.id = gc.periodo_id
+        WHERE gc.departamento_id = :did
+        ORDER BY gc.created_at DESC LIMIT 48
+    """), {"did": r.departamento_id}).fetchall()
+    result = []
+    for rw in cobros_rows:
+        result.append({
+            "id": rw[0], "periodo": rw[7], "descripcion": rw[1],
+            "monto_total": rw[2],
+            "vencimiento": rw[4].isoformat() if rw[4] else None,
+            "estado": rw[3], "desglose": None,
+            "fecha_pago": rw[5].isoformat() if rw[5] else None,
+            "metodo_pago": rw[6], "source": "cobros"
+        })
+    # Legacy system: gastos_comunes
     gastos = db.query(GastoComun).filter(
         or_(GastoComun.departamento_id==r.departamento_id, GastoComun.departamento_id==None)
     ).order_by(desc(GastoComun.created_at)).limit(24).all()
-    result = []
     for g in gastos:
         periodo = f"{g.anio}-{str(g.mes).zfill(2)}" if g.mes and g.anio else None
         result.append({
             "id": g.id, "periodo": periodo, "descripcion": g.descripcion,
             "monto_total": g.monto_total,
             "vencimiento": g.fecha_vencimiento.isoformat() if g.fecha_vencimiento else None,
-            "estado": g.estado,
-            "desglose": g.detalle
+            "estado": g.estado, "desglose": g.detalle, "source": "finanzas"
         })
     return result
 
