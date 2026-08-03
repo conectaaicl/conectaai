@@ -121,6 +121,9 @@ function Navbar() {
                 style={{ fontSize:13.5, color:'rgba(255,255,255,0.5)', textDecoration:'none', fontWeight:500, transition:'color 0.2s' }}
                 onMouseEnter={e => (e.currentTarget.style.color='#fff')} onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.5)')}>{l}</a>
             ))}
+            <a href="/blog"
+              style={{ fontSize:13.5, color:'rgba(255,255,255,0.5)', textDecoration:'none', fontWeight:500, transition:'color 0.2s' }}
+              onMouseEnter={e => (e.currentTarget.style.color='#fff')} onMouseLeave={e => (e.currentTarget.style.color='rgba(255,255,255,0.5)')}>Blog</a>
           </div>
           <div style={{ display:'flex', alignItems:'center', gap:12 }}>
             <a href="/login" className="ca-login-btn" style={{ fontSize:13.5, color:'rgba(255,255,255,0.45)', textDecoration:'none', padding:'8px 16px', borderRadius:8, transition:'all 0.2s' }}
@@ -143,6 +146,8 @@ function Navbar() {
               <a key={l} href={`#${l.toLowerCase().replace(/\s/g,'-').replace(/é/g,'e').replace(/ó/g,'o')}`} onClick={() => setOpen(false)}
                 style={{ display:'block', fontSize:16, color:'rgba(255,255,255,0.6)', textDecoration:'none', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontWeight:500 }}>{l}</a>
             ))}
+            <a href="/blog" onClick={() => setOpen(false)}
+              style={{ display:'block', fontSize:16, color:'rgba(255,255,255,0.6)', textDecoration:'none', padding:'14px 0', borderBottom:'1px solid rgba(255,255,255,0.05)', fontWeight:500 }}>Blog</a>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer" onClick={() => setOpen(false)}
               style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:10, marginTop:20, padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#25d366,#128c3e)', color:'white', fontSize:15, fontWeight:700, textDecoration:'none' }}>
               <WA /> Cotizar por WhatsApp
@@ -171,14 +176,14 @@ function Hero() {
         <div style={{ maxWidth:720 }}>
           <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 16px', borderRadius:100, background:'rgba(124,58,237,0.12)', border:'1px solid rgba(124,58,237,0.28)', marginBottom:32, backdropFilter:'blur(8px)' }}>
             <span style={{ width:7, height:7, borderRadius:'50%', background:'#10b981', boxShadow:'0 0 10px #10b981', display:'inline-block', animation:'pulse 2s infinite' }} />
-            <span style={{ fontSize:11.5, fontWeight:700, color:'#c4b5fd', letterSpacing:'0.08em', textTransform:'uppercase' }}>Sistema integral para condominios en Chile</span>
+            <span style={{ fontSize:11.5, fontWeight:700, color:'#c4b5fd', letterSpacing:'0.08em', textTransform:'uppercase' }}>Sistema integral para condominios en Latinoamérica</span>
           </div>
           <h1 style={{ fontSize:'clamp(40px,6vw,72px)', fontWeight:900, lineHeight:1.05, letterSpacing:'-0.03em', marginBottom:24, color:'#f8fafc' }}>
             Tu condominio,<br />
             <span style={{ background:'linear-gradient(135deg,#a78bfa 0%,#818cf8 50%,#34d399 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>gestionado por IA</span>
           </h1>
           <p style={{ fontSize:18, color:'rgba(255,255,255,0.55)', lineHeight:1.75, marginBottom:40, maxWidth:560 }}>
-            Control de acceso RFID, duplicado de tarjetas, smart locks integrados, bot WhatsApp, portal del residente y gestión financiera — todo en una plataforma diseñada para edificios y condominios chilenos.
+            Control de acceso RFID, duplicado de tarjetas, smart locks integrados, bot WhatsApp, portal del residente y gestión financiera — todo en una plataforma diseñada para edificios y condominios en Latinoamérica.
           </p>
           <div style={{ display:'flex', gap:16, flexWrap:'wrap', alignItems:'center', marginBottom:56 }}>
             <a href={WA_URL} target="_blank" rel="noopener noreferrer"
@@ -231,6 +236,57 @@ function TrustBar() {
       </div>
       <style>{`@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}`}</style>
     </div>
+  )
+}
+
+
+/* ─── LEY 21.442 ─── */
+function LeySection() {
+  return (
+    <section style={{ padding:'80px 28px', background:'rgba(245,158,11,0.025)', borderTop:'1px solid rgba(245,158,11,0.1)', borderBottom:'1px solid rgba(245,158,11,0.07)' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto', display:'grid', gridTemplateColumns:'1fr 1fr', gap:80, alignItems:'center' }} className="ley-grid">
+        <div>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:8, padding:'6px 16px', borderRadius:100, background:'rgba(245,158,11,0.1)', border:'1px solid rgba(245,158,11,0.3)', marginBottom:28 }}>
+            <span style={{ fontSize:14 }}>⚖️</span>
+            <span style={{ fontSize:11, fontWeight:700, color:'#fbbf24', letterSpacing:'0.1em', textTransform:'uppercase' }}>Ley 21.442 · Copropiedad Inmobiliaria</span>
+          </div>
+          <h2 style={{ fontSize:'clamp(26px,3.5vw,40px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', lineHeight:1.2, marginBottom:20 }}>
+            ¿Tu condominio ya cumple<br />
+            <span style={{ color:'#fbbf24' }}>la nueva Ley de Copropiedad?</span>
+          </h2>
+          <p style={{ fontSize:15, color:'rgba(255,255,255,0.45)', lineHeight:1.75, marginBottom:16 }}>
+            La <strong style={{ color:'rgba(255,255,255,0.65)' }}>Ley 21.442</strong>, publicada el 13 de abril de 2022, exige que todos los condominios en Chile actualicen su reglamento interno y adopten nuevos estándares de administración, transparencia y participación.
+          </p>
+          <p style={{ fontSize:15, color:'rgba(255,255,255,0.38)', lineHeight:1.75, marginBottom:36 }}>
+            Si tu comunidad aún no se ha regularizado, puede estar expuesta a conflictos legales y dificultades en la administración. ConectaAI te acompaña en todo el proceso — sin burocracia.
+          </p>
+          <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+            style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'14px 28px', borderRadius:12, background:'linear-gradient(135deg,#f59e0b,#d97706)', color:'white', textDecoration:'none', fontSize:15, fontWeight:700, boxShadow:'0 8px 24px rgba(245,158,11,0.25)', transition:'all 0.2s' }}
+            onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 32px rgba(245,158,11,0.4)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 24px rgba(245,158,11,0.25)' }}>
+            <WA /> Regulariza tu condominio
+          </a>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+          {[
+            { icon:'🏛️', title:'Asambleas virtuales con quórum', desc:'Convoca a los copropietarios en línea. Registra asistencia, quórum y acuerdos con respaldo legal.' },
+            { icon:'🗳️', title:'Votaciones digitales', desc:'Votaciones transparentes con trazabilidad completa, actas generadas automáticamente.' },
+            { icon:'📄', title:'Actualización del reglamento', desc:'Te guiamos paso a paso para adaptar el reglamento a los nuevos requisitos de la ley.' },
+            { icon:'📢', title:'Notificaciones a copropietarios', desc:'Convocatorias y comunicados automáticos por WhatsApp o correo a todos los residentes.' },
+          ].map((item, i) => (
+            <div key={i} style={{ display:'flex', gap:16, alignItems:'flex-start', padding:'16px 20px', background:'rgba(255,255,255,0.025)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, transition:'border-color 0.2s' }}
+              onMouseEnter={e => e.currentTarget.style.borderColor='rgba(245,158,11,0.2)'}
+              onMouseLeave={e => e.currentTarget.style.borderColor='rgba(255,255,255,0.06)'}>
+              <span style={{ fontSize:22, lineHeight:1, marginTop:2, flexShrink:0 }}>{item.icon}</span>
+              <div>
+                <div style={{ fontSize:14, fontWeight:700, color:'#e2e8f0', marginBottom:4 }}>{item.title}</div>
+                <div style={{ fontSize:13, color:'rgba(255,255,255,0.32)', lineHeight:1.65 }}>{item.desc}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -343,7 +399,7 @@ function RFIDService() {
             <div style={{ position:'absolute', top:0, right:0, width:140, height:140, background:'radial-gradient(circle,rgba(8,145,178,0.12),transparent)', borderRadius:'50%', transform:'translate(30%,-30%)' }}/>
             <div style={{ fontSize:32, marginBottom:16 }}>{'📋'}</div>
             <h3 style={{ fontSize:18, fontWeight:800, color:'#67e8f9', marginBottom:10 }}>Duplicado de tarjetas</h3>
-            <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.42)', lineHeight:1.7, marginBottom:18 }}>Clonamos tu tarjeta de acceso en una nueva. Compatible con los sistemas más comunes en condominios chilenos.</p>
+            <p style={{ fontSize:13.5, color:'rgba(255,255,255,0.42)', lineHeight:1.7, marginBottom:18 }}>Clonamos tu tarjeta de acceso en una nueva. Compatible con los sistemas más comunes en condominios de Latinoamérica.</p>
             <ul style={{ listStyle:'none', padding:0, display:'flex', flexDirection:'column', gap:9 }}>
               {['Mifare Classic 1K/4K (13.56 MHz)','EM4100 / HID 125 kHz','Llaveros y tags RFID','Desde $3.000 / tarjeta'].map((item,idx) => (
                 <li key={idx} style={{ display:'flex', gap:9, alignItems:'flex-start', fontSize:13, color:'rgba(255,255,255,0.5)' }}>
@@ -459,7 +515,7 @@ function Stats() {
       <div style={{ maxWidth:1000, margin:'0 auto', position:'relative', zIndex:1 }}>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:0 }} className="ca-stats-grid">
           {[
-            {to:50,suffix:'+',label:'Edificios activos',sub:'en Chile'},
+            {to:50,suffix:'+',label:'Edificios activos',sub:'en Latinoamérica'},
             {to:8000,suffix:'+',label:'Residentes gestionados',sub:'en la plataforma'},
             {to:98,suffix:'%',label:'Satisfacción',sub:'clientes encuestados'},
             {to:15,suffix:'',label:'Módulos integrados',sub:'en una sola plataforma'},
@@ -559,6 +615,50 @@ function Pricing() {
         </div>
       </div>
       <style>{`@media (max-width:860px){.ca-plans-grid{grid-template-columns:1fr!important}}`}</style>
+    </section>
+  )
+}
+
+
+/* ------- BLOG PREVIEW ------- */
+function BlogPreview() {
+  const items = [
+    { slug:'ley-21442-copropiedad-que-debes-saber', cat:'Legal', color:'#f59e0b', title:'Ley 21.442: Todo lo que tu condominio necesita para cumplir', img:'https://images.unsplash.com/photo-1589391886645-d51941baf7fb?w=600&q=80&auto=format&fit=crop' },
+    { slug:'rfid-vs-llave-tradicional-condominio', cat:'Tecnología', color:'#7c3aed', title:'RFID vs llave tradicional: por qué el condominio moderno ya no usa llaves', img:'https://images.unsplash.com/photo-1558002038-1055907df827?w=600&q=80&auto=format&fit=crop' },
+    { slug:'whatsapp-para-condominios-5-usos', cat:'Comunicaciones', color:'#25d366', title:'WhatsApp para condominios: 5 usos que transforman la convivencia', img:'https://images.unsplash.com/photo-1592890288564-76628a30a657?w=600&q=80&auto=format&fit=crop' },
+  ]
+  return (
+    <section style={{ padding:'100px 28px', background:'rgba(255,255,255,0.01)' }}>
+      <div style={{ maxWidth:1200, margin:'0 auto' }}>
+        <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between', marginBottom:52, flexWrap:'wrap', gap:20 }}>
+          <div>
+            <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#a78bfa', textTransform:'uppercase', marginBottom:14, padding:'5px 14px', background:'rgba(124,58,237,0.08)', borderRadius:100, border:'1px solid rgba(124,58,237,0.2)' }}>Blog</div>
+            <h2 style={{ fontSize:'clamp(26px,4vw,40px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', margin:0, lineHeight:1.15 }}>Guías para administradores modernos</h2>
+          </div>
+          <a href="/blog" style={{ fontSize:13.5, fontWeight:600, color:'#a78bfa', textDecoration:'none', display:'flex', alignItems:'center', gap:6, padding:'10px 20px', border:'1px solid rgba(124,58,237,0.3)', borderRadius:10, transition:'all 0.2s', whiteSpace:'nowrap' }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background='rgba(124,58,237,0.1)' }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background='transparent' }}>
+            Ver todos los artículos →
+          </a>
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:20 }} className="ca-blog-grid">
+          {items.map(p => (
+            <a key={p.slug} href={`/blog/${p.slug}`}
+              style={{ display:'block', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, overflow:'hidden', textDecoration:'none', transition:'border-color 0.2s, transform 0.2s', background:'rgba(255,255,255,0.01)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(124,58,237,0.3)'; (e.currentTarget as HTMLElement).style.transform='translateY(-3px)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.06)'; (e.currentTarget as HTMLElement).style.transform='translateY(0)' }}>
+              <div style={{ height:180, overflow:'hidden' }}>
+                <img src={p.img} alt={p.title} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+              </div>
+              <div style={{ padding:'20px 20px 24px' }}>
+                <span style={{ fontSize:10, fontWeight:700, letterSpacing:'0.1em', textTransform:'uppercase', color:p.color, background:`${p.color}18`, padding:'3px 10px', borderRadius:100, border:`1px solid ${p.color}35` }}>{p.cat}</span>
+                <h3 style={{ fontSize:15, fontWeight:700, lineHeight:1.35, color:'#e2e8f0', margin:'12px 0 0' }}>{p.title}</h3>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+      <style>{"@media(max-width:860px){.ca-blog-grid{grid-template-columns:1fr!important}}"}</style>
     </section>
   )
 }
@@ -678,11 +778,13 @@ export default function Page() {
           .ca-steps-grid{grid-template-columns:1fr!important}
           .ca-step{border-right:none!important;border-bottom:1px solid rgba(255,255,255,0.05);padding:28px 0!important}
           .ca-stats-grid{grid-template-columns:repeat(2,1fr)!important}
+          .ley-grid{grid-template-columns:1fr!important;gap:40px!important}
         }
       `}</style>
       <Navbar />
       <Hero />
       <TrustBar />
+      <LeySection />
       <HowItWorks />
       <Features />
       <RFIDService />
@@ -690,6 +792,7 @@ export default function Page() {
       <Stats />
       <Testimonials />
       <Pricing />
+      <BlogPreview />
       <CTA />
       <Footer />
     </div>
