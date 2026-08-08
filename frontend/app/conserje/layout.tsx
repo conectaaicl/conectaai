@@ -12,6 +12,7 @@ const NAV_ITEMS = [
   { href: '/conserje/central',    label: 'Central',     icon: LayoutGrid, exact: true },
   { href: '/conserje/accesos',    label: 'Accesos QR',  icon: QrCode },
   { href: '/conserje/puertas',    label: 'Puertas',     icon: DoorClosed },
+  { href: '/conserje/kiosco',     label: 'Kiosco Acceso', icon: ShieldCheck },
   { href: '/conserje/visitas',    label: 'Visitas',     icon: Users },
   { href: '/conserje/paqueteria', label: 'Paqueteria',  icon: Package },
   { href: '/conserje/reservas',   label: 'Reservas',    icon: CalendarDays },

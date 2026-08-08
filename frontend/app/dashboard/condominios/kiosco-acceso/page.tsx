@@ -143,10 +143,16 @@ export default function KioscoAccesoPage() {
     if (limpiarTimeout.current) clearTimeout(limpiarTimeout.current)
     setVerificando(true)
     try {
-      const res = await fetch('/api/condominios/rfid/verificar', {
+      const codigo = codigoEscaneado.trim()
+      // Un UID RFID de este sistema siempre es hex corto; el QR rotativo es un
+      // blob base64url mas largo (nunca hex puro) -- suficiente para distinguirlos.
+      const pareceRFID = /^[0-9A-Fa-f]{6,20}$/.test(codigo)
+      const endpoint = pareceRFID ? '/api/condominios/rfid/verificar' : '/api/condominios/qr-rotativo/validar'
+      const body = pareceRFID ? { uid: codigo, puerta_id: puertaId } : { payload: codigo, puerta_id: puertaId }
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ uid: codigoEscaneado.trim(), puerta_id: puertaId }),
+        body: JSON.stringify(body),
       })
       const data = await res.json()
       const r: Resultado = {
@@ -182,7 +188,7 @@ export default function KioscoAccesoPage() {
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Kiosco de Prueba — Control de Acceso</h1>
         <p className="text-sm text-gray-500 mt-0.5">
-          RFID, código de barras y ahora también códigos QR de visitas — todo desde la misma pantalla.
+          RFID, la Llave QR rotativa de residentes/socios y códigos QR de visitas — todo desde la misma pantalla.
         </p>
       </div>
 

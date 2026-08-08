@@ -36,6 +36,50 @@ function QRDisplay({ value, size = 220 }: { value: string; size?: number }) {
   )
 }
 
+// QR rotativo: el backend genera y firma el codigo (cambia cada 30s), asi que
+// una foto del QR no sirve pasado ese rato. Se refresca solo cada 10s.
+function MiLlaveQR({ authFetch }: { authFetch: (url: string, opts?: RequestInit) => Promise<Response> }) {
+  const [qr, setQr] = useState<{ png: string; expiraEn: number } | null>(null)
+  const [error, setError] = useState(false)
+
+  useEffect(() => {
+    let cancelado = false
+    async function cargar() {
+      try {
+        const r = await authFetch('/api/portal/qr-rotativo/mi-qr')
+        if (!r.ok) throw new Error()
+        const d = await r.json()
+        if (!cancelado) { setQr({ png: d.qr_png_base64, expiraEn: d.expira_en_seg }); setError(false) }
+      } catch { if (!cancelado) setError(true) }
+    }
+    cargar()
+    const iv = setInterval(cargar, 10000)
+    return () => { cancelado = true; clearInterval(iv) }
+  }, [])
+
+  if (error) {
+    return <p className="text-red-500 text-sm text-center py-8">No se pudo cargar tu llave digital. Intenta de nuevo.</p>
+  }
+  if (!qr) {
+    return (
+      <div className="flex justify-center py-8">
+        <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <div className="bg-slate-50 border-4 border-white rounded-2xl shadow-lg p-2 inline-block">
+        <img src={qr.png} alt="Mi llave QR" width={200} height={200} className="rounded-xl block" />
+      </div>
+      <p className="text-xs text-slate-400 flex items-center gap-1.5">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+        Se actualiza solo cada 30 segundos
+      </p>
+    </div>
+  )
+}
+
 function DeleteModal({
   visita, onClose, onDeleted, authFetch
 }: {
@@ -114,7 +158,6 @@ export default function PortalQR() {
   const [copiado,      setCopiado]      = useState(false)
   const [error,        setError]        = useState('')
   const [visitas,      setVisitas]      = useState<Visita[]>([])
-  const [miQR,         setMiQR]         = useState<string | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<Visita | null>(null)
 
   useEffect(() => {
@@ -125,8 +168,6 @@ export default function PortalQR() {
     if (!token || !residente) return
     authFetch('/api/portal/qr/mis-visitas')
       .then(r => r.json()).then(d => { if (Array.isArray(d)) setVisitas(d) }).catch(() => {})
-    const appUrl = typeof window !== 'undefined' ? window.location.origin : 'https://conectaai.cl'
-    if (residente.rut) setMiQR(`${appUrl}/acceso/residente/${encodeURIComponent(residente.rut)}`)
   }, [token, residente])
 
   const handleGenerar = async (e: React.FormEvent) => {
@@ -184,14 +225,14 @@ export default function PortalQR() {
 
       <div className="max-w-lg mx-auto p-4 space-y-6">
 
-        {/* QR personal del residente */}
+        {/* Mi Llave: QR rotativo, cambia cada 30s (una foto del codigo no sirve despues) */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
           <h2 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
-            <span className="text-indigo-500">🔑</span> Mi QR de Acceso
+            <span className="text-indigo-500">🔑</span> Mi Llave
           </h2>
           {residente ? (
             <div className="flex flex-col items-center gap-4">
-              {miQR && <QRDisplay value={miQR} size={200} />}
+              <MiLlaveQR authFetch={authFetch} />
               <div className="bg-indigo-50 rounded-xl px-5 py-3 text-center w-full">
                 <p className="text-indigo-700 font-bold text-base">{residente.nombre}</p>
                 <p className="text-indigo-400 text-sm mt-0.5">RUT: {residente.rut}</p>
