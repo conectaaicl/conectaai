@@ -25,7 +25,7 @@ TIPO_PRESETS = {
         "push_notificaciones", "ley_copropiedad", "accesos_qr", "biometrico",
         "facial", "alarmas", "proveedores", "ordenes", "remuneraciones",
         "asistencia", "noc", "anomalias", "resumenes_ia", "asistente_ia",
-        "wa_bot", "wa_platform", "sii_facturacion",
+        "sii_facturacion", "whatsapp_meta",
     ],
     "bodega": [
         "visitas", "paqueteria", "puertas", "rfid", "camaras",

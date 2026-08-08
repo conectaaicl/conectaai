@@ -1,6 +1,6 @@
 """
 /api/admin/integraciones — Integration config per tenant.
-Handles WA, Flow, MP toggles + encrypted credential storage.
+Handles WhatsApp (Meta Cloud API), SMS, Flow, MP toggles + encrypted credential storage.
 """
 import os
 from typing import Optional
@@ -16,8 +16,9 @@ router = APIRouter(prefix="/api/admin/integraciones", tags=["integraciones"])
 
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 FERNET_KEY = os.getenv("FERNET_KEY", "")
-EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 MAIL_API_KEY = os.getenv("MAIL_API_KEY", "")
+META_APP_ID = os.getenv("META_APP_ID", "")
+META_APP_SECRET = os.getenv("META_APP_SECRET", "")
 ALGORITHM = "HS256"
 
 
@@ -54,7 +55,9 @@ def _require_admin(request: Request) -> dict:
 
 def _get_tenant(db: Session, tenant_id: int) -> dict:
     row = db.execute(text(
-        "SELECT id, wa_phone_number_id, wa_activo, flow_activo, mp_activo, "
+        "SELECT id, meta_waba_id, meta_phone_number_id, meta_access_token_enc, meta_activo, "
+        "sms_provider, sms_activo, sms_credenciales_enc, "
+        "flow_activo, mp_activo, "
         "flow_api_key_enc, flow_secret_enc, mp_access_token_enc, mp_public_key_enc "
         "FROM tenants WHERE id=:tid"
     ), {"tid": tenant_id}).fetchone()
@@ -63,16 +66,26 @@ def _get_tenant(db: Session, tenant_id: int) -> dict:
     return dict(row._mapping)
 
 
-@router.get("/")
+@router.get("")
 def get_config(request: Request, db: Session = Depends(get_db)):
     payload = _get_session(request)
     tid = payload.get("tenant_id") or 1
     t = _get_tenant(db, tid)
     return {
-        "wa": {
-            "activo": bool(t["wa_activo"]),
-            "phone_number_id": t["wa_phone_number_id"],
-            "token_configured": bool(EVOLUTION_API_KEY),
+        "whatsapp": {
+            "activo": bool(t["meta_activo"]),
+            "app_configurada": bool(META_APP_ID and META_APP_SECRET),
+            "waba_id": t["meta_waba_id"],
+            "phone_number_id": t["meta_phone_number_id"],
+            "token_configurado": _mask(t["meta_access_token_enc"]),
+            "proveedor": "Meta Cloud API (oficial)",
+            "estado": "Pendiente de aprobacion de Meta" if not (META_APP_ID and META_APP_SECRET) else None,
+        },
+        "sms": {
+            "activo": bool(t["sms_activo"]),
+            "proveedor": t["sms_provider"],
+            "credenciales_configuradas": _mask(t["sms_credenciales_enc"]),
+            "estado": "Proveedor pendiente de elegir",
         },
         "flow": {
             "activo": bool(t["flow_activo"]),
@@ -91,24 +104,24 @@ def get_config(request: Request, db: Session = Depends(get_db)):
 
 
 class ToggleBody(BaseModel):
-    wa_activo: Optional[bool] = None
-    wa_phone_number_id: Optional[str] = None
+    whatsapp_activo: Optional[bool] = None
+    sms_activo: Optional[bool] = None
     flow_activo: Optional[bool] = None
     mp_activo: Optional[bool] = None
 
 
-@router.patch("/")
+@router.patch("")
 def update_config(body: ToggleBody, request: Request, db: Session = Depends(get_db)):
     payload = _require_admin(request)
     tid = payload.get("tenant_id") or 1
     sets = []
     vals: dict = {"tid": tid}
-    if body.wa_activo is not None:
-        sets.append("wa_activo=:wa_activo")
-        vals["wa_activo"] = body.wa_activo
-    if body.wa_phone_number_id is not None:
-        sets.append("wa_phone_number_id=:wa_pid")
-        vals["wa_pid"] = body.wa_phone_number_id.strip() or None
+    if body.whatsapp_activo is not None:
+        sets.append("meta_activo=:whatsapp_activo")
+        vals["whatsapp_activo"] = body.whatsapp_activo
+    if body.sms_activo is not None:
+        sets.append("sms_activo=:sms_activo")
+        vals["sms_activo"] = body.sms_activo
     if body.flow_activo is not None:
         sets.append("flow_activo=:flow_activo")
         vals["flow_activo"] = body.flow_activo
@@ -120,6 +133,68 @@ def update_config(body: ToggleBody, request: Request, db: Session = Depends(get_
     db.execute(text("UPDATE tenants SET " + ", ".join(sets) + " WHERE id=:tid"), vals)
     db.commit()
     return {"updated": [s.split("=")[0] for s in sets]}
+
+
+class WhatsappCredsBody(BaseModel):
+    waba_id: Optional[str] = None
+    phone_number_id: Optional[str] = None
+    access_token: str
+
+
+@router.post("/credenciales/whatsapp")
+def save_whatsapp_creds(body: WhatsappCredsBody, request: Request, db: Session = Depends(get_db)):
+    payload = _require_admin(request)
+    tid = payload.get("tenant_id") or 1
+    if not body.access_token.strip():
+        raise HTTPException(422, "Access Token es requerido")
+    db.execute(text(
+        "UPDATE tenants SET meta_waba_id=:waba, meta_phone_number_id=:pid, meta_access_token_enc=:tok WHERE id=:tid"
+    ), {"waba": (body.waba_id or "").strip() or None,
+        "pid": (body.phone_number_id or "").strip() or None,
+        "tok": encrypt_val(body.access_token.strip()),
+        "tid": tid})
+    db.commit()
+    return {"ok": True, "detail": "Credenciales de WhatsApp Business guardadas correctamente"}
+
+
+@router.delete("/credenciales/whatsapp")
+def delete_whatsapp_creds(request: Request, db: Session = Depends(get_db)):
+    payload = _require_admin(request)
+    tid = payload.get("tenant_id") or 1
+    db.execute(text(
+        "UPDATE tenants SET meta_waba_id=NULL, meta_phone_number_id=NULL, meta_access_token_enc=NULL, meta_activo=false WHERE id=:tid"
+    ), {"tid": tid})
+    db.commit()
+    return {"ok": True}
+
+
+class SmsCredsBody(BaseModel):
+    provider: str
+    credenciales: str
+
+
+@router.post("/credenciales/sms")
+def save_sms_creds(body: SmsCredsBody, request: Request, db: Session = Depends(get_db)):
+    payload = _require_admin(request)
+    tid = payload.get("tenant_id") or 1
+    if not body.provider.strip() or not body.credenciales.strip():
+        raise HTTPException(422, "Proveedor y credenciales son requeridos")
+    db.execute(text(
+        "UPDATE tenants SET sms_provider=:prov, sms_credenciales_enc=:cred WHERE id=:tid"
+    ), {"prov": body.provider.strip(), "cred": encrypt_val(body.credenciales.strip()), "tid": tid})
+    db.commit()
+    return {"ok": True, "detail": "Credenciales de SMS guardadas correctamente"}
+
+
+@router.delete("/credenciales/sms")
+def delete_sms_creds(request: Request, db: Session = Depends(get_db)):
+    payload = _require_admin(request)
+    tid = payload.get("tenant_id") or 1
+    db.execute(text(
+        "UPDATE tenants SET sms_provider=NULL, sms_credenciales_enc=NULL, sms_activo=false WHERE id=:tid"
+    ), {"tid": tid})
+    db.commit()
+    return {"ok": True}
 
 
 class FlowCredsBody(BaseModel):

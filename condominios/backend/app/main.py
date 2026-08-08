@@ -91,17 +91,17 @@ def startup_event():
     Base.metadata.create_all(bind=engine)
 
 # Importar routers
-from app.routers import auth, personas, sistema, condominios, finanzas, personal, admin, whatsapp360, usuarios, portal, reservas, avisos, accesos, incidencias, votaciones, puertas, rfid
+from app.routers import auth, personas, sistema, condominios, finanzas, personal, admin, usuarios, portal, reservas, avisos, accesos, incidencias, votaciones, puertas, rfid
 from app.routers import paquetes, ordenes, documentos, avisos_lectura, recordatorios
 from app.routers import rfid_solicitudes
 from app.routers import rfid_keys
 from app.routers import qr_rotativo
 from app.routers import geoacceso
+from app.routers import whatsapp_meta
 
 # Registrar routers
 app.include_router(auth.router)
 app.include_router(usuarios.router)  # ✅ NUEVO
-app.include_router(whatsapp360.router)
 app.include_router(personas.router)
 app.include_router(puertas.router)
 app.include_router(rfid.router)
@@ -110,6 +110,7 @@ app.include_router(rfid_keys.router)
 app.include_router(qr_rotativo.router_portal)
 app.include_router(qr_rotativo.router_admin)
 app.include_router(geoacceso.router)
+app.include_router(whatsapp_meta.router)
 app.include_router(paquetes.router)
 app.include_router(ordenes.router)
 app.include_router(documentos.router)
@@ -135,12 +136,11 @@ app.include_router(portal_pagos.router)
 app.include_router(portal_dashboard.router)
 
 
-from app.routers import remuneraciones, asambleas, proveedores, pagos_online, whatsapp_bot
+from app.routers import remuneraciones, asambleas, proveedores, pagos_online
 app.include_router(remuneraciones.router)
 app.include_router(asambleas.router)
 app.include_router(proveedores.router)
 app.include_router(pagos_online.router)
-app.include_router(whatsapp_bot.router)
 
 from app.routers import superadmin as superadmin_router
 app.include_router(superadmin_router.router)
@@ -156,13 +156,11 @@ app.include_router(facial_web_router.router)
 
 from app.routers import notificaciones_auto
 from app.routers.mail_config import router as mail_config_router
-from app.routers.wa_platform import router as wa_router
 from app.routers.pagos_flow import router as pagos_flow_router
 from app.routers.pagos_mp import router as pagos_mp_router
 from app.routers.notif_config import router as notif_config_router
 app.include_router(notificaciones_auto.router)
 app.include_router(mail_config_router)
-app.include_router(wa_router)
 app.include_router(pagos_flow_router)
 app.include_router(pagos_mp_router)
 app.include_router(notif_config_router)
@@ -223,13 +221,12 @@ app.include_router(features_router.router)
 @app.get("/")
 def root():
     return {
-        "app": "ConectaAI - WhatsApp 360",
+        "app": "ConectaAI Condominios",
         "version": "2.0.0",
         "status": "PRODUCCIÓN REAL",
         "endpoints": {
             "auth": "/api/auth/login",
             "usuarios": "/api/usuarios",
-            "whatsapp360": "/api/whatsapp360",
             "personas": "/api/personas",
             "condominios": "/api/condominios",
             "finanzas": "/api/finanzas",
@@ -241,7 +238,7 @@ def root():
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "whatsapp360": "active"}
+    return {"status": "healthy"}
 
 from app.routers import ventas as ventas_router
 app.include_router(ventas_router.router)

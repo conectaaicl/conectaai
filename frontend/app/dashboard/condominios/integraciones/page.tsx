@@ -2,13 +2,18 @@
 import { useState, useEffect } from 'react'
 
 interface IntegConfig {
-  wa: { activo: boolean; phone_number_id: string | null; token_configured: boolean }
+  whatsapp: {
+    activo: boolean; app_configurada: boolean; waba_id: string | null
+    phone_number_id: string | null; token_configurado: boolean
+    proveedor: string; estado: string | null
+  }
+  sms: { activo: boolean; proveedor: string | null; credenciales_configuradas: boolean; estado: string }
   flow: { activo: boolean; credentials_configured: boolean }
   mp: { activo: boolean; credentials_configured: boolean }
   mail: { activo: boolean; provider: string; key_configured: boolean }
 }
 
-type TabId = 'whatsapp' | 'flow' | 'mercadopago' | 'correo'
+type TabId = 'whatsapp' | 'sms' | 'flow' | 'mercadopago' | 'correo'
 
 function StatusBadge({ ok, label }: { ok: boolean; label?: string }) {
   return (
@@ -100,6 +105,284 @@ function PasswordInput({
       >
         <EyeIcon open={show} />
       </button>
+    </div>
+  )
+}
+
+// ── WhatsApp (Meta) credential panel ────────────────────────────────────────
+function WhatsappCredentialPanel({
+  configured,
+  onSaved,
+  onDeleted,
+  showToast,
+}: {
+  configured: boolean
+  onSaved: () => void
+  onDeleted: () => void
+  showToast: (msg: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [wabaId, setWabaId] = useState('')
+  const [phoneNumberId, setPhoneNumberId] = useState('')
+  const [accessToken, setAccessToken] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleSave() {
+    if (!accessToken.trim()) {
+      showToast('El Access Token es requerido')
+      return
+    }
+    setSaving(true)
+    try {
+      const r = await fetch('/api/admin/integraciones/credenciales/whatsapp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          waba_id: wabaId.trim() || undefined,
+          phone_number_id: phoneNumberId.trim() || undefined,
+          access_token: accessToken.trim(),
+        }),
+      })
+      const d = await r.json()
+      if (r.ok && d.ok) {
+        showToast('Credenciales de WhatsApp Business guardadas')
+        setWabaId(''); setPhoneNumberId(''); setAccessToken('')
+        setOpen(false)
+        onSaved()
+      } else {
+        showToast(d.detail || 'Error al guardar credenciales')
+      }
+    } catch {
+      showToast('Error de conexión')
+    }
+    setSaving(false)
+  }
+
+  async function handleDelete() {
+    if (!confirm('Eliminar credenciales de WhatsApp Business? Esto desactivara el envio de mensajes.')) return
+    setDeleting(true)
+    try {
+      const r = await fetch('/api/admin/integraciones/credenciales/whatsapp', { method: 'DELETE' })
+      if (r.ok) {
+        showToast('Credenciales de WhatsApp eliminadas')
+        onDeleted()
+      } else {
+        const d = await r.json()
+        showToast(d.detail || 'Error al eliminar')
+      }
+    } catch {
+      showToast('Error de conexión')
+    }
+    setDeleting(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-2 text-sm font-semibold text-purple-700 hover:text-purple-900 transition-colors"
+        >
+          <svg
+            className={'w-4 h-4 transition-transform ' + (open ? 'rotate-90' : '')}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          {configured ? 'Actualizar credenciales' : 'Configurar credenciales'}
+        </button>
+        {configured && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50 transition-colors"
+          >
+            {deleting ? 'Eliminando...' : 'Eliminar credenciales'}
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+              WhatsApp Business Account ID
+              <span className="text-gray-400 font-normal ml-1.5 text-xs">opcional</span>
+            </label>
+            <input
+              type="text"
+              value={wabaId}
+              onChange={e => setWabaId(e.target.value)}
+              placeholder="ej. 102938475610283"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Phone Number ID</label>
+            <input
+              type="text"
+              value={phoneNumberId}
+              onChange={e => setPhoneNumberId(e.target.value)}
+              placeholder="ej. 123456789012345"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 font-mono"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Access Token</label>
+            <PasswordInput
+              value={accessToken}
+              onChange={setAccessToken}
+              placeholder="Token permanente del System User de Meta"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold py-2 rounded-lg transition-colors"
+            >
+              {saving ? 'Guardando...' : 'Guardar credenciales'}
+            </button>
+            <button
+              onClick={() => { setOpen(false); setWabaId(''); setPhoneNumberId(''); setAccessToken('') }}
+              className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-white transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── SMS credential panel (proveedor por elegir) ─────────────────────────────
+function SmsCredentialPanel({
+  configured,
+  onSaved,
+  onDeleted,
+  showToast,
+}: {
+  configured: boolean
+  onSaved: () => void
+  onDeleted: () => void
+  showToast: (msg: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [provider, setProvider] = useState('')
+  const [credenciales, setCredenciales] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleSave() {
+    if (!provider.trim() || !credenciales.trim()) {
+      showToast('Completa proveedor y credenciales')
+      return
+    }
+    setSaving(true)
+    try {
+      const r = await fetch('/api/admin/integraciones/credenciales/sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: provider.trim(), credenciales: credenciales.trim() }),
+      })
+      const d = await r.json()
+      if (r.ok && d.ok) {
+        showToast('Credenciales de SMS guardadas')
+        setProvider(''); setCredenciales('')
+        setOpen(false)
+        onSaved()
+      } else {
+        showToast(d.detail || 'Error al guardar credenciales')
+      }
+    } catch {
+      showToast('Error de conexión')
+    }
+    setSaving(false)
+  }
+
+  async function handleDelete() {
+    if (!confirm('Eliminar credenciales de SMS?')) return
+    setDeleting(true)
+    try {
+      const r = await fetch('/api/admin/integraciones/credenciales/sms', { method: 'DELETE' })
+      if (r.ok) {
+        showToast('Credenciales de SMS eliminadas')
+        onDeleted()
+      } else {
+        const d = await r.json()
+        showToast(d.detail || 'Error al eliminar')
+      }
+    } catch {
+      showToast('Error de conexión')
+    }
+    setDeleting(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="flex items-center gap-2 text-sm font-semibold text-purple-700 hover:text-purple-900 transition-colors"
+        >
+          <svg
+            className={'w-4 h-4 transition-transform ' + (open ? 'rotate-90' : '')}
+            fill="none" stroke="currentColor" viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          {configured ? 'Actualizar credenciales' : 'Configurar credenciales'}
+        </button>
+        {configured && (
+          <button
+            onClick={handleDelete}
+            disabled={deleting}
+            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-50 transition-colors"
+          >
+            {deleting ? 'Eliminando...' : 'Eliminar credenciales'}
+          </button>
+        )}
+      </div>
+
+      {open && (
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Proveedor</label>
+            <input
+              type="text"
+              value={provider}
+              onChange={e => setProvider(e.target.value)}
+              placeholder="ej. Twilio, LabsMobile..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Credenciales</label>
+            <PasswordInput
+              value={credenciales}
+              onChange={setCredenciales}
+              placeholder="API Key / Account SID / lo que pida el proveedor"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold py-2 rounded-lg transition-colors"
+            >
+              {saving ? 'Guardando...' : 'Guardar credenciales'}
+            </button>
+            <button
+              onClick={() => { setOpen(false); setProvider(''); setCredenciales('') }}
+              className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-white transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -375,8 +658,6 @@ export default function IntegracionesPage() {
   const [saving, setSaving] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('whatsapp')
   const [toast, setToast] = useState('')
-  const [waPhoneId, setWaPhoneId] = useState('')
-  const [testingWa, setTestingWa] = useState(false)
   const [mailStatus, setMailStatus] = useState<{ connected: boolean; provider: string; from_email: string } | null>(null)
 
   async function fetchConfig() {
@@ -384,7 +665,6 @@ export default function IntegracionesPage() {
     if (r.ok) {
       const d = await r.json()
       setConfig(d)
-      setWaPhoneId(d.wa.phone_number_id || '')
     }
   }
 
@@ -404,8 +684,8 @@ export default function IntegracionesPage() {
   }
 
   async function patchConfig(fields: Partial<{
-    wa_activo: boolean
-    wa_phone_number_id: string
+    whatsapp_activo: boolean
+    sms_activo: boolean
     flow_activo: boolean
     mp_activo: boolean
   }>) {
@@ -428,20 +708,9 @@ export default function IntegracionesPage() {
     setSaving(false)
   }
 
-  async function testWa() {
-    setTestingWa(true)
-    try {
-      const r = await fetch('/api/wa/config/test', { method: 'POST' })
-      const d = await r.json()
-      showToast(d.detail || d.message || (d.ok ? 'Mensaje de prueba enviado' : 'Error al enviar'))
-    } catch {
-      showToast('Error de conexion')
-    }
-    setTestingWa(false)
-  }
-
   const tabs: { id: TabId; label: string; icon: string }[] = [
     { id: 'whatsapp', label: 'WhatsApp', icon: '💬' },
+    { id: 'sms', label: 'SMS', icon: '📱' },
     { id: 'flow', label: 'Flow.cl', icon: '💳' },
     { id: 'mercadopago', label: 'Mercado Pago', icon: '🛒' },
     { id: 'correo', label: 'Correo', icon: '✉️' },
@@ -480,7 +749,10 @@ export default function IntegracionesPage() {
               <span>{tab.icon}</span>
               {tab.label}
               {tab.id === 'whatsapp' && config && (
-                <span className={'w-2 h-2 rounded-full ml-1 ' + (config.wa.activo ? 'bg-emerald-400' : 'bg-gray-300')} />
+                <span className={'w-2 h-2 rounded-full ml-1 ' + (config.whatsapp.activo ? 'bg-emerald-400' : 'bg-gray-300')} />
+              )}
+              {tab.id === 'sms' && config && (
+                <span className={'w-2 h-2 rounded-full ml-1 ' + (config.sms.activo ? 'bg-emerald-400' : 'bg-gray-300')} />
               )}
               {tab.id === 'flow' && config && (
                 <span className={'w-2 h-2 rounded-full ml-1 ' + (config.flow.activo ? 'bg-emerald-400' : 'bg-gray-300')} />
@@ -497,77 +769,98 @@ export default function IntegracionesPage() {
 
         {/* ── WhatsApp ── */}
         {activeTab === 'whatsapp' && config && (
-          <ConfigCard title="WhatsApp — Meta Cloud API" icon="💬">
+          <ConfigCard title="WhatsApp — Meta Cloud API (oficial)" icon="💬">
             <div className="space-y-5">
+              {!config.whatsapp.app_configurada && (
+                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                  <p className="text-sm font-semibold text-amber-800">Pendiente de aprobacion de Meta</p>
+                  <p className="text-sm text-amber-700 mt-0.5">
+                    La app de WhatsApp Business de ConectaAI aun no esta aprobada por Meta. Puedes dejar
+                    las credenciales de tu condominio configuradas desde ya — el envio se activara solo
+                    cuando la aprobacion este lista, sin que tengas que hacer nada mas.
+                  </p>
+                </div>
+              )}
+
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                 <div>
                   <p className="font-semibold text-gray-800">Estado</p>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    {config.wa.token_configured
-                      ? 'Token de plataforma configurado'
-                      : 'Token de plataforma no configurado — contacta soporte'}
+                    {config.whatsapp.token_configurado
+                      ? 'Credenciales de tu WhatsApp Business configuradas'
+                      : 'Sin credenciales — conecta tu cuenta de WhatsApp Business'}
                   </p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <StatusBadge ok={config.wa.token_configured} label={config.wa.token_configured ? 'Token OK' : 'Sin token'} />
+                  <StatusBadge ok={config.whatsapp.token_configurado} label={config.whatsapp.token_configurado ? 'Credenciales OK' : 'Sin credenciales'} />
                   <Toggle
-                    value={config.wa.activo}
-                    onChange={v => patchConfig({ wa_activo: v })}
-                    disabled={saving || !config.wa.token_configured}
+                    value={config.whatsapp.activo}
+                    onChange={v => patchConfig({ whatsapp_activo: v })}
+                    disabled={saving || !config.whatsapp.token_configurado}
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Phone Number ID
-                  <span className="text-gray-400 font-normal ml-2">(asignado por ConectaAI)</span>
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={waPhoneId}
-                    onChange={e => setWaPhoneId(e.target.value)}
-                    placeholder="ej. 123456789012345"
-                    className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    onClick={() => patchConfig({ wa_phone_number_id: waPhoneId })}
-                    disabled={saving}
-                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
-                    {saving ? '...' : 'Guardar'}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400 mt-1.5">
-                  Solicita tu numero en el portal de ConectaAI o contacta a soporte tecnico.
-                </p>
+              <div className="p-4 bg-white rounded-xl border border-gray-200">
+                <WhatsappCredentialPanel
+                  configured={config.whatsapp.token_configurado}
+                  onSaved={fetchConfig}
+                  onDeleted={fetchConfig}
+                  showToast={showToast}
+                />
               </div>
-
-              {config.wa.activo && config.wa.phone_number_id && (
-                <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-xl border border-emerald-100">
-                  <div>
-                    <p className="font-semibold text-emerald-800">Prueba de envio</p>
-                    <p className="text-sm text-emerald-600 mt-0.5">Envia un mensaje al telefono del condominio</p>
-                  </div>
-                  <button
-                    onClick={testWa}
-                    disabled={testingWa}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg transition-colors"
-                  >
-                    {testingWa ? 'Enviando...' : 'Enviar prueba'}
-                  </button>
-                </div>
-              )}
 
               <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
                 <p className="text-sm font-semibold text-blue-800 mb-1">¿Como funciona?</p>
                 <ul className="text-sm text-blue-700 space-y-1 list-disc list-inside">
-                  <li>ConectaAI gestiona una cuenta de Tech Provider Meta con multiples numeros</li>
-                  <li>Tu condominio tiene un numero asignado exclusivo</li>
+                  <li>Cada condominio conecta su propia cuenta de WhatsApp Business (su propio numero)</li>
+                  <li>ConectaAI actua como plataforma que administra esas conexiones, no como un numero unico compartido</li>
                   <li>Los residentes reciben notificaciones de multas, paquetes y avisos por WhatsApp</li>
                   <li>Los mensajes entrantes se registran automaticamente</li>
                 </ul>
+              </div>
+            </div>
+          </ConfigCard>
+        )}
+
+        {/* ── SMS ── */}
+        {activeTab === 'sms' && config && (
+          <ConfigCard title="SMS" icon="📱">
+            <div className="space-y-5">
+              <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                <p className="text-sm font-semibold text-amber-800">Proveedor pendiente de elegir</p>
+                <p className="text-sm text-amber-700 mt-0.5">
+                  Puedes dejar las credenciales guardadas desde ya para el proveedor que elijas — el envio
+                  real de SMS todavia no esta implementado.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="font-semibold text-gray-800">Estado</p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {config.sms.credenciales_configuradas
+                      ? `Credenciales de ${config.sms.proveedor || 'proveedor'} configuradas`
+                      : 'Sin credenciales configuradas'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <StatusBadge ok={config.sms.credenciales_configuradas} label={config.sms.credenciales_configuradas ? 'Credenciales OK' : 'Sin credenciales'} />
+                  <Toggle
+                    value={config.sms.activo}
+                    onChange={v => patchConfig({ sms_activo: v })}
+                    disabled={true}
+                  />
+                </div>
+              </div>
+
+              <div className="p-4 bg-white rounded-xl border border-gray-200">
+                <SmsCredentialPanel
+                  configured={config.sms.credenciales_configuradas}
+                  onSaved={fetchConfig}
+                  onDeleted={fetchConfig}
+                  showToast={showToast}
+                />
               </div>
             </div>
           </ConfigCard>

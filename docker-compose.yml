@@ -47,7 +47,8 @@ services:
       EVOLUTION_API_URL: "http://evolution_api:8080"
       EVOLUTION_API_KEY: "${EVOLUTION_API_KEY}"
       FERNET_KEY: "${FERNET_KEY}"
-      META_APP_ID: ""
+      META_APP_ID: "${META_APP_ID}"
+      META_APP_SECRET: "${META_APP_SECRET}"
       META_VERIFY_TOKEN: "${META_VERIFY_TOKEN}"
       MP_ACCESS_TOKEN: ""
       MP_PUBLIC_KEY: ""
@@ -91,7 +92,8 @@ services:
       ANTHROPIC_API_KEY: ""
       META_SYSTEM_TOKEN: ""
       FERNET_KEY: "${FERNET_KEY}"
-      META_APP_ID: ""
+      META_APP_ID: "${META_APP_ID}"
+      META_APP_SECRET: "${META_APP_SECRET}"
       META_VERIFY_TOKEN: "${META_VERIFY_TOKEN}"
       MP_ACCESS_TOKEN: ""
       MP_PUBLIC_KEY: ""
@@ -130,7 +132,8 @@ services:
       ANTHROPIC_API_KEY: ""
       META_SYSTEM_TOKEN: ""
       FERNET_KEY: "${FERNET_KEY}"
-      META_APP_ID: ""
+      META_APP_ID: "${META_APP_ID}"
+      META_APP_SECRET: "${META_APP_SECRET}"
       META_VERIFY_TOKEN: "${META_VERIFY_TOKEN}"
       MP_ACCESS_TOKEN: ""
       MP_PUBLIC_KEY: ""
@@ -141,50 +144,6 @@ services:
       - "host.docker.internal:host-gateway"
     ports:
       - "127.0.0.1:8014:8000"
-
-  backend-wa:
-    build:
-      context: ./condominios/backend
-      dockerfile: Dockerfile.wa
-    restart: unless-stopped
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      SECRET_KEY: ${SECRET_KEY}
-      FACIAL_ENCRYPTION_KEY: ${FACIAL_ENCRYPTION_KEY}
-      DATABASE_URL: postgresql://conectaai_user:${DB_PASSWORD}@db/conectaai
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_DAYS: "7"
-      FLOW_API_KEY: ""
-      FLOW_SECRET_KEY: ""
-      FLOW_API_URL: "https://www.flow.cl/api"
-      RESEND_API_KEY: ""
-      MAIL_API_KEY: "${MAIL_API_KEY}"
-      MAIL_API_URL: "https://mail.conectaai.cl/api/send"
-      MAIL_API_URL_PUBLIC: "https://mail.conectaai.cl"
-      MAIL_FROM: "no-reply@conectaai.cl"
-      APP_URL: "https://condo.conectaai.cl"
-      CRON_SECRET: "${CRON_SECRET}"
-      ANTHROPIC_API_KEY: ""
-      META_SYSTEM_TOKEN: ""
-      EVOLUTION_API_URL: "http://evolution_api:8080"
-      EVOLUTION_API_KEY: "${EVOLUTION_API_KEY}"
-      FERNET_KEY: "${FERNET_KEY}"
-      META_APP_ID: ""
-      META_VERIFY_TOKEN: "${META_VERIFY_TOKEN}"
-      MP_ACCESS_TOKEN: ""
-      MP_PUBLIC_KEY: ""
-      VAPID_PUBLIC_KEY: "${VAPID_PUBLIC_KEY}"
-      VAPID_PRIVATE_KEY: "${VAPID_PRIVATE_KEY}"
-      VAPID_EMAIL: "mailto:admin@conectaai.cl"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    networks:
-      - default
-      - evolution_default
-    ports:
-      - "127.0.0.1:8015:8000"
 
   # === SERVICIOS COMPARTIDOS ===
 
@@ -217,7 +176,6 @@ services:
       - backend-core
       - backend-facial
       - backend-pagos
-      - backend-wa
     environment:
       PORT: "3005"
     ports:

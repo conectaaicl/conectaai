@@ -5,7 +5,7 @@ from app.models.estructura import Torre, Piso, Departamento, Estacionamiento, Bo
 from app.models.persona import Persona
 from app.models.finanzas import GastoComun, Multa, Pago
 from app.models.personal import Turno, Asistencia, Sueldo, Adelanto, Evaluacion, Documento, Equipamiento, Vacacion
-from app.models.whatsapp360 import Conversacion, Mensaje, Lead, Integracion, PlantillaMensaje, Automatizacion
+from app.models.comunicaciones import PlantillaMensaje, Automatizacion
 from app.models.aviso import Aviso
 from app.models.reserva import EspacioComun, Reserva
 from app.models.acceso import VisitaQR
