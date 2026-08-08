@@ -9,6 +9,7 @@ interface Condominio {
   website?: string; logo_url?: string; administrador_nombre?: string;
   administrador_rut?: string; empresa_administradora?: string;
   administrador_telefono?: string; administrador_email?: string; contrato_inicio?: string;
+  latitud?: number; longitud?: number; radio_geoacceso_metros?: number;
 }
 interface Torre { id: number; condominio_id: number; nombre: string; numero_pisos: number }
 interface Resumen {
@@ -282,6 +283,21 @@ export default function EstructuraPage() {
                   <div><label className={lbl}>Telefono contacto</label><input value={formCond.telefono_contacto||''} onChange={fc('telefono_contacto')} placeholder="+56 9 1234 5678" className={inp} /></div>
                   <div><label className={lbl}>Email contacto</label><input type="email" value={formCond.email_contacto||''} onChange={fc('email_contacto')} placeholder="condominio@ejemplo.cl" className={inp} /></div>
                   <div className="sm:col-span-2"><label className={lbl}>Sitio web</label><input value={formCond.website||''} onChange={fc('website')} placeholder="https://..." className={inp} /></div>
+                  <div className="sm:col-span-2 pt-2 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className={lbl}>Geoacceso (abrir puertas por cercania desde el celular)</label>
+                      <button type="button" onClick={()=>{
+                        if(!navigator.geolocation){ alert('Tu navegador no soporta geolocalizacion'); return }
+                        navigator.geolocation.getCurrentPosition(
+                          pos=>setFormCond(p=>({...p, latitud: pos.coords.latitude, longitud: pos.coords.longitude})),
+                          ()=>alert('No se pudo obtener tu ubicacion. Revisa los permisos del navegador.')
+                        )
+                      }} className="text-xs font-medium text-indigo-600 hover:text-indigo-700">📍 Usar mi ubicacion actual</button>
+                    </div>
+                  </div>
+                  <div><label className={lbl}>Latitud</label><input type="number" step="0.000001" value={formCond.latitud??''} onChange={e=>setFormCond(p=>({...p,latitud:e.target.value===''?undefined:Number(e.target.value)}))} placeholder="-33.4489" className={inp} /></div>
+                  <div><label className={lbl}>Longitud</label><input type="number" step="0.000001" value={formCond.longitud??''} onChange={e=>setFormCond(p=>({...p,longitud:e.target.value===''?undefined:Number(e.target.value)}))} placeholder="-70.6693" className={inp} /></div>
+                  <div><label className={lbl}>Radio geoacceso (metros)</label><input type="number" value={formCond.radio_geoacceso_metros??100} onChange={e=>setFormCond(p=>({...p,radio_geoacceso_metros:Number(e.target.value)||100}))} placeholder="100" className={inp} /></div>
                   <div className="sm:col-span-2">
                     <label className={lbl}>Logo del Condominio</label>
                     <div className="flex gap-3 items-center">

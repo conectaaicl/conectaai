@@ -32,6 +32,10 @@ class CondominioBase(BaseModel):
     telefono_contacto: Optional[str] = None
     email_contacto: Optional[str] = None
     website: Optional[str] = None
+    # Geoacceso: coordenadas del sitio para abrir puertas por cercania
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    radio_geoacceso_metros: Optional[int] = 100
 
 
 class CondominioCreate(CondominioBase):
@@ -63,6 +67,9 @@ class CondominioUpdate(BaseModel):
     telefono_contacto: Optional[str] = None
     email_contacto: Optional[str] = None
     website: Optional[str] = None
+    latitud: Optional[float] = None
+    longitud: Optional[float] = None
+    radio_geoacceso_metros: Optional[int] = None
 
 
 class CondominioResponse(CondominioBase):

@@ -96,6 +96,7 @@ from app.routers import paquetes, ordenes, documentos, avisos_lectura, recordato
 from app.routers import rfid_solicitudes
 from app.routers import rfid_keys
 from app.routers import qr_rotativo
+from app.routers import geoacceso
 
 # Registrar routers
 app.include_router(auth.router)
@@ -108,6 +109,7 @@ app.include_router(rfid_solicitudes.router)
 app.include_router(rfid_keys.router)
 app.include_router(qr_rotativo.router_portal)
 app.include_router(qr_rotativo.router_admin)
+app.include_router(geoacceso.router)
 app.include_router(paquetes.router)
 app.include_router(ordenes.router)
 app.include_router(documentos.router)

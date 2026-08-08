@@ -36,6 +36,66 @@ function QRDisplay({ value, size = 220 }: { value: string; size?: number }) {
   )
 }
 
+// Geoacceso: abre una puerta si el celular esta fisicamente cerca del sitio
+// (coordenadas configuradas por el admin). No requiere mostrar ningun codigo.
+function GeoaccesoCard({ authFetch }: { authFetch: (url: string, opts?: RequestInit) => Promise<Response> }) {
+  const [puertas, setPuertas] = useState<{ id: number; nombre: string }[]>([])
+  const [puertaId, setPuertaId] = useState<number | null>(null)
+  const [estado, setEstado] = useState<'idle' | 'ubicando' | 'abriendo' | 'ok' | 'error'>('idle')
+  const [mensaje, setMensaje] = useState('')
+
+  useEffect(() => {
+    authFetch('/api/portal/geoacceso/puertas')
+      .then(r => r.json())
+      .then(d => { if (Array.isArray(d)) { setPuertas(d); if (d.length > 0) setPuertaId(d[0].id) } })
+      .catch(() => {})
+  }, [])
+
+  function abrir() {
+    if (!puertaId) return
+    if (!navigator.geolocation) { setEstado('error'); setMensaje('Tu navegador no soporta geolocalizacion'); return }
+    setEstado('ubicando')
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        setEstado('abriendo')
+        try {
+          const r = await authFetch('/api/portal/geoacceso/abrir', {
+            method: 'POST',
+            body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude, puerta_id: puertaId }),
+          })
+          const d = await r.json()
+          if (d.acceso) { setEstado('ok'); setMensaje(`Puerta abierta (${d.distancia_metros}m)`) }
+          else { setEstado('error'); setMensaje(d.razon || 'No se pudo abrir') }
+        } catch { setEstado('error'); setMensaje('Error de conexion') }
+        setTimeout(() => setEstado('idle'), 4000)
+      },
+      () => { setEstado('error'); setMensaje('No se pudo obtener tu ubicacion. Revisa los permisos.'); setTimeout(() => setEstado('idle'), 4000) }
+    )
+  }
+
+  if (puertas.length === 0) return null
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+      <h2 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+        <span className="text-emerald-500">📍</span> Abrir por Cercania
+      </h2>
+      <select value={puertaId ?? ''} onChange={e => setPuertaId(Number(e.target.value))}
+        className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500 mb-3">
+        {puertas.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+      </select>
+      <button onClick={abrir} disabled={estado === 'ubicando' || estado === 'abriendo'}
+        className="w-full bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 disabled:opacity-50 transition-colors">
+        {estado === 'ubicando' ? 'Ubicandote...' : estado === 'abriendo' ? 'Abriendo...' : '📍 Abrir puerta ahora'}
+      </button>
+      {mensaje && (
+        <p className={`text-xs text-center mt-2 ${estado === 'ok' ? 'text-emerald-600' : 'text-red-500'}`}>{mensaje}</p>
+      )}
+      <p className="text-xs text-slate-400 text-center mt-2">Debes estar fisicamente cerca del edificio</p>
+    </div>
+  )
+}
+
 // QR rotativo: el backend genera y firma el codigo (cambia cada 30s), asi que
 // una foto del QR no sirve pasado ese rato. Se refresca solo cada 10s.
 function MiLlaveQR({ authFetch }: { authFetch: (url: string, opts?: RequestInit) => Promise<Response> }) {
@@ -246,6 +306,9 @@ export default function PortalQR() {
             </div>
           ) : <p className="text-slate-400 text-sm">Cargando...</p>}
         </div>
+
+        {/* Geoacceso: abrir sin mostrar codigo, solo por cercania */}
+        <GeoaccesoCard authFetch={authFetch} />
 
         {/* Generar QR para visita */}
         <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">

@@ -33,5 +33,9 @@ class Condominio(Base):
     email_contacto = Column(String(120), nullable=True)
     ciudad = Column(String(100), nullable=True)
     website = Column(String(200), nullable=True)
+    # Geoacceso: coordenadas del sitio para permitir abrir puertas por cercania
+    latitud = Column(Float, nullable=True)
+    longitud = Column(Float, nullable=True)
+    radio_geoacceso_metros = Column(Integer, nullable=True, default=100)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
