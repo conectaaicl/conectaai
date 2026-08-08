@@ -44,6 +44,7 @@ TIPO_PRESETS = {
     "gimnasio": [
         "gimnasio", "puertas", "rfid", "facial", "reservas",
         "pagos_online", "avisos", "reportes", "incidencias", "push_notificaciones", "comunicaciones",
+        "membresias",
     ],
 }
 

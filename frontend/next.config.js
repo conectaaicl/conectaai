@@ -86,6 +86,7 @@ const nextConfig = {
       { source: '/api/admin/integraciones', destination: 'http://backend-condominios:8003/api/admin/integraciones' },
       { source: '/api/webhooks/:path*', destination: 'http://backend-condominios:8003/api/webhooks/:path*' },
       { source: '/api/comunicaciones/:path*', destination: 'http://backend-condominios:8003/api/comunicaciones/:path*' },
+      { source: '/api/gym/:path*', destination: 'http://backend-condominios:8003/api/gym/:path*' },
             { source: '/api/ia/:path*', destination: 'http://backend-condominios:8003/api/ia/:path*' },
       { source: '/api/ia', destination: 'http://backend-condominios:8003/api/ia' },
       { source: '/api/anomalias/:path*', destination: 'http://backend-condominios:8003/api/anomalias/:path*' },
