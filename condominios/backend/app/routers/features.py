@@ -41,6 +41,10 @@ TIPO_PRESETS = {
         "pagos_online", "avisos", "reportes", "push_notificaciones",
         "portal_residente", "incidencias", "documentos", "ordenes",
     ],
+    "gimnasio": [
+        "gimnasio", "puertas", "rfid", "facial", "reservas",
+        "pagos_online", "avisos", "reportes", "incidencias", "push_notificaciones",
+    ],
 }
 
 

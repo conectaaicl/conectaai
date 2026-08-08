@@ -10,12 +10,14 @@ const TIPO_LABELS: Record<string, { label: string; color: string }> = {
   bodega:     { label: 'Bodega',     color: 'bg-amber-100 text-amber-700 border-amber-200' },
   pyme:       { label: 'PyME',       color: 'bg-green-100 text-green-700 border-green-200' },
   cowork:     { label: 'Cowork',     color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  gimnasio:   { label: 'Gimnasio',   color: 'bg-orange-100 text-orange-700 border-orange-200' },
 }
 
 const CAT_LABELS: Record<string, string> = {
   operaciones: 'Operaciones', seguridad: 'Seguridad', finanzas: 'Finanzas',
   rrhh: 'RRHH', comunidad: 'Comunidad', ia: 'Inteligencia Artificial',
   comunicaciones: 'Comunicaciones', portal: 'Portal', analytics: 'Analítica', sistema: 'Sistema',
+  amenidades: 'Amenidades',
 }
 
 function fmtPrice(n: number) {
@@ -249,6 +251,7 @@ export default function FeaturesAdminPage() {
                       {k === 'bodega' && 'Bodegas y mini-warehouses'}
                       {k === 'pyme' && 'Oficinas y pequeñas empresas'}
                       {k === 'cowork' && 'Espacios de trabajo compartido'}
+                      {k === 'gimnasio' && 'Gimnasios y centros deportivos'}
                     </p>
                   </button>
                 ))}

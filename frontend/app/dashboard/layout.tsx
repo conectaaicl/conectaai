@@ -131,6 +131,15 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    label: 'GIMNASIO',
+    items: [
+      { href: '/dashboard/condominios/gimnasio', label: 'Panel del Gimnasio', icon: 'M13 10V3L4 14h7v7l9-11h-7z', featureKey: 'gimnasio' },
+      { href: '/dashboard/condominios/gimnasio/socios', label: 'Socios y Membresias', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', featureKey: 'gimnasio' },
+      { href: '/dashboard/condominios/gimnasio/clases', label: 'Clases y Horarios', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', featureKey: 'gimnasio' },
+      { href: '/dashboard/condominios/gimnasio/accesos', label: 'Accesos al Gimnasio', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', featureKey: 'gimnasio' },
+    ],
+  },
+  {
     label: 'SUPERADMIN',
     superadminOnly: true,
     items: [
@@ -175,7 +184,7 @@ function CondominioAvatar() {
       src={logo}
       alt={nombre}
       title={nombre}
-      className="w-8 h-8 rounded-xl object-cover border border-slate-700/60 flex-shrink-0"
+      className="w-8 h-8 rounded-xl object-cover border border-slate-200 dark:border-slate-700/60 flex-shrink-0"
       onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
     />
   )
@@ -213,11 +222,11 @@ function MorosidadBadge() {
   const isGood = mora === 0
   const isMid = mora > 0 && mora < 20
   const colorClass = isGood
-    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+    ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
     : isMid
-    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-    : 'bg-red-500/10 text-red-400 border-red-500/20'
-  const dotClass = isGood ? 'bg-emerald-400' : isMid ? 'bg-amber-400' : 'bg-red-400'
+    ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
+    : 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20'
+  const dotClass = isGood ? 'bg-emerald-500 dark:bg-emerald-400' : isMid ? 'bg-amber-500 dark:bg-amber-400' : 'bg-red-500 dark:bg-red-400'
 
   return (
     <span className={`hidden sm:flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border ${colorClass}`}>
@@ -266,15 +275,15 @@ function BellDropdown() {
   }, [])
 
   const NIVEL_COLOR: Record<string,string> = {
-    critico: 'text-red-400', alto: 'text-orange-400',
-    medio: 'text-yellow-400', bajo: 'text-blue-400',
+    critico: 'text-red-600 dark:text-red-400', alto: 'text-orange-600 dark:text-orange-400',
+    medio: 'text-yellow-600 dark:text-yellow-400', bajo: 'text-accent-600 dark:text-accent-400',
   }
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="relative p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"
+        className="relative p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-all duration-200"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -287,34 +296,33 @@ function BellDropdown() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-80 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-            <span className="text-sm font-semibold text-white">Alertas del Sistema</span>
-            {total > 0 && <span className="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded-full">{total} activas</span>}
+        <div className="absolute right-0 top-10 w-80 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl shadow-slate-900/10 dark:shadow-black/50 z-50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <span className="text-sm font-semibold text-slate-900 dark:text-white">Alertas del Sistema</span>
+            {total > 0 && <span className="text-xs bg-red-50 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">{total} activas</span>}
           </div>
           <div className="max-h-72 overflow-y-auto">
             {alertas.length === 0 ? (
-              <div className="px-4 py-6 text-center text-slate-400 text-sm">
-                <div className="text-2xl mb-2">checkmark</div>
+              <div className="px-4 py-6 text-center text-slate-400 dark:text-slate-500 text-sm">
                 Sin alertas activas
               </div>
             ) : alertas.map((a: any) => (
-              <div key={a.id} className="px-4 py-3 border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
+              <div key={a.id} className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                 <div className="flex items-start gap-2">
                   <span className={'text-xs font-bold mt-0.5 uppercase ' + (NIVEL_COLOR[a.nivel] || 'text-slate-400')}>
                     {a.nivel}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-white truncate">{a.titulo}</p>
-                    {a.descripcion && <p className="text-xs text-slate-400 truncate mt-0.5">{a.descripcion}</p>}
-                    {a.servicio && <p className="text-xs text-slate-500 mt-0.5">{a.servicio}</p>}
+                    <p className="text-xs font-medium text-slate-900 dark:text-white truncate">{a.titulo}</p>
+                    {a.descripcion && <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">{a.descripcion}</p>}
+                    {a.servicio && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{a.servicio}</p>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
-          <div className="px-4 py-2 border-t border-slate-700">
-            <a href="/dashboard/condominios/alertas-sistema" onClick={() => setOpen(false)} className="text-xs text-violet-400 hover:text-indigo-300">
+          <div className="px-4 py-2 border-t border-slate-100 dark:border-slate-700">
+            <a href="/dashboard/condominios/alertas-sistema" onClick={() => setOpen(false)} className="text-xs text-brand-600 dark:text-brand-400 hover:text-brand-700 dark:hover:text-brand-300">
               Ver todas las alertas
             </a>
           </div>
@@ -345,19 +353,19 @@ function ProfileDropdown({ user, onLogout }: { user: any; onLogout: () => void }
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 hover:ring-2 hover:ring-indigo-500 transition-all"
-        style={{ background: 'linear-gradient(135deg, #6366f1, #9333ea)', boxShadow: '0 0 12px rgba(124,58,237,0.4)' }}
+        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0 hover:ring-2 hover:ring-brand-400 transition-all"
+        style={{ background: 'linear-gradient(135deg, #14B8A6, #0F766E)' }}
         title={user?.nombre_completo}
       >
         {initials}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-10 w-56 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700">
-            <p className="text-sm font-semibold text-white truncate">{user?.nombre_completo || 'Usuario'}</p>
-            <p className="text-xs text-slate-400 truncate">{user?.email || ''}</p>
-            <span className="inline-block mt-1 text-xs bg-indigo-500/20 text-violet-400 px-2 py-0.5 rounded-full">
+        <div className="absolute right-0 top-10 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl shadow-slate-900/10 dark:shadow-black/50 z-50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700">
+            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{user?.nombre_completo || 'Usuario'}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email || ''}</p>
+            <span className="inline-block mt-1 text-xs bg-brand-50 dark:bg-brand-500/20 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full">
               {ROL_LABEL[user?.rol] || user?.rol || ''}
             </span>
           </div>
@@ -365,7 +373,7 @@ function ProfileDropdown({ user, onLogout }: { user: any; onLogout: () => void }
             <a
               href="/dashboard/condominios/estructura"
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-300 hover:bg-slate-800 hover:text-white transition-colors"
+              className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -373,10 +381,10 @@ function ProfileDropdown({ user, onLogout }: { user: any; onLogout: () => void }
               Configuracion
             </a>
           </div>
-          <div className="border-t border-slate-700 py-1">
+          <div className="border-t border-slate-100 dark:border-slate-700 py-1">
             <button
               onClick={() => { setOpen(false); onLogout() }}
-              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors"
+              className="flex items-center gap-2 w-full px-4 py-2.5 text-sm text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-300 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -393,6 +401,7 @@ function ProfileDropdown({ user, onLogout }: { user: any; onLogout: () => void }
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [navSearch, setNavSearch] = useState('')
   const pathname = usePathname()
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {}
@@ -463,17 +472,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const sidebarJSX = (
     <div
-      className="flex flex-col h-full text-white overflow-hidden"
-      style={{ background: 'linear-gradient(180deg, #0c0c1e 0%, #08080f 100%)', position: 'relative' }}
+      className="flex flex-col h-full overflow-hidden bg-white dark:bg-gradient-to-b dark:from-[#0c0c1e] dark:to-[#08080f] border-r border-slate-200 dark:border-slate-800/60"
     >
-      <div
-        className="absolute top-0 right-0 w-40 h-40 pointer-events-none"
-        style={{ background: 'radial-gradient(ellipse at 100% 0%, rgba(91,62,245,0.08) 0%, transparent 60%)' }}
-      />
-
       {/* Logo */}
-      <div className={`flex items-center gap-3 px-4 py-5 border-b border-slate-800/60 shrink-0 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-purple-700 rounded-xl flex items-center justify-center shrink-0 shadow-lg shadow-indigo-900/40">
+      <div className={`flex items-center gap-3 px-4 py-5 border-b border-slate-100 dark:border-slate-800/60 shrink-0 ${collapsed ? 'justify-center' : ''}`}>
+        <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0" style={{ background: 'linear-gradient(135deg, #14B8A6, #0F766E)' }}>
           <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
@@ -483,7 +486,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span
               className="font-bold text-lg tracking-tight leading-none block"
               style={{
-                background: 'linear-gradient(90deg, #818cf8, #67e8f9)',
+                background: 'linear-gradient(90deg, #0F766E, #0284C7)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -491,43 +494,63 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             >
               ConectaAI
             </span>
-            <span className="text-slate-500 text-xs">Condominios</span>
+            <span className="text-slate-400 dark:text-slate-500 text-xs">Condominios</span>
           </div>
         )}
       </div>
 
       {/* Selector Condominio — hidden for superadmin */}
       {!collapsed && user?.rol !== 'superadmin' && (
-        <div className="px-3 py-2 border-b border-slate-800/60">
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/60">
           <CondominioSelector />
         </div>
       )}
       {!collapsed && user?.rol === 'superadmin' && (
-        <div className="px-3 py-2 border-b border-slate-800/60 flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-purple-400"></div>
-          <span className="text-xs font-semibold text-purple-300">Super Admin</span>
+        <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800/60 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-accent-500"></div>
+          <span className="text-xs font-semibold text-accent-600 dark:text-accent-400">Super Admin</span>
         </div>
       )}
+
+      {/* Buscador — con 70+ atajos en el menu, encontrar uno a golpe de vista no es realista */}
+      {!collapsed && (
+        <div className="px-3 pt-3 pb-1 shrink-0">
+          <div className="relative">
+            <svg className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+            </svg>
+            <input
+              value={navSearch}
+              onChange={e => setNavSearch(e.target.value)}
+              placeholder="Buscar en el menu..."
+              className="w-full pl-8 pr-2 py-1.5 rounded-lg text-xs bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-brand-400 dark:text-slate-200"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
+      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
         {NAV_GROUPS.filter(g => !g.superadminOnly || user?.rol === 'superadmin').map(group => {
-          const visibleItems = group.items.filter(i => !i.featureKey || hasFeature(i.featureKey))
+          const visibleItems = group.items.filter(i =>
+            (!i.featureKey || hasFeature(i.featureKey)) &&
+            (!navSearch || i.label.toLowerCase().includes(navSearch.toLowerCase()))
+          )
           if (visibleItems.length === 0) return null
-          const isOpen = collapsed || openGroups[group.label]
+          const isOpen = collapsed || !!navSearch || openGroups[group.label]
           const hasActive = visibleItems.some(i => isActive(i.href, i.exact))
           return (
             <div key={group.label}>
               {!collapsed && (
                 <button
                   onClick={() => setOpenGroups(p => ({ ...p, [group.label]: !p[group.label] }))}
-                  className="w-full flex items-center gap-2 px-3 mb-1 group/gh"
+                  className="w-full flex items-center gap-2 px-2 py-1 mb-0.5 rounded-md group/gh hover:bg-slate-50 dark:hover:bg-white/5"
                 >
-                  <p className={`text-[10px] font-bold uppercase tracking-[1.5px] whitespace-nowrap transition-colors ${hasActive ? 'text-violet-400' : group.superadminOnly ? 'text-purple-500 group-hover/gh:text-purple-300' : 'text-slate-500 group-hover/gh:text-slate-300'}`}>
+                  <p className={`flex-1 text-left text-[10px] font-bold uppercase tracking-[1.5px] whitespace-nowrap transition-colors ${hasActive ? 'text-brand-600 dark:text-brand-400' : group.superadminOnly ? 'text-accent-500 dark:text-accent-400' : 'text-slate-400 dark:text-slate-500 group-hover/gh:text-slate-600 dark:group-hover/gh:text-slate-300'}`}>
                     {group.label}
                   </p>
-                  <div className="flex-1 h-px bg-slate-800" />
                   <svg
-                    className={`w-3 h-3 flex-shrink-0 transition-all duration-200 ${openGroups[group.label] ? 'rotate-180 text-slate-400' : 'text-slate-600'}`}
+                    className={`w-3 h-3 flex-shrink-0 transition-transform duration-200 text-slate-400 dark:text-slate-600 ${openGroups[group.label] || navSearch ? 'rotate-180' : ''}`}
                     fill="none" stroke="currentColor" viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -543,18 +566,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         key={item.href}
                         href={item.href}
                         title={collapsed ? item.label : undefined}
-                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 group relative
-                          ${active ? 'text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}
+                        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors duration-150
+                          ${active
+                            ? 'bg-brand-50 dark:bg-brand-500/15 text-brand-700 dark:text-brand-300 font-semibold'
+                            : 'text-slate-600 dark:text-slate-400 font-medium hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white'}
                           ${collapsed ? 'justify-center' : ''}`}
-                        style={active ? {
-                          background: 'linear-gradient(90deg, rgba(124,58,237,0.2) 0%, rgba(124,58,237,0.08) 100%)',
-                          borderLeft: '2px solid #7c3aed',
-                          boxShadow: '0 0 12px rgba(124,58,237,0.15)',
-                        } : { borderLeft: '2px solid transparent' }}
                       >
                         <NavIcon d={item.icon} />
-                        {!collapsed && <span>{item.label}</span>}
-                        {active && !collapsed && <span className="ml-auto w-1.5 h-1.5 bg-indigo-300 rounded-full pulse-dot" />}
+                        {!collapsed && <span className="truncate">{item.label}</span>}
                       </Link>
                     )
                   })}
@@ -566,24 +585,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       {/* Bottom */}
-      <div className="shrink-0 border-t border-slate-800/60 p-3">
+      <div className="shrink-0 border-t border-slate-100 dark:border-slate-800/60 p-3">
         {!collapsed && user && (
-          <div
-            className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl"
-            style={{ background: 'rgba(12,12,30,0.8)', border: '1px solid rgba(255,255,255,0.06)' }}
-          >
-            <div className="w-8 h-8 bg-gradient-to-br from-violet-600 to-purple-700 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0 shadow shadow-indigo-900/40">
+          <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/10">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: 'linear-gradient(135deg, #14B8A6, #0F766E)' }}>
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-semibold truncate">{user.nombre_completo}</p>
-              <p className="text-slate-400 text-xs truncate capitalize">{user.rol}</p>
+              <p className="text-slate-900 dark:text-white text-xs font-semibold truncate">{user.nombre_completo}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-xs truncate capitalize">{user.rol}</p>
             </div>
           </div>
         )}
         <button
           onClick={() => setCollapsed((c: boolean) => !c)}
-          className="hidden lg:flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-slate-800/60 hover:text-white transition-all duration-200"
+          className="hidden lg:flex w-full items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white transition-colors duration-150"
           title={collapsed ? 'Expandir sidebar' : 'Colapsar sidebar'}
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -593,7 +609,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </button>
         <button
           onClick={handleLogout}
-          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-400 hover:bg-red-900/40 hover:text-red-400 transition-all duration-200 ${collapsed ? 'justify-center' : ''}`}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-slate-500 dark:text-slate-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-colors duration-150 ${collapsed ? 'justify-center' : ''}`}
         >
           <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -606,21 +622,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ToastProvider>
-      <style>{`
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.3); border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(124,58,237,0.6); }
-        .pro-table tr:hover td { background: rgba(124,58,237,0.04); }
-        .pro-card { transition: box-shadow 0.2s, transform 0.2s; }
-        .pro-card:hover { box-shadow: 0 0 0 1px rgba(124,58,237,0.3), 0 8px 32px rgba(0,0,0,0.3); transform: translateY(-1px); }
-        @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
-        .pulse-dot { animation: pulse-dot 2s ease infinite; }
-      `}</style>
-
-      <div className="flex h-screen bg-[#080812] overflow-hidden">
+      <div className="flex h-screen bg-slate-50 dark:bg-[#080812] overflow-hidden">
         {open && (
-          <div className="fixed inset-0 bg-black/70 z-20 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="fixed inset-0 bg-black/50 z-20 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />
         )}
 
         <aside className={`fixed inset-y-0 left-0 z-30 transform transition-all duration-200 ease-in-out lg:relative lg:translate-x-0 lg:flex lg:flex-col ${open ? 'translate-x-0' : '-translate-x-full'} ${collapsed ? 'w-16' : 'w-64'}`}>
@@ -628,14 +632,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <header
-            className="shrink-0 z-10 h-14 flex items-center"
-            style={{ background: 'rgba(8,8,18,0.95)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}
-          >
+          <header className="shrink-0 z-10 h-14 flex items-center bg-white/95 dark:bg-[rgba(8,8,18,0.95)] backdrop-blur-md border-b border-slate-200 dark:border-white/10">
             <div className="flex items-center gap-3 px-4 sm:px-5 w-full h-full">
               <button
                 onClick={() => setOpen(true)}
-                className="lg:hidden p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition"
+                className="lg:hidden p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
@@ -646,7 +647,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <span
                   className="font-bold hidden sm:block"
                   style={{
-                    background: 'linear-gradient(90deg, #818cf8, #67e8f9)',
+                    background: 'linear-gradient(90deg, #0F766E, #0284C7)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
@@ -654,8 +655,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   ConectaAI
                 </span>
-                <span className="hidden sm:block text-slate-600">/</span>
-                <span className="truncate text-slate-400 text-sm">{currentLabel}</span>
+                <span className="hidden sm:block text-slate-300 dark:text-slate-600">/</span>
+                <span className="truncate text-slate-500 dark:text-slate-400 text-sm">{currentLabel}</span>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
@@ -665,8 +666,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <a
                   href="/portal"
                   target="_blank"
-                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-violet-400 px-3 py-1.5 rounded-lg hover:bg-indigo-500/20 transition-all duration-200"
-                  style={{ border: '1px solid rgba(124,58,237,0.3)', background: 'rgba(124,58,237,0.08)' }}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-brand-700 dark:text-brand-400 px-3 py-1.5 rounded-lg bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/30 hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors duration-150"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -674,10 +674,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   Portal
                 </a>
 
-                <Link href="/dashboard/condominios/ia-chat" className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/20 transition-all duration-200" style={{border: "1px solid rgba(139,92,246,0.3)", background: "rgba(139,92,246,0.08)"}}><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>IA</Link>
+                <Link
+                  href="/dashboard/condominios/ia-chat"
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-accent-700 dark:text-accent-400 px-3 py-1.5 rounded-lg bg-accent-50 dark:bg-accent-500/10 border border-accent-200 dark:border-accent-500/30 hover:bg-accent-100 dark:hover:bg-accent-500/20 transition-colors duration-150"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                  IA
+                </Link>
                 <button
                   onClick={toggleDark}
-                  className="p-2 rounded-lg text-slate-400 hover:bg-slate-800 hover:text-white transition-all duration-200"
+                  className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white transition-colors duration-150"
                   title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                 >
                   {isDark ? (
@@ -698,7 +704,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto" style={{ background: '#020617' }}>
+          <main className="flex-1 overflow-y-auto bg-slate-50 dark:bg-[#020617]">
             {children}
           </main>
         </div>
