@@ -48,17 +48,27 @@ def list_paquetes(
 
 @router.post("/paquetes")
 async def create_paquete(data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    p = Paquete(**{k: v for k, v in data.items() if hasattr(Paquete, k)})
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
+    p = Paquete(**{k: v for k, v in data.items() if hasattr(Paquete, k) and k != "tenant_id"})
+    p.tenant_id = tenant_id
     p.estado = "pendiente"
     db.add(p)
     db.commit()
     db.refresh(p)
     if p.departamento_id:
         import asyncio
+        from app.models.estructura import Departamento
+        depto = (
+            db.query(Departamento)
+            .filter(Departamento.id == p.departamento_id, Departamento.tenant_id == tenant_id)
+            .first()
+        )
+        persona_id = (depto.residente_id or depto.propietario_id) if depto else None
         persona = (
             db.query(Persona)
-            .filter(Persona.tenant_id == p.tenant_id, Persona.estado == "activo")
+            .filter(Persona.id == persona_id, Persona.tenant_id == tenant_id, Persona.estado == "activo")
             .first()
+            if persona_id else None
         )
         if persona and persona.email:
             asyncio.create_task(

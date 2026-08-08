@@ -1,7 +1,19 @@
 'use client'
 import PWAInstallBanner from '@/components/PWAInstallBanner'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+
+// El tenant se resuelve en el backend por el dominio de la peticion
+// (tenants.dominio) -- el titulo aqui es solo cosmetico, por hostname.
+function usePortalLabel() {
+  const [label, setLabel] = useState('Portal Residentes')
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
+      setLabel('Portal Socios')
+    }
+  }, [])
+  return label
+}
 
 export default function PortalLogin() {
   const router = useRouter()
@@ -10,6 +22,7 @@ export default function PortalLogin() {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const portalLabel = usePortalLabel()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -18,7 +31,7 @@ export default function PortalLogin() {
       const res = await fetch('/api/portal/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rut, password, tenant_id: 1 })
+        body: JSON.stringify({ rut, password })
       })
       const data = await res.json()
       if (!res.ok) { setError(data.detail || 'Error al iniciar sesión'); setLoading(false); return }
@@ -32,7 +45,7 @@ export default function PortalLogin() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-4">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold text-white">ConectaAI</h1>
-        <p className="text-indigo-200 mt-1">Portal Residentes</p>
+        <p className="text-indigo-200 mt-1">{portalLabel}</p>
       </div>
       <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl">
         <h2 className="text-xl font-semibold text-slate-800 mb-6">Iniciar sesión</h2>

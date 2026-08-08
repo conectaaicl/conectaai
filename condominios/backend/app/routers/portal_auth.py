@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -10,6 +10,26 @@ import bcrypt, jwt, os
 router = APIRouter(prefix="/api/portal/auth", tags=["portal_auth"])
 SECRET = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET_KEY", "")
 security = HTTPBearer(auto_error=False)
+
+
+def _tenant_id_from_host(request: Request, db: Session) -> int:
+    """
+    Resuelve el tenant a partir del dominio de la peticion (condo.conectaai.cl,
+    gym.conectaai.cl, etc.) en vez de confiar en un tenant_id que mande el
+    cliente en el body/query -- antes estaba fijo en 1 (el tenant SuperAdmin,
+    no un condominio real) para TODOS los dominios, asi que ningun residente
+    de un tenant real podia registrarse ni iniciar sesion correctamente.
+    """
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(":")[0].strip().lower()
+    if not host:
+        raise HTTPException(400, "No se pudo determinar el dominio de la solicitud")
+    row = db.execute(text(
+        "SELECT id FROM tenants WHERE lower(dominio) = :host"
+    ), {"host": host}).fetchone()
+    if not row:
+        raise HTTPException(400, f"Este dominio ({host}) no tiene un condominio configurado. Contacta a soporte.")
+    return row[0]
+
 
 def make_token(rid: int, rut: str, tenant_id: int, depto_id: int) -> str:
     return jwt.encode({"sub": str(rid), "rut": rut, "tenant_id": tenant_id,
@@ -29,12 +49,13 @@ def get_residente(creds: HTTPAuthorizationCredentials=Depends(security), db: Ses
     except: raise HTTPException(401, "Token inválido")
 
 @router.get("/departamentos-publico")
-def departamentos_publico(tenant_id: int = 1, db: Session = Depends(get_db)):
+def departamentos_publico(request: Request, db: Session = Depends(get_db)):
     """
     Lista minima de departamentos para el formulario de auto-registro de
     residentes (sin sesion). No expone propietario_id/residente_id ni otros
     datos sensibles del modelo Departamento completo.
     """
+    tenant_id = _tenant_id_from_host(request, db)
     rows = db.execute(text("""
         SELECT d.id, d.numero, t.nombre AS torre, c.nombre AS condominio
         FROM departamentos d
@@ -51,12 +72,12 @@ def departamentos_publico(tenant_id: int = 1, db: Session = Depends(get_db)):
 
 
 @router.post("/registro")
-def registro(data: dict, db: Session=Depends(get_db)):
+def registro(data: dict, request: Request, db: Session=Depends(get_db)):
+    tenant_id = _tenant_id_from_host(request, db)
     rut = data.get("rut","").strip()
     nombre = data.get("nombre_completo","").strip()
     password = data.get("password","")
     depto_id = data.get("departamento_id")
-    tenant_id = data.get("tenant_id", 1)
     if not rut or not nombre or not password or not depto_id:
         raise HTTPException(400, "RUT, nombre, contraseña y departamento son requeridos")
     if len(password) < 6: raise HTTPException(400, "Contraseña mínimo 6 caracteres")
@@ -78,9 +99,9 @@ def registro(data: dict, db: Session=Depends(get_db)):
             "residente": {"id": r.id, "nombre": nombre, "rut": rut, "departamento_id": depto_id}}
 
 @router.post("/login")
-def login(data: dict, db: Session=Depends(get_db)):
+def login(data: dict, request: Request, db: Session=Depends(get_db)):
+    tenant_id = _tenant_id_from_host(request, db)
     rut = data.get("rut","").strip()
-    tenant_id = data.get("tenant_id", 1)
     r = db.query(ResidentePortal).filter(ResidentePortal.rut==rut, ResidentePortal.tenant_id==tenant_id).first()
     if not r: raise HTTPException(401, "RUT o contraseña incorrectos")
     if r.locked_until and r.locked_until > datetime.utcnow():

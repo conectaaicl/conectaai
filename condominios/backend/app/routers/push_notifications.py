@@ -115,7 +115,8 @@ def unsubscribe(endpoint: str, db: Session = Depends(get_db)):
 
 
 @router.get("/stats")
-def stats(tenant_id: int = 1, db: Session = Depends(get_db)):
+def stats(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del query param
     _ensure_table(db)
     total = db.execute(
         text("SELECT COUNT(*) FROM push_subscriptions WHERE tenant_id=:tid"), {"tid": tenant_id}
@@ -138,10 +139,11 @@ def send_to_persona(
 ):
     if current_user.get("rol") not in ("admin", "administrador", "superadmin", "conserje"):
         raise HTTPException(403, "Sin permisos")
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
     _ensure_table(db)
     subs = db.execute(text(
         "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE persona_id=:pid AND tenant_id=:tid"
-    ), {"pid": persona_id, "tid": body.tenant_id}).fetchall()
+    ), {"pid": persona_id, "tid": tenant_id}).fetchall()
 
     if not subs:
         return {"enviados": 0, "total": 0, "mensaje": "Sin dispositivos registrados"}
@@ -173,10 +175,11 @@ def broadcast(
 ):
     if current_user.get("rol") not in ("admin", "administrador", "superadmin"):
         raise HTTPException(403, "Solo administradores pueden enviar broadcast")
+    tenant_id = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body
     _ensure_table(db)
     subs = db.execute(text(
         "SELECT endpoint, p256dh, auth FROM push_subscriptions WHERE tenant_id=:tid"
-    ), {"tid": body.tenant_id}).fetchall()
+    ), {"tid": tenant_id}).fetchall()
 
     if not subs:
         return {"enviados": 0, "total": 0, "mensaje": "Sin dispositivos registrados"}

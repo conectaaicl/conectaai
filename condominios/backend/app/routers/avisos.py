@@ -79,7 +79,7 @@ def enviar_aviso_residentes(aviso_id: int, current_user: dict = Depends(get_curr
     personas = db.execute(_t(
         "SELECT nombre_completo,email FROM personas "
         "WHERE tenant_id=:tid AND estado='activo' AND email IS NOT NULL AND email!='' "
-        "AND roles && ARRAY['propietario','residente','arrendatario']::text[]"
+        "AND roles ?| array['propietario','residente','arrendatario']"
     ), {"tid": tenant_id}).fetchall()
     tipo_label = {
         "informativo": "Informativo", "urgente": "URGENTE",

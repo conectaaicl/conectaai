@@ -400,8 +400,9 @@ def responder_mensaje(
     if current_user.get("rol") not in ("admin", "administrador", "superadmin"):
         raise HTTPException(403, "Solo administradores pueden responder")
 
+    tid = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del body/query
     row = db.execute(
-        text("SELECT * FROM mensajes_portal WHERE id=:id"), {"id": msg_id}
+        text("SELECT * FROM mensajes_portal WHERE id=:id AND tenant_id=:tid"), {"id": msg_id, "tid": tid}
     ).fetchone()
     if not row:
         raise HTTPException(404, "Mensaje no encontrado")
@@ -411,12 +412,13 @@ def responder_mensaje(
         UPDATE mensajes_portal
         SET respuesta=:resp, respondido_por=:quien, estado=:estado,
             respondido_at=NOW(), leido_residente=false
-        WHERE id=:id
+        WHERE id=:id AND tenant_id=:tid
     """), {
         "resp": body.respuesta,
         "quien": current_user.get("nombre_completo", "Administración"),
         "estado": body.estado,
-        "id": msg_id
+        "id": msg_id,
+        "tid": tid
     })
     db.commit()
 
@@ -436,7 +438,6 @@ def responder_mensaje(
 
 @router.get("/mensajes/admin/todos")
 def todos_mensajes_admin(
-    tenant_id: int = Query(1),
     estado: Optional[str] = Query(None),
     limit: int = Query(50),
     offset: int = Query(0),
@@ -447,8 +448,9 @@ def todos_mensajes_admin(
     if current_user.get("rol") not in ("admin", "administrador", "superadmin"):
         raise HTTPException(403, "Sin permisos")
 
+    tid = current_user["tenant_id"]  # FLUJO-04: siempre del JWT, nunca del query param
     filters = "WHERE tenant_id=:tid"
-    params: dict = {"tid": tenant_id}
+    params: dict = {"tid": tid}
     if estado:
         filters += " AND estado=:est"
         params["est"] = estado

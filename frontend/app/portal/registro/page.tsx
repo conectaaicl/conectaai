@@ -18,9 +18,17 @@ export default function PortalRegistro() {
   const [fieldErrors, setFieldErrors] = useState<Record<string,string>>({})
   const [loading, setLoading] = useState(false)
   const [deptos, setDeptos] = useState<Depto[]>([])
+  const [portalLabel, setPortalLabel] = useState('Portal Residentes')
 
   useEffect(() => {
-    fetch('/api/portal/auth/departamentos-publico?tenant_id=1')
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
+      setPortalLabel('Portal Socios')
+    }
+  }, [])
+
+  useEffect(() => {
+    // El tenant se resuelve en el backend por el dominio de la peticion (tenants.dominio)
+    fetch('/api/portal/auth/departamentos-publico')
       .then(r => r.ok ? r.json() : [])
       .then(data => {
         if (Array.isArray(data)) setDeptos(data)
@@ -54,7 +62,7 @@ export default function PortalRegistro() {
           email: email || undefined,
           telefono: telefono || undefined,
           departamento_id: parseInt(deptoId),
-          password, tenant_id: 1
+          password
         })
       })
       const data = await res.json()
@@ -73,7 +81,7 @@ export default function PortalRegistro() {
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-4 py-10">
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold text-white">ConectaAI</h1>
-        <p className="text-indigo-200 mt-1">Portal Residentes</p>
+        <p className="text-indigo-200 mt-1">{portalLabel}</p>
       </div>
       <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl">
         <h2 className="text-xl font-semibold text-slate-800 mb-6">Crear cuenta</h2>
