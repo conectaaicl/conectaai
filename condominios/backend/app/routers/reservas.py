@@ -4,6 +4,7 @@ from sqlalchemy import text
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.reserva import EspacioComun, Reserva
+from app.services.comunicaciones import SegmentoFiltros, resolver_destinatarios, enviar_comunicacion
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, date
@@ -144,7 +145,7 @@ def list_reservas(
 
 
 @router.post("", status_code=201)
-def create_reserva(body: ReservaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+async def create_reserva(body: ReservaCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Create a reservation; checks for time conflicts first."""
     tenant_id = current_user["tenant_id"]
     if not _espacio_del_tenant(db, body.espacio_id, tenant_id):
@@ -174,6 +175,23 @@ def create_reserva(body: ReservaCreate, current_user: dict = Depends(get_current
     db.add(reserva)
     db.commit()
     db.refresh(reserva)
+
+    if reserva.persona_id:
+        espacio = db.query(EspacioComun).filter(EspacioComun.id == reserva.espacio_id).first()
+        destinatarios = resolver_destinatarios(db, tenant_id, SegmentoFiltros(persona_ids=[reserva.persona_id]))
+        if destinatarios:
+            fecha_txt = reserva.fecha_inicio.strftime("%d-%m-%Y %H:%M")
+            nombre_espacio = espacio.nombre if espacio else "el espacio"
+            await enviar_comunicacion(
+                db, tenant_id, destinatarios, "email",
+                "Reserva confirmada",
+                f"<p>Hola {destinatarios[0]['nombre_completo']},</p>"
+                f"<p>Tu reserva de <strong>{nombre_espacio}</strong> para el {fecha_txt} quedó registrada "
+                f"con estado <strong>{reserva.estado}</strong>.</p>",
+                modulo_origen="reservas", evento_origen="reservation.created",
+                enviado_por=current_user.get("nombre_completo", "Sistema"),
+            )
+
     return {"id": reserva.id, "estado": reserva.estado}
 
 

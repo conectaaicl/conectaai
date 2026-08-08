@@ -1,11 +1,18 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import PWAInstallBanner from '@/components/PWAInstallBanner'
 
 export default function LoginPage() {
   const router = useRouter()
+  const [sistemaLabel, setSistemaLabel] = useState('Sistema de Condominios')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
+      setSistemaLabel('Sistema de Gimnasio')
+    }
+  }, [])
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -120,7 +127,7 @@ export default function LoginPage() {
               Conecta AI
             </h1>
             <p className="text-sm mt-1" style={{ color: 'rgba(148,163,184,0.8)' }}>
-              Sistema de Condominios
+              {sistemaLabel}
             </p>
           </div>
 

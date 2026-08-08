@@ -21,7 +21,7 @@ TIPO_PRESETS = {
         "visitas", "paqueteria", "puertas", "rfid", "camaras", "reservas",
         "gastos_comunes", "finanzas", "presupuesto", "multas", "pagos_online",
         "personal", "mascotas", "asambleas", "votaciones", "documentos",
-        "avisos", "checklist", "incidencias", "reportes", "portal_residente",
+        "avisos", "checklist", "incidencias", "reportes", "portal_residente", "comunicaciones",
         "push_notificaciones", "ley_copropiedad", "accesos_qr", "biometrico",
         "facial", "alarmas", "proveedores", "ordenes", "remuneraciones",
         "asistencia", "noc", "anomalias", "resumenes_ia", "asistente_ia",
@@ -43,7 +43,7 @@ TIPO_PRESETS = {
     ],
     "gimnasio": [
         "gimnasio", "puertas", "rfid", "facial", "reservas",
-        "pagos_online", "avisos", "reportes", "incidencias", "push_notificaciones",
+        "pagos_online", "avisos", "reportes", "incidencias", "push_notificaciones", "comunicaciones",
     ],
 }
 

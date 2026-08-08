@@ -73,6 +73,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'COMUNICACIONES',
     items: [
       { href: '/dashboard/condominios/avisos', label: 'Avisos y Circulares', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9', featureKey: 'avisos' },
+      { href: '/dashboard/condominios/comunicaciones', label: 'Centro de Comunicacion', icon: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0', featureKey: 'comunicaciones' },
       { href: '/dashboard/condominios/mensajes', label: 'Mensajes', icon: 'M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z' },
       { href: '/dashboard/condominios/votaciones', label: 'Votaciones', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', featureKey: 'votaciones' },
       { href: '/dashboard/condominios/asambleas', label: 'Asambleas', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', featureKey: 'asambleas' },
@@ -128,20 +129,62 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: 'GIMNASIO',
-    items: [
-      { href: '/dashboard/condominios/gimnasio', label: 'Panel del Gimnasio', icon: 'M13 10V3L4 14h7v7l9-11h-7z', featureKey: 'gimnasio' },
-      { href: '/dashboard/condominios/gimnasio/socios', label: 'Socios y Membresias', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', featureKey: 'gimnasio' },
-      { href: '/dashboard/condominios/gimnasio/clases', label: 'Clases y Horarios', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', featureKey: 'gimnasio' },
-      { href: '/dashboard/condominios/gimnasio/accesos', label: 'Accesos al Gimnasio', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z', featureKey: 'gimnasio' },
-    ],
-  },
-  {
     label: 'SUPERADMIN',
     superadminOnly: true,
     items: [
       { href: '/dashboard/superadmin', label: 'Panel SuperAdmin', icon: 'M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4' },
       { href: '/dashboard/superadmin/features', label: 'Feature Flags', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z' },
+    ],
+  },
+]
+
+// Sidebar dedicado para tenants tipo "gimnasio": nav minimo (no el mega-menu de condominios).
+// Reutiliza paginas ya existentes (RFID/facial/puertas/reservas/pagos) en vez de crear
+// paginas nuevas que aun no existen en el backend.
+const GYM_NAV_GROUPS: NavGroup[] = [
+  {
+    label: 'INICIO',
+    items: [
+      { href: '/dashboard', label: 'Panel del Gimnasio', icon: 'M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 17a2 2 0 002 2h2a2 2 0 002-2m0 0V7m0 10a2 2 0 012 2h2a2 2 0 012-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2', exact: true },
+    ],
+  },
+  {
+    label: 'SOCIOS Y ACCESOS',
+    items: [
+      { href: '/dashboard/condominios/personas', label: 'Socios', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z' },
+      { href: '/dashboard/condominios/rfid', label: 'RFID y Tarjetas', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z', featureKey: 'rfid' },
+      { href: '/dashboard/condominios/facial', label: 'Reconocimiento Facial', icon: 'M15 12a3 3 0 11-6 0 3 3 0 016 0zm-9 0a9 9 0 1118 0 9 9 0 01-18 0z', featureKey: 'facial' },
+      { href: '/dashboard/condominios/puertas', label: 'Control de Puertas', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', featureKey: 'puertas' },
+      { href: '/dashboard/condominios/accesos-live', label: 'Monitor de Accesos', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', featureKey: 'accesos_qr' },
+    ],
+  },
+  {
+    label: 'CLASES Y RESERVAS',
+    items: [
+      { href: '/dashboard/condominios/reservas', label: 'Reservas y Clases', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', featureKey: 'reservas' },
+    ],
+  },
+  {
+    label: 'COBROS',
+    items: [
+      { href: '/dashboard/condominios/pagos-config', label: 'Config. de Pagos', icon: 'M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z', featureKey: 'pagos_online' },
+      { href: '/dashboard/condominios/finanzas', label: 'Finanzas y Pagos', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', featureKey: 'finanzas' },
+    ],
+  },
+  {
+    label: 'COMUNICACION Y REPORTES',
+    items: [
+      { href: '/dashboard/condominios/comunicaciones', label: 'Centro de Comunicacion', icon: 'M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0', featureKey: 'comunicaciones' },
+      { href: '/dashboard/condominios/avisos', label: 'Avisos', icon: 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9', featureKey: 'avisos' },
+      { href: '/dashboard/condominios/incidencias', label: 'Incidencias', icon: 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z', featureKey: 'incidencias' },
+      { href: '/dashboard/condominios/reportes', label: 'Reportes', icon: 'M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', featureKey: 'reportes' },
+    ],
+  },
+  {
+    label: 'SISTEMA',
+    items: [
+      { href: '/dashboard/configuracion', label: 'Configuracion', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
+      { href: '/dashboard/perfil', label: 'Mi Perfil', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
     ],
   },
 ]
@@ -400,17 +443,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [collapsed, setCollapsed] = useState(false)
   const [navSearch, setNavSearch] = useState('')
   const pathname = usePathname()
-  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {}
-    NAV_GROUPS.forEach(g => {
-      init[g.label] = g.items.some(i => i.exact ? pathname === i.href : pathname.startsWith(i.href))
-    })
-    return init
-  })
   const router = useRouter()
   const { user } = useSession()
   const { isDark, toggle: toggleDark } = useDarkMode()
   const initials = user?.nombre_completo?.split(" ").map((n: string) => n[0]).slice(0, 2).join("") || "?"
+
+  // Tenants tipo "gimnasio" ven un sidebar dedicado y minimo, no el mega-menu de condominios
+  const [tenantTipo, setTenantTipo] = useState<string>('condominio')
+  const groups = tenantTipo === 'gimnasio' && user?.rol !== 'superadmin' ? GYM_NAV_GROUPS : NAV_GROUPS
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const init: Record<string, boolean> = {}
+    groups.forEach(g => {
+      init[g.label] = g.items.some(i => i.exact ? pathname === i.href : pathname.startsWith(i.href))
+    })
+    return init
+  })
 
   // Feature flags: load active features for current tenant
   const [activeFeatures, setActiveFeatures] = useState<string[]>([])
@@ -425,8 +473,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     try {
       const cached = localStorage.getItem(CACHE_KEY)
       if (cached) {
-        const { features: f, ts } = JSON.parse(cached)
-        if (Date.now() - ts < CACHE_TTL) { setActiveFeatures(f); return }
+        const { features: f, tipo: t, ts } = JSON.parse(cached)
+        if (Date.now() - ts < CACHE_TTL) { setActiveFeatures(f); if (t) setTenantTipo(t); return }
       }
     } catch {}
     fetch('/api/features', { credentials: 'include' })
@@ -434,6 +482,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       .then(d => {
         if (d?.features) {
           setActiveFeatures(d.features)
+          if (d?.tipo) setTenantTipo(d.tipo)
           try { localStorage.setItem(CACHE_KEY, JSON.stringify({ features: d.features, tipo: d.tipo, ts: Date.now() })) } catch {}
         }
       })
@@ -444,21 +493,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     setOpen(false)
     setOpenGroups(prev => {
       const next = { ...prev }
-      NAV_GROUPS.forEach(g => {
+      groups.forEach(g => {
         if (g.items.some(i => i.exact ? pathname === i.href : pathname.startsWith(i.href))) {
           next[g.label] = true
         }
       })
       return next
     })
-  }, [pathname])
+  }, [pathname, groups])
 
   function isActive(href: string, exact?: boolean) {
     if (exact) return pathname === href
     return pathname.startsWith(href)
   }
 
-  const currentLabel = NAV_GROUPS.flatMap(g => g.items).find(i => isActive(i.href, i.exact))?.label || 'Dashboard'
+  const currentLabel = groups.flatMap(g => g.items).find(i => isActive(i.href, i.exact))?.label || 'Dashboard'
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' })
@@ -528,7 +577,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
-        {NAV_GROUPS.filter(g => !g.superadminOnly || user?.rol === 'superadmin').map(group => {
+        {groups.filter(g => !g.superadminOnly || user?.rol === 'superadmin').map(group => {
           const visibleItems = group.items.filter(i =>
             (!i.featureKey || hasFeature(i.featureKey)) &&
             (!navSearch || i.label.toLowerCase().includes(navSearch.toLowerCase()))

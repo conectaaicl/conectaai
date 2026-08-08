@@ -98,6 +98,7 @@ from app.routers import rfid_keys
 from app.routers import qr_rotativo
 from app.routers import geoacceso
 from app.routers import whatsapp_meta
+from app.routers import comunicaciones
 
 # Registrar routers
 app.include_router(auth.router)
@@ -111,6 +112,7 @@ app.include_router(qr_rotativo.router_portal)
 app.include_router(qr_rotativo.router_admin)
 app.include_router(geoacceso.router)
 app.include_router(whatsapp_meta.router)
+app.include_router(comunicaciones.router)
 app.include_router(paquetes.router)
 app.include_router(ordenes.router)
 app.include_router(documentos.router)
