@@ -42,11 +42,20 @@ export default function DashboardHome() {
   const [personaCount, setPersonaCount] = useState(0)
   const [loading, setLoading] = useState(true)
   const [portalLabel, setPortalLabel] = useState('Portal Residentes')
+  const [tenantTipo, setTenantTipo] = useState('condominio')
+  const esGym = tenantTipo === 'gimnasio'
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
       setPortalLabel('Portal Socios')
     }
+    try {
+      const cached = localStorage.getItem('tenant_features_cache')
+      if (cached) {
+        const { tipo } = JSON.parse(cached)
+        if (tipo) setTenantTipo(tipo)
+      }
+    } catch {}
   }, [])
 
   useEffect(() => {
@@ -151,10 +160,10 @@ export default function DashboardHome() {
       </div>
 
       {/* KPI Strip */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className={'grid grid-cols-2 gap-4 mb-8 ' + (esGym ? 'lg:grid-cols-3' : 'lg:grid-cols-4')}>
         {[
-          { label: 'Residentes', value: personaCount, sub: 'registrados', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', color: '#818cf8', href: '/dashboard/condominios/personas' },
-          { label: 'Departamentos', value: deptCount, sub: 'total edificio', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', color: '#22d3ee', href: '/dashboard/condominios/estructura' },
+          { label: esGym ? 'Socios' : 'Residentes', value: personaCount, sub: 'registrados', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', color: '#818cf8', href: '/dashboard/condominios/personas' },
+          ...(esGym ? [] : [{ label: 'Departamentos', value: deptCount, sub: 'total edificio', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', color: '#22d3ee', href: '/dashboard/condominios/estructura' }]),
           { label: 'Puertas Activas', value: puertas.filter(p => p.activa).length, sub: puertas.length + ' total', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', color: '#4ade80', href: '/dashboard/condominios/puertas' },
           { label: 'Camaras', value: camaras.length, sub: 'conectadas', icon: 'M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', color: '#f472b6', href: '/dashboard/condominios/camaras' },
         ].map(k => (
@@ -278,7 +287,7 @@ export default function DashboardHome() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium text-slate-200 truncate">{v.nombre_visitante}</p>
-                    <p className="text-xs text-slate-500">Depto {v.depto_destino || '—'}</p>
+                    {!esGym && <p className="text-xs text-slate-500">Depto {v.depto_destino || '—'}</p>}
                   </div>
                   <span className={'text-xs px-2 py-0.5 rounded-full font-medium ' + (v.estado === 'autorizado' ? 'bg-green-500/20 text-green-400' : v.estado === 'pendiente' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-400')}>
                     {v.estado}
@@ -293,7 +302,20 @@ export default function DashboardHome() {
           </Link>
         </div>
 
-        {/* PAQUETERIA */}
+        {/* PAQUETERIA (condo) / RESERVAS Y CLASES (gym) */}
+        {esGym ? (
+          <div className="rounded-2xl p-5" style={cardBg}>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-[1.5px]">Reservas y Clases</h2>
+              <Link href="/dashboard/condominios/reservas" className="text-xs text-indigo-400 hover:text-indigo-300">Ver todas</Link>
+            </div>
+            <p className="text-slate-500 text-sm text-center py-6">Gestiona horarios de clases y reserva de equipos</p>
+            <Link href="/dashboard/condominios/reservas"
+              className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-semibold text-cyan-400 border border-cyan-500/30 hover:bg-cyan-500/10 transition-colors">
+              + Nueva reserva
+            </Link>
+          </div>
+        ) : (
         <div className="rounded-2xl p-5" style={cardBg}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-slate-200 uppercase tracking-[1.5px]">Paqueteria</h2>
@@ -326,6 +348,7 @@ export default function DashboardHome() {
             + Registrar paquete
           </Link>
         </div>
+        )}
 
         {/* CAMARAS + ACCESOS RAPIDOS */}
         <div className="space-y-4">
@@ -351,7 +374,7 @@ export default function DashboardHome() {
           </div>
           <div className="rounded-2xl p-5" style={cardBg2}>
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-[1.5px]">Conserjes en turno</h2>
+              <h2 className="text-sm font-bold text-slate-200 uppercase tracking-[1.5px]">{esGym ? 'Personal en turno' : 'Conserjes en turno'}</h2>
               <Link href="/dashboard/condominios/conserjes" className="text-xs text-indigo-400 hover:text-indigo-300">Ver</Link>
             </div>
             {conserjesTurno.filter(c => c.en_turno).length === 0 ? (

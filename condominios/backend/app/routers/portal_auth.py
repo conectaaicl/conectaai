@@ -12,6 +12,11 @@ SECRET = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET_KEY", "")
 security = HTTPBearer(auto_error=False)
 
 
+def _tenant_tipo(db: Session, tenant_id: int) -> str:
+    row = db.execute(text("SELECT tipo FROM tenants WHERE id = :tid"), {"tid": tenant_id}).fetchone()
+    return row[0] if row and row[0] else 'condominio'
+
+
 def _tenant_id_from_host(request: Request, db: Session) -> int:
     """
     Resuelve el tenant a partir del dominio de la peticion (condo.conectaai.cl,
@@ -74,22 +79,25 @@ def departamentos_publico(request: Request, db: Session = Depends(get_db)):
 @router.post("/registro")
 def registro(data: dict, request: Request, db: Session=Depends(get_db)):
     tenant_id = _tenant_id_from_host(request, db)
+    es_gimnasio = _tenant_tipo(db, tenant_id) == 'gimnasio'
     rut = data.get("rut","").strip()
     nombre = data.get("nombre_completo","").strip()
     password = data.get("password","")
     depto_id = data.get("departamento_id")
-    if not rut or not nombre or not password or not depto_id:
-        raise HTTPException(400, "RUT, nombre, contraseña y departamento son requeridos")
+    if not rut or not nombre or not password or (not depto_id and not es_gimnasio):
+        campo = "RUT, nombre y contraseña" if es_gimnasio else "RUT, nombre, contraseña y departamento"
+        raise HTTPException(400, f"{campo} son requeridos")
     if len(password) < 6: raise HTTPException(400, "Contraseña mínimo 6 caracteres")
     if db.query(ResidentePortal).filter(ResidentePortal.rut==rut, ResidentePortal.tenant_id==tenant_id).first():
         raise HTTPException(400, "Ya existe una cuenta con ese RUT")
-    # Validate that departamento_id belongs to this tenant (CRIT-04 fix)
-    depto_check = db.execute(
-        text("SELECT id FROM departamentos WHERE id=:did AND tenant_id=:tid"),
-        {"did": depto_id, "tid": tenant_id}
-    ).fetchone()
-    if not depto_check:
-        raise HTTPException(status_code=400, detail="Departamento no pertenece a este condominio")
+    if depto_id:
+        # Validate that departamento_id belongs to this tenant (CRIT-04 fix)
+        depto_check = db.execute(
+            text("SELECT id FROM departamentos WHERE id=:did AND tenant_id=:tid"),
+            {"did": depto_id, "tid": tenant_id}
+        ).fetchone()
+        if not depto_check:
+            raise HTTPException(status_code=400, detail="Departamento no pertenece a este condominio")
     pw = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     r = ResidentePortal(tenant_id=tenant_id, rut=rut, nombre_completo=nombre,
                         email=data.get("email"), telefono=data.get("telefono"),

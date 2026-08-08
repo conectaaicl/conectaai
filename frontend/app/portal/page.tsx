@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 interface GastoComun {
   id: number
@@ -58,6 +59,16 @@ function formatRUT(value: string): string {
 }
 
 export default function PortalPage() {
+  const router = useRouter()
+  // Este buscador es especifico de gastos comunes (condominio) -- todavia no existe
+  // el equivalente de cuota de membresia para gimnasio, asi que ahi mandamos directo
+  // al login del portal en vez de mostrar un flujo que no aplica.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
+      router.replace('/portal/login')
+    }
+  }, [router])
+
   const [rut, setRut] = useState('')
   const [email, setEmail] = useState('')
   const [residente, setResidente] = useState<ResidenteData | null>(null)

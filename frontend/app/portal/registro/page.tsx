@@ -19,14 +19,18 @@ export default function PortalRegistro() {
   const [loading, setLoading] = useState(false)
   const [deptos, setDeptos] = useState<Depto[]>([])
   const [portalLabel, setPortalLabel] = useState('Portal Residentes')
+  const [esGym, setEsGym] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
       setPortalLabel('Portal Socios')
+      setEsGym(true)
     }
   }, [])
 
   useEffect(() => {
+    // Un gimnasio no tiene 'departamentos' -- no tiene sentido pedir esa lista
+    if (esGym) return
     // El tenant se resuelve en el backend por el dominio de la peticion (tenants.dominio)
     fetch('/api/portal/auth/departamentos-publico')
       .then(r => r.ok ? r.json() : [])
@@ -35,13 +39,13 @@ export default function PortalRegistro() {
         else if (data?.items) setDeptos(data.items)
       })
       .catch(() => {})
-  }, [])
+  }, [esGym])
 
   const validate = () => {
     const errs: Record<string,string> = {}
     if (!rut.trim()) errs.rut = 'El RUT es requerido'
     if (!nombre.trim()) errs.nombre = 'El nombre es requerido'
-    if (!deptoId) errs.depto = 'Seleccione su departamento'
+    if (!deptoId && !esGym) errs.depto = 'Seleccione su departamento'
     if (!password) errs.password = 'La contrasena es requerida'
     else if (password.length < 6) errs.password = 'Minimo 6 caracteres'
     if (password !== confirm) errs.confirm = 'Las contrasenas no coinciden'
@@ -61,7 +65,7 @@ export default function PortalRegistro() {
           rut, nombre_completo: nombre,
           email: email || undefined,
           telefono: telefono || undefined,
-          departamento_id: parseInt(deptoId),
+          departamento_id: deptoId ? parseInt(deptoId) : undefined,
           password
         })
       })
@@ -101,6 +105,7 @@ export default function PortalRegistro() {
               className={inputClass(fe.nombre)}/>
             {fe.nombre && <p className="text-red-500 text-xs mt-1">{fe.nombre}</p>}
           </div>
+          {!esGym && (
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Departamento *</label>
             <select value={deptoId} onChange={e => setDeptoId(e.target.value)}
@@ -114,6 +119,7 @@ export default function PortalRegistro() {
             </select>
             {fe.depto && <p className="text-red-500 text-xs mt-1">{fe.depto}</p>}
           </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Email (opcional)</label>
             <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="correo@ejemplo.com"
