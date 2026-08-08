@@ -85,13 +85,20 @@ export default function PersonasPage() {
   const rolesActivos = esGym ? ROLES_GYM : ROLES_RESIDENTES
 
   useEffect(() => {
+    let tipoFromCache = ''
     try {
       const cached = localStorage.getItem('tenant_features_cache')
       if (cached) {
         const { tipo } = JSON.parse(cached)
-        if (tipo) setTenantTipo(tipo)
+        if (tipo) { tipoFromCache = tipo; setTenantTipo(tipo) }
       }
     } catch {}
+    if (!tipoFromCache) {
+      fetch('/api/features', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.tipo) setTenantTipo(d.tipo) })
+        .catch(() => {})
+    }
   }, [])
 
   const [formData, setFormData] = useState({

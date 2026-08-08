@@ -49,13 +49,23 @@ export default function DashboardHome() {
     if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
       setPortalLabel('Portal Socios')
     }
+    let tipoFromCache = ''
     try {
       const cached = localStorage.getItem('tenant_features_cache')
       if (cached) {
         const { tipo } = JSON.parse(cached)
-        if (tipo) setTenantTipo(tipo)
+        if (tipo) { tipoFromCache = tipo; setTenantTipo(tipo) }
       }
     } catch {}
+    // Primer login del tenant: el cache de tipo aun no existe (lo llena dashboard/layout.tsx
+    // de forma async). Sin este fallback la primera pantalla mostraba KPIs de condominio
+    // aunque el tenant fuera un gimnasio.
+    if (!tipoFromCache) {
+      fetch('/api/features', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.tipo) setTenantTipo(d.tipo) })
+        .catch(() => {})
+    }
   }, [])
 
   useEffect(() => {
