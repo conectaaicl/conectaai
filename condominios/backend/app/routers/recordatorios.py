@@ -23,7 +23,7 @@ async def procesar_recordatorios(current_user: dict = Depends(get_current_user),
     tenant_id = current_user["tenant_id"]
     hoy = datetime.utcnow().date()
     enviados = 0
-    gastos = db.query(GastoComun).filter(GastoComun.estado == "pendiente").all()
+    gastos = db.query(GastoComun).filter(GastoComun.estado == "pendiente", GastoComun.tenant_id == tenant_id).all()
     for gasto in gastos:
         if not gasto.fecha_vencimiento:
             continue
@@ -60,6 +60,6 @@ async def procesar_recordatorios(current_user: dict = Depends(get_current_user),
 def get_estado(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = current_user["tenant_id"]
     hoy = datetime.utcnow().date()
-    pendientes = db.query(GastoComun).filter(GastoComun.estado == "pendiente").count()
-    vencidos = db.query(GastoComun).filter(GastoComun.estado == "pendiente", GastoComun.fecha_vencimiento < datetime.utcnow()).count()
+    pendientes = db.query(GastoComun).filter(GastoComun.estado == "pendiente", GastoComun.tenant_id == tenant_id).count()
+    vencidos = db.query(GastoComun).filter(GastoComun.estado == "pendiente", GastoComun.tenant_id == tenant_id, GastoComun.fecha_vencimiento < datetime.utcnow()).count()
     return {"pendientes": pendientes, "vencidos": vencidos, "fecha": hoy.isoformat(), "tenant_id": tenant_id}

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Habilita dark: controlado por una clase .dark en <html> (useDarkMode hook),
+   en vez del comportamiento por defecto de Tailwind v4 que sigue el
+   prefers-color-scheme del sistema operativo. Sin esto, el boton de modo
+   oscuro del sidebar cambiaba la clase pero ninguna utilidad dark: reaccionaba. */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /*
   ConectaAI Condominios -- design tokens.
   Paleta propia (teal profesional + azul de acento) en vez del
@@ -37,6 +43,12 @@
   color-scheme: light;
 }
 
+.dark {
+  --background: #0a0a14;
+  --foreground: #e2e8f0;
+  color-scheme: dark;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -68,7 +80,7 @@ body {
 
 /* Evita que el navegador pinte inputs/selects/textareas con estilos nativos
    de modo oscuro (texto gris claro casi invisible) cuando el OS del usuario
-   esta en dark mode. La app esta disenada en tema claro. */
+   esta en dark mode pero la app esta en modo claro. */
 input, select, textarea {
   color: #0f172a;
   font-weight: 600;
@@ -76,4 +88,7 @@ input, select, textarea {
 input::placeholder, textarea::placeholder {
   color: #94a3b8;
   font-weight: 400;
+}
+.dark input, .dark select, .dark textarea {
+  color: #e2e8f0;
 }

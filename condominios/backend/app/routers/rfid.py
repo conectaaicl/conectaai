@@ -29,6 +29,7 @@ class TarjetaCreate(BaseModel):
     categoria: str = "residente"
     fecha_vencimiento: Optional[str] = None
     notas: Optional[str] = None
+    condominio_id: Optional[int] = None
     tenant_id: int
 
 
@@ -48,10 +49,12 @@ def listar_tarjetas(activa: Optional[bool] = None, db: Session = Depends(get_db)
     tenant_id = current_user["tenant_id"]
     sql = (
         "SELECT t.id, t.uid, t.tipo_tarjeta, t.descripcion, t.nombre_titular, "
-        "t.categoria, t.activa, t.fecha_vencimiento, t.created_at, "
-        "p.nombre_completo as persona_nombre "
+        "t.categoria, t.activa, t.fecha_vencimiento, t.created_at, t.condominio_id, "
+        "p.nombre_completo as persona_nombre, "
+        "c.nombre as condominio_nombre "
         "FROM tarjetas_rfid t "
         "LEFT JOIN personas p ON p.id = t.persona_id "
+        "LEFT JOIN condominios c ON c.id = t.condominio_id "
         "WHERE t.tenant_id = :tid"
     )
     params = {"tid": tenant_id}
@@ -75,14 +78,15 @@ def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db), current_us
 
     row = db.execute(text(
         "INSERT INTO tarjetas_rfid (tenant_id, uid, tipo_tarjeta, descripcion, nombre_titular, "
-        "persona_id, categoria, fecha_vencimiento, notas) "
-        "VALUES (:tid, :uid, :tipo, :desc, :nombre, :pid, :cat, :fv, :notas) "
-        "RETURNING id, uid, tipo_tarjeta, descripcion, nombre_titular, categoria, activa"
+        "persona_id, categoria, fecha_vencimiento, notas, condominio_id) "
+        "VALUES (:tid, :uid, :tipo, :desc, :nombre, :pid, :cat, :fv, :notas, :cid) "
+        "RETURNING id, uid, tipo_tarjeta, descripcion, nombre_titular, categoria, activa, condominio_id"
     ), {
         "tid": tenant_id, "uid": data.uid.upper().strip(),
         "tipo": data.tipo_tarjeta, "desc": data.descripcion,
         "nombre": data.nombre_titular, "pid": data.persona_id,
         "cat": data.categoria, "fv": data.fecha_vencimiento, "notas": data.notas,
+        "cid": data.condominio_id,
     }).fetchone()
     db.commit()
     return dict(row._mapping)
@@ -90,7 +94,7 @@ def crear_tarjeta(data: TarjetaCreate, db: Session = Depends(get_db), current_us
 
 @router.patch("/rfid/{tarjeta_id}")
 def actualizar_tarjeta(tarjeta_id: int, data: dict, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    allowed = {"descripcion", "nombre_titular", "categoria", "activa", "fecha_vencimiento", "notas", "tipo_tarjeta"}
+    allowed = {"descripcion", "nombre_titular", "categoria", "activa", "fecha_vencimiento", "notas", "tipo_tarjeta", "condominio_id"}
     updates = {k: v for k, v in data.items() if k in allowed}
     if not updates:
         raise HTTPException(status_code=400, detail="Nada que actualizar")

@@ -461,7 +461,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 
 
-  const SidebarContent = () => (
+  const sidebarJSX = (
     <div
       className="flex flex-col h-full text-white overflow-hidden"
       style={{ background: 'linear-gradient(180deg, #0c0c1e 0%, #08080f 100%)', position: 'relative' }}
@@ -624,7 +624,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         <aside className={`fixed inset-y-0 left-0 z-30 transform transition-all duration-200 ease-in-out lg:relative lg:translate-x-0 lg:flex lg:flex-col ${open ? 'translate-x-0' : '-translate-x-full'} ${collapsed ? 'w-16' : 'w-64'}`}>
-          <SidebarContent />
+          {sidebarJSX}
         </aside>
 
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
