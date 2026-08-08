@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Form, Response, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
+from app.routers.features import TIPO_PRESETS
 import bcrypt, jwt, os, re, httpx, secrets, string, json
 from datetime import datetime, timedelta
 from typing import Optional, List
@@ -65,8 +66,9 @@ def _gen_password(length: int = 12) -> str:
 
 async def _send_welcome_email(
     user_email: str, user_nombre: str, tenant_nombre: str,
-    password: str, rol: str = "administrador"
+    password: str, rol: str = "administrador", login_url: Optional[str] = None
 ):
+    login_url = login_url or (APP_URL + "/login")
     role_label = "Administrador" if rol in ("admin", "administrador") else "Conserje"
     html = (
         "<div style='font-family:Arial,sans-serif;max-width:560px;margin:0 auto;background:#f8f9fa;padding:32px 20px'>"
@@ -83,7 +85,7 @@ async def _send_welcome_email(
         "<p style='margin:0 0 6px;font-size:14px;color:#374151'><b>Email:</b> " + user_email + "</p>"
         "<p style='margin:0;font-size:14px;color:#374151'><b>Contrasena:</b> " + password + "</p>"
         "</div>"
-        "<div style='text-align:center;margin:0 0 24px'><a href='" + APP_URL + "/login' "
+        "<div style='text-align:center;margin:0 0 24px'><a href='" + login_url + "' "
         "style='display:inline-block;background:#5b3ef5;color:#fff;padding:13px 28px;border-radius:10px;"
         "text-decoration:none;font-size:14px;font-weight:600'>Acceder al panel</a></div>"
         "<p style='color:#9ca3af;font-size:12px;margin:0;text-align:center'>Por seguridad, cambia tu contrasena en el primer ingreso.</p>"
@@ -125,6 +127,8 @@ class ConserjeIn(BaseModel):
 class OnboardingRequest(BaseModel):
     nombre: str
     subdominio: str
+    tipo: str = "condominio"
+    dominio: Optional[str] = None
     rut: Optional[str] = None
     direccion: Optional[str] = None
     ciudad: Optional[str] = None
@@ -315,9 +319,20 @@ async def create_tenant(body: OnboardingRequest, db: Session = Depends(get_db), 
     if not slug:
         raise HTTPException(400, "Subdominio invalido")
 
+    tipo = body.tipo.strip().lower() if body.tipo else "condominio"
+    if tipo not in TIPO_PRESETS:
+        raise HTTPException(400, f"tipo debe ser uno de: {list(TIPO_PRESETS.keys())}")
+
+    dominio = body.dominio.strip().lower() or None if body.dominio else None
+
     exists = db.execute(text("SELECT id FROM tenants WHERE subdominio=:s"), {"s": slug}).fetchone()
     if exists:
         raise HTTPException(400, "Subdominio ya existe")
+
+    if dominio:
+        dom_exists = db.execute(text("SELECT id FROM tenants WHERE dominio=:d"), {"d": dominio}).fetchone()
+        if dom_exists:
+            raise HTTPException(400, "Ese dominio ya esta asignado a otro tenant")
 
     email_exists = db.execute(
         text("SELECT id FROM usuarios WHERE email=:e"), {"e": body.admin_email.lower().strip()}
@@ -344,19 +359,30 @@ async def create_tenant(body: OnboardingRequest, db: Session = Depends(get_db), 
     meta_json = json.dumps(metadata) if metadata else None
 
     row = db.execute(text("""
-        INSERT INTO tenants (nombre, subdominio, email_contacto, telefono, plan, estado,
+        INSERT INTO tenants (nombre, subdominio, tipo, dominio, email_contacto, telefono, plan, estado,
                              limite_condominios, limite_departamentos, fecha_vencimiento,
                              metadata, created_at, updated_at)
-        VALUES (:n, :s, :e, :t, :p, 'activo', :lc, :ld, :fv,
+        VALUES (:n, :s, :tipo, :dominio, :e, :t, :p, 'activo', :lc, :ld, :fv,
                 CAST(:meta AS jsonb), NOW(), NOW())
         RETURNING id
     """), {
-        "n": body.nombre, "s": slug, "e": body.email_contacto,
+        "n": body.nombre, "s": slug, "tipo": tipo, "dominio": dominio, "e": body.email_contacto,
         "t": body.telefono or "", "p": body.plan,
         "lc": body.limite_condominios, "ld": body.limite_departamentos,
         "fv": fv, "meta": meta_json
     }).fetchone()
     tid = row[0]
+
+    for key in TIPO_PRESETS.get(tipo, []):
+        db.execute(text(
+            "INSERT INTO tenant_features (tenant_id, feature_key, activo) VALUES (:tid, :fk, true) "
+            "ON CONFLICT (tenant_id, feature_key) DO UPDATE SET activo=true"
+        ), {"tid": tid, "fk": key})
+
+    db.execute(text("""
+        INSERT INTO condominios (tenant_id, nombre, direccion, tipo, radio_geoacceso_metros, created_at, updated_at)
+        VALUES (:tid, :n, :dir, 'edificio', 100, NOW(), NOW())
+    """), {"tid": tid, "n": body.nombre, "dir": body.direccion or "Por definir"})
 
     pw_hash = _hash(body.admin_password)
     admin_row = db.execute(text("""
@@ -383,9 +409,10 @@ async def create_tenant(body: OnboardingRequest, db: Session = Depends(get_db), 
 
     db.commit()
 
-    await _send_welcome_email(body.admin_email.lower().strip(), body.admin_nombre, body.nombre, body.admin_password, "admin")
+    login_url = ("https://" + dominio + "/login") if dominio else None
+    await _send_welcome_email(body.admin_email.lower().strip(), body.admin_nombre, body.nombre, body.admin_password, "admin", login_url)
     for c in body.conserjes:
-        await _send_welcome_email(c.email.lower().strip(), c.nombre, body.nombre, c.password, "conserje")
+        await _send_welcome_email(c.email.lower().strip(), c.nombre, body.nombre, c.password, "conserje", login_url)
 
     return {
         "success": True,

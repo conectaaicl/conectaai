@@ -67,7 +67,12 @@ export default function SuperAdminLogin() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">Contraseña</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-slate-300">Contraseña</label>
+                <a href="/forgot-password" className="text-xs font-medium text-indigo-400 hover:text-indigo-300 transition">
+                  ¿Olvidaste tu contraseña?
+                </a>
+              </div>
               <div className="relative">
                 <input
                   type={showPw ? 'text' : 'password'} required autoComplete="current-password"

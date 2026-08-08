@@ -40,7 +40,7 @@ const CONSERJE_VACIO: ConserjeForm = { nombre: '', email: '', password: '', turn
 export default function NewTenantPage() {
   const router = useRouter()
   const [form, setForm] = useState({
-    nombre: '', subdominio: '', email_contacto: '', telefono: '',
+    nombre: '', subdominio: '', tipo: 'condominio', dominio: '', email_contacto: '', telefono: '',
     rut: '', direccion: '', ciudad: '',
     plan: 'basico', limite_condominios: '1', limite_departamentos: '50', fecha_vencimiento: '',
     admin_email: '', admin_password: '', admin_nombre: '',
@@ -128,7 +128,7 @@ export default function NewTenantPage() {
       </div>
       <div className="flex gap-3 justify-center">
         <Link href="/superadmin/tenants" className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white text-sm rounded-xl transition">Ver todos los tenants</Link>
-        <button onClick={() => { setSuccess(null); setConserjes([]); setForm({ nombre:'',subdominio:'',email_contacto:'',telefono:'',rut:'',direccion:'',ciudad:'',plan:'basico',limite_condominios:'1',limite_departamentos:'50',fecha_vencimiento:'',admin_email:'',admin_password:'',admin_nombre:'' }) }}
+        <button onClick={() => { setSuccess(null); setConserjes([]); setForm({ nombre:'',subdominio:'',tipo:'condominio',dominio:'',email_contacto:'',telefono:'',rut:'',direccion:'',ciudad:'',plan:'basico',limite_condominios:'1',limite_departamentos:'50',fecha_vencimiento:'',admin_email:'',admin_password:'',admin_nombre:'' }) }}
           className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm rounded-xl transition">
           Crear otro
         </button>
@@ -159,12 +159,29 @@ export default function NewTenantPage() {
         {/* Tenant info */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
           <h2 className="font-semibold text-white border-b border-slate-800 pb-3">Información del Tenant</h2>
+          {form.dominio.trim() && (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-amber-300 text-xs">
+              El campo "Dominio propio" solo registra el dominio en la base de datos. El DNS, el certificado SSL y el bloque de nginx para <strong>{form.dominio.trim()}</strong> hay que configurarlos aparte en el servidor antes de que ese dominio funcione.
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Nombre de la organización" hint="Ej: Edificio Las Palmas, Condominio Rio Norte">
               <Input value={form.nombre} onChange={e => set('nombre', e.target.value)} required placeholder="Nombre del condominio" />
             </Field>
             <Field label="Subdominio" hint="Solo letras, números y guiones">
               <Input value={form.subdominio} onChange={e => set('subdominio', e.target.value)} required placeholder="ej: edificio-palmas" />
+            </Field>
+            <Field label="Tipo de negocio" hint="Define el sidebar, roles y funciones activadas por defecto">
+              <Select value={form.tipo} onChange={e => set('tipo', e.target.value)}>
+                <option value="condominio">Condominio</option>
+                <option value="gimnasio">Gimnasio</option>
+                <option value="bodega">Bodega</option>
+                <option value="pyme">Pyme</option>
+                <option value="cowork">Cowork</option>
+              </Select>
+            </Field>
+            <Field label="Dominio propio (opcional)" hint="Ej: gym.conectaai.cl — si se deja vacío, se usa el subdominio">
+              <Input value={form.dominio} onChange={e => set('dominio', e.target.value)} placeholder="ej: gym.conectaai.cl" />
             </Field>
             <Field label="Email de contacto">
               <Input type="email" value={form.email_contacto} onChange={e => set('email_contacto', e.target.value)} required placeholder="contacto@condominio.cl" />
