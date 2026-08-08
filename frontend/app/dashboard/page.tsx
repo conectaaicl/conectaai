@@ -41,6 +41,13 @@ export default function DashboardHome() {
   const [deptCount, setDeptCount] = useState(0)
   const [personaCount, setPersonaCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [portalLabel, setPortalLabel] = useState('Portal Residentes')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
+      setPortalLabel('Portal Socios')
+    }
+  }, [])
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 30000)
@@ -136,9 +143,9 @@ export default function DashboardHome() {
           </div>
           <a href="/portal" target="_blank"
             className="hidden sm:flex items-center gap-2 text-sm font-semibold text-white px-4 py-2 rounded-xl"
-            style={{ background: 'linear-gradient(135deg, #6366f1, #9333ea)', boxShadow: '0 4px 15px rgba(99,102,241,0.4)' }}>
+            style={{ background: 'linear-gradient(135deg, #0D9488, #0F766E)', boxShadow: '0 4px 15px rgba(13,148,136,0.35)' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-            Portal Residentes
+            {portalLabel}
           </a>
         </div>
       </div>
