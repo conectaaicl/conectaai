@@ -1,0 +1,30 @@
+{
+  "name": "ConectaAI Gimnasio",
+  "short_name": "Mi Gym",
+  "description": "App de socios: llave QR de acceso, reservas de clases y avisos del gimnasio",
+  "start_url": "/portal/qr",
+  "scope": "/portal/",
+  "display": "standalone",
+  "background_color": "#fff7ed",
+  "theme_color": "#C2410C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "health",
+    "fitness"
+  ],
+  "lang": "es"
+}
