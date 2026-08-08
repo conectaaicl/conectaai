@@ -29,6 +29,11 @@ export default function ReservasPage() {
   const [loading, setLoading] = useState(false)
   const [enviando, setEnviando] = useState<number | null>(null)
   const [msg, setMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [esGym, setEsGym] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) setEsGym(true)
+  }, [])
 
   // Modals
   const [showModalEspacio, setShowModalEspacio] = useState(false)
@@ -48,7 +53,7 @@ export default function ReservasPage() {
     ]).then(([conds, pers]) => {
       setCondominios(conds)
       if (conds.length > 0) setCondominioId(conds[0].id)
-      setPersonas(pers.filter((p: Persona) => p.roles.some(r => ['propietario', 'residente', 'arrendatario'].includes(r))))
+      setPersonas(pers.filter((p: Persona) => p.roles.some(r => ['propietario', 'residente', 'arrendatario', 'socio'].includes(r))))
     })
   }, [tenantId])
 
@@ -177,8 +182,8 @@ export default function ReservasPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800">Reservas</h1>
-          <p className="text-sm text-slate-500">Espacios comunes y reservas de residentes</p>
+          <h1 className="text-2xl font-bold text-slate-800">{esGym ? 'Reservas y Clases' : 'Reservas'}</h1>
+          <p className="text-sm text-slate-500">{esGym ? 'Salas, equipos y clases del gimnasio' : 'Espacios comunes y reservas de residentes'}</p>
         </div>
         {condominios.length > 1 && (
           <select value={condominioId || ''} onChange={e => setCondominioId(Number(e.target.value))}
@@ -198,14 +203,14 @@ export default function ReservasPage() {
       {/* ── SECTION 1: Espacios Comunes ──────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-slate-100 p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-slate-800">Espacios Comunes</h2>
+          <h2 className="font-semibold text-slate-800">{esGym ? 'Salas y Equipos' : 'Espacios Comunes'}</h2>
           <button onClick={() => setShowModalEspacio(true)}
             className="bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-indigo-700 flex items-center gap-1.5">
-            <span className="text-base leading-none">+</span> Agregar Espacio
+            <span className="text-base leading-none">+</span> {esGym ? 'Agregar Sala' : 'Agregar Espacio'}
           </button>
         </div>
         {espacios.length === 0 ? (
-          <p className="text-slate-400 text-sm text-center py-8">No hay espacios registrados para este condominio</p>
+          <p className="text-slate-400 text-sm text-center py-8">{esGym ? 'No hay salas o equipos registrados' : 'No hay espacios registrados para este condominio'}</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {espacios.map(esp => (
@@ -257,7 +262,7 @@ export default function ReservasPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50 border-b border-slate-100">
-                    <tr>{['Residente', 'Desde', 'Hasta', 'Estado', 'Monto', 'Notas', 'Acciones'].map(h => (
+                    <tr>{[esGym ? 'Socio' : 'Residente', 'Desde', 'Hasta', 'Estado', 'Monto', 'Notas', 'Acciones'].map(h => (
                       <th key={h} className="text-left px-3 py-2.5 text-xs font-medium text-slate-500">{h}</th>
                     ))}</tr>
                   </thead>
@@ -326,14 +331,14 @@ export default function ReservasPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center p-5 border-b border-slate-100">
-              <h3 className="font-semibold text-slate-800">Nuevo Espacio Común</h3>
+              <h3 className="font-semibold text-slate-800">{esGym ? 'Nueva Sala o Equipo' : 'Nuevo Espacio Común'}</h3>
               <button onClick={() => setShowModalEspacio(false)} className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
             </div>
             <form onSubmit={handleCrearEspacio} className="p-5 space-y-3">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
                 <input required type="text" value={formEspacio.nombre} onChange={e => setFormEspacio({ ...formEspacio, nombre: e.target.value })}
-                  placeholder="Quincho, Sala de eventos, Piscina..."
+                  placeholder={esGym ? 'Sala de Spinning, Cancha, Máquina de remo...' : 'Quincho, Sala de eventos, Piscina...'}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent" />
               </div>
               <div>
@@ -399,7 +404,7 @@ export default function ReservasPage() {
             </div>
             <form onSubmit={handleCrearReserva} className="p-5 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Residente</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">{esGym ? 'Socio' : 'Residente'}</label>
                 <select value={formReserva.persona_id} onChange={e => setFormReserva({ ...formReserva, persona_id: e.target.value })}
                   className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
                   <option value="">Sin asignar</option>

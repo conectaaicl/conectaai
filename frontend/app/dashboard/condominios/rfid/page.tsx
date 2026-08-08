@@ -28,6 +28,7 @@ const TIPOS = [
 const CATEGORIAS = [
   { value: 'residente', label: 'Residente' },
   { value: 'propietario', label: 'Propietario' },
+  { value: 'socio', label: 'Socio' },
   { value: 'visita', label: 'Visita' },
   { value: 'personal_admin', label: 'Administración' },
   { value: 'personal_aseo', label: 'Aseo' },
@@ -54,6 +55,14 @@ export default function RFIDPage() {
     uid: '', tipo_tarjeta: 'mifare_classic', nombre_titular: '',
     descripcion: '', categoria: 'residente', fecha_vencimiento: ''
   })
+  const [esGym, setEsGym] = useState(false)
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
+      setEsGym(true)
+      setForm(p => ({ ...p, categoria: 'socio' }))
+    }
+  }, [])
 
   // Scanner state
   const [showScanner, setShowScanner] = useState(false)
@@ -216,7 +225,7 @@ export default function RFIDPage() {
           { label: 'Total', value: tarjetas.length, color: 'text-slate-700', bg: 'bg-slate-50' },
           { label: 'Activas', value: tarjetas.filter(t => t.activa).length, color: 'text-green-700', bg: 'bg-green-50' },
           { label: 'Inactivas', value: tarjetas.filter(t => !t.activa).length, color: 'text-slate-500', bg: 'bg-slate-50' },
-          { label: 'Residentes', value: tarjetas.filter(t => t.categoria === 'residente' || t.categoria === 'propietario').length, color: 'text-indigo-700', bg: 'bg-indigo-50' },
+          { label: esGym ? 'Socios' : 'Residentes', value: tarjetas.filter(t => esGym ? t.categoria === 'socio' : (t.categoria === 'residente' || t.categoria === 'propietario')).length, color: 'text-indigo-700', bg: 'bg-indigo-50' },
         ].map(s => (
           <div key={s.label} className={`${s.bg} rounded-xl p-3`}>
             <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
@@ -265,8 +274,8 @@ export default function RFIDPage() {
                 <input value={form.nombre_titular} onChange={e => setForm(p => ({ ...p, nombre_titular: e.target.value }))} placeholder="Ana García Pérez" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1">Descripción / Depto</label>
-                <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))} placeholder="Depto 302, Torre B" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <label className="block text-xs font-medium text-slate-600 mb-1">{esGym ? 'Descripción' : 'Descripción / Depto'}</label>
+                <input value={form.descripcion} onChange={e => setForm(p => ({ ...p, descripcion: e.target.value }))} placeholder={esGym ? 'Ej: Plan mensual, casillero 12' : 'Depto 302, Torre B'} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1">Vencimiento (opcional)</label>

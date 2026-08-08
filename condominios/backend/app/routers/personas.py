@@ -175,6 +175,7 @@ def crear_acceso_persona(persona_id: int, data: dict, db: Session = Depends(get_
 
     cat_map = {
         "propietario": "propietario", "residente": "residente", "arrendatario": "residente",
+        "socio": "socio",
         "conserje": "personal_admin", "guardia": "personal_seguridad", "administrador": "personal_admin",
         "sub_administrador": "personal_admin", "aseo": "personal_aseo", "mantencion": "personal_admin",
         "jardinero": "personal_aseo",
