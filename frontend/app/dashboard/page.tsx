@@ -408,14 +408,21 @@ export default function DashboardHome() {
           <div className="rounded-2xl p-4" style={cardBg2}>
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-[1.5px] mb-3">Acciones Rapidas</h3>
             <div className="grid grid-cols-2 gap-2">
-              {[
+              {(esGym ? [
+                { href: '/dashboard/condominios/gym-membresias', label: 'Nueva Membresía', color: '#8b5cf6' },
+                { href: '/dashboard/condominios/gym-membresias', label: 'Ver Planes', color: '#f59e0b' },
+                { href: '/dashboard/condominios/avisos', label: 'Nuevo Aviso', color: '#3b82f6' },
+                { href: '/dashboard/condominios/incidencias', label: 'Incidencia', color: '#ef4444' },
+                { href: '/dashboard/condominios/reservas', label: 'Reserva/Clase', color: '#06b6d4' },
+                { href: '/dashboard/condominios/gym-membresias', label: 'Renovar Membresía', color: '#10b981' },
+              ] : [
                 { href: '/dashboard/condominios/visitas', label: 'Nueva Visita', color: '#8b5cf6' },
                 { href: '/dashboard/condominios/paqueteria', label: 'Nuevo Paquete', color: '#f59e0b' },
                 { href: '/dashboard/condominios/avisos', label: 'Nuevo Aviso', color: '#3b82f6' },
                 { href: '/dashboard/condominios/incidencias', label: 'Incidencia', color: '#ef4444' },
                 { href: '/dashboard/condominios/reservas', label: 'Reserva', color: '#06b6d4' },
                 { href: '/dashboard/condominios/gastos-comunes', label: 'Gasto Comun', color: '#10b981' },
-              ].map(a => (
+              ]).map(a => (
                 <Link key={a.href} href={a.href}
                   className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium text-slate-300 hover:text-white transition-all hover:scale-[1.02]"
                   style={{ background: a.color + '20', border: '1px solid ' + a.color + '30' }}>
