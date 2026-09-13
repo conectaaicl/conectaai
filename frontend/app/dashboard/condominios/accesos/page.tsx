@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '@/hooks/useSession'
+import { useCondominio } from '@/hooks/useCondominio'
 
 interface Visita {
   id: number
@@ -66,7 +67,8 @@ export default function AccesosPage() {
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [condominioId, setCondominioId] = useState(1)
+  const { active: condoActivo } = useCondominio(tenantId)
+  const condominioId = condoActivo?.id ?? 0
   const [form, setForm] = useState({
     nombre_visitante: '', rut_visitante: '', departamento_id: '', motivo: '', horas_validez: '24'
   })

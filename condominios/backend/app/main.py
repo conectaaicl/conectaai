@@ -74,6 +74,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(SecurityHeadersMiddleware)
 
+from app.core.tenant_guard import TenantGuardMiddleware
+app.add_middleware(TenantGuardMiddleware)
+
 
 
 # Uploads
@@ -148,6 +151,9 @@ app.include_router(pagos_online.router)
 
 from app.routers import superadmin as superadmin_router
 app.include_router(superadmin_router.router)
+
+from app.routers import wizard as wizard_router
+app.include_router(wizard_router.router)
 
 from app.routers import scanner as scanner_router
 app.include_router(scanner_router.router)

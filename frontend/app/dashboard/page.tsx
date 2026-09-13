@@ -77,21 +77,25 @@ export default function DashboardHome() {
     if (!tenantId) return
     const tid = String(tenantId)
     try {
-      const [cRes, dRes, pRes, camRes, vRes, pqRes, evRes, ctRes] = await Promise.allSettled([
+      const [cRes, dRes, pRes, camRes, vRes, pqRes, evRes, ctRes, depRes] = await Promise.allSettled([
         fetch('/api/condominios?tenant_id=' + tid),
-        fetch('/api/personas?tenant_id=' + tid + '&limit=1'),
+        fetch('/api/personas?tenant_id=' + tid + '&limit=500'),
         fetch('/api/condominios/puertas?tenant_id=' + tid),
         fetch('/api/camaras?tenant_id=' + tid),
         fetch('/api/visitas?tenant_id=' + tid + '&limit=6'),
         fetch('/api/paquetes?tenant_id=' + tid + '&limit=6'),
         fetch('/api/accesos/live?tenant_id=' + tid + '&limit=10'),
         fetch('/api/auth/conserjes-turno', { credentials: 'include' }),
+        fetch('/api/condominios/departamentos', { credentials: 'include' }),
       ])
       if (cRes.status === 'fulfilled' && cRes.value.ok) {
         const cd = await cRes.value.json()
         const list = Array.isArray(cd) ? cd : (cd.condominios || cd.data || [])
         setCondCount(list.length)
-        setDeptCount(list.reduce((a: number, c: any) => a + (c.total_departamentos || 0), 0))
+      }
+      if (depRes.status === 'fulfilled' && depRes.value.ok) {
+        const deps = await depRes.value.json()
+        setDeptCount(Array.isArray(deps) ? deps.length : 0)
       }
       if (dRes.status === 'fulfilled' && dRes.value.ok) {
         const dd = await dRes.value.json()

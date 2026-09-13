@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from '@/hooks/useSession'
+import { useCondominio } from '@/hooks/useCondominio'
 
 interface Votacion {
   id: number
@@ -19,7 +20,8 @@ export default function VotacionesPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [creating, setCreating] = useState(false)
-  const [condominioId] = useState(1)
+  const { active: condoActivo } = useCondominio(tenantId)
+  const condominioId = condoActivo?.id ?? 0
   const [form, setForm] = useState({ titulo: '', descripcion: '', opciones: 'A favor\nEn contra\nAbstención', fecha_fin: '' })
 
   const load = useCallback(async () => {

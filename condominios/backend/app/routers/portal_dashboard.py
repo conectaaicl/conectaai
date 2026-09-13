@@ -31,9 +31,10 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
             "SELECT COALESCE(SUM(monto),0)::float as t, COUNT(*)::int as n "
             "FROM gastos_cobros WHERE departamento_id=:did AND estado NOT IN ('pagado','exento')"
         ), {"did": r.departamento_id}).fetchone()
-        if _cr and _cr.t:
-            monto += _cr.t
-            vencidos += _cr.n
+        # indices, no atributos: Row.t es un alias reservado de SQLAlchemy (devuelve la fila completa)
+        if _cr and _cr[0]:
+            monto += float(_cr[0])
+            vencidos += int(_cr[1] or 0)
     semaforo = "verde" if vencidos==0 else ("amarillo" if vencidos<=2 else "rojo")
     msgs = {
         "verde": "Al día con sus pagos",

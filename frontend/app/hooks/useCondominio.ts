@@ -39,7 +39,7 @@ export function useCondominio(tenantId: number) {
     }
     if (!tenantId) { setLoading(false); return }
     fetch(`/api/condominios?tenant_id=${tenantId}`)
-      .then(r => r.ok ? r.json() : [])
+      .then(r => { if (!r.ok) throw new Error('condominios ' + r.status); return r.json() })
       .then((data: CondominioBasico[]) => {
         _cache = Array.isArray(data) ? data : []
         setCondominios(_cache)
@@ -55,7 +55,7 @@ export function useCondominio(tenantId: number) {
         if (active) { _activeCache = active; localStorage.setItem(STORAGE_KEY, JSON.stringify(active)) }
         setActiveState(active)
       })
-      .catch(() => { _cache = [] })
+      .catch(() => { _cache = null })
       .finally(() => setLoading(false))
   }, [tenantId])
 

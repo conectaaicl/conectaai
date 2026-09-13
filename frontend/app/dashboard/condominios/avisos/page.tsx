@@ -123,7 +123,7 @@ export default function AvisosPage() {
         titulo: formData.titulo,
         contenido: formData.contenido,
         tipo: formData.tipo,
-        tenant_id: tenantId || 1,
+        tenant_id: tenantId,
         condominio_id: selectedCondominio,
       }
       const res = await fetch('/api/avisos', {

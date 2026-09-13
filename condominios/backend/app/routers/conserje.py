@@ -21,13 +21,14 @@ router = APIRouter(prefix="/api/conserje", tags=["Conserje"])
 
 
 class ConserjeCreate(BaseModel):
-    tenant_id: int
+    tenant_id: Optional[int] = None   # ignorado salvo superadmin
     nombre_completo: str
     email: str
     password: str
     turno: Optional[str] = None      # mañana | tarde | noche | rotativo
     telefono: Optional[str] = None
     condominio_ids: Optional[list] = None  # which condominios this conserje manages
+    cargo: Optional[str] = None      # conserje | guardia | mantenimiento | limpieza | jardinero
 
 class ConserjeUpdate(BaseModel):
     nombre_completo: Optional[str] = None
@@ -38,6 +39,13 @@ class ConserjeUpdate(BaseModel):
     activo: Optional[bool] = None
 
 
+
+def _tenant_efectivo(current_user: dict, tenant_id_solicitado=None) -> int:
+    """Nunca confiar en el tenant_id del cliente: solo superadmin puede operar sobre otro tenant."""
+    if current_user.get("rol") == "superadmin" and tenant_id_solicitado:
+        return int(tenant_id_solicitado)
+    return int(current_user["tenant_id"])
+
 def _require_admin(current_user: dict):
     if current_user.get("rol") not in ("admin", "administrador", "superadmin"):
         raise HTTPException(403, "Solo administradores pueden gestionar conserjes")
@@ -45,16 +53,18 @@ def _require_admin(current_user: dict):
 
 @router.get("/usuarios")
 def listar_conserjes(
-    tenant_id: int,
     request: Request,
+    tenant_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
     _require_admin(current_user)
+    tenant_id = _tenant_efectivo(current_user, tenant_id)
     rows = db.execute(text(
         "SELECT id, email, nombre_completo, activo, last_login::text, created_at::text, "
         "COALESCE((extra->>'turno'),'') as turno, "
-        "COALESCE((extra->>'telefono'),'') as telefono "
+        "COALESCE((extra->>'telefono'),'') as telefono, "
+        "COALESCE((extra->>'cargo'),'conserje') as cargo "
         "FROM usuarios WHERE tenant_id=:tid AND rol='conserje' ORDER BY nombre_completo"
     ), {"tid": tenant_id}).fetchall()
     return [dict(r._mapping) for r in rows]
@@ -82,12 +92,14 @@ def crear_conserje(
     if body.turno: extra["turno"] = body.turno
     if body.telefono: extra["telefono"] = body.telefono
     if body.condominio_ids: extra["condominio_ids"] = body.condominio_ids
+    if body.cargo: extra["cargo"] = body.cargo
+    tenant_id = _tenant_efectivo(current_user, body.tenant_id)
 
     row = db.execute(text(
         "INSERT INTO usuarios (tenant_id, email, password_hash, nombre_completo, rol, activo, extra) "
         "VALUES (:tid, :email, :pw, :nom, 'conserje', true, :extra) RETURNING id"
     ), {
-        "tid": body.tenant_id, "email": email,
+        "tid": tenant_id, "email": email,
         "pw": hash_password(body.password),
         "nom": body.nombre_completo,
         "extra": json.dumps(extra) if extra else None
@@ -117,8 +129,11 @@ def actualizar_conserje(
         raise HTTPException(400, "Sin campos para actualizar")
     set_clause = ", ".join(f"{k}=:{k}" for k in updates)
     updates["id"] = usuario_id
-    db.execute(text(f"UPDATE usuarios SET {set_clause}, updated_at=NOW() WHERE id=:id AND rol='conserje'"), updates)
+    updates["tid"] = _tenant_efectivo(current_user)
+    res = db.execute(text(f"UPDATE usuarios SET {set_clause}, updated_at=NOW() WHERE id=:id AND rol='conserje' AND tenant_id=:tid"), updates)
     db.commit()
+    if res.rowcount == 0:
+        raise HTTPException(404, "Conserje no encontrado en este condominio")
     return {"ok": True}
 
 
@@ -130,8 +145,11 @@ def eliminar_conserje(
     current_user: dict = Depends(get_current_user)
 ):
     _require_admin(current_user)
-    db.execute(text("UPDATE usuarios SET activo=false WHERE id=:id AND rol='conserje'"), {"id": usuario_id})
+    res = db.execute(text("UPDATE usuarios SET activo=false WHERE id=:id AND rol='conserje' AND tenant_id=:tid"),
+                     {"id": usuario_id, "tid": _tenant_efectivo(current_user)})
     db.commit()
+    if res.rowcount == 0:
+        raise HTTPException(404, "Conserje no encontrado en este condominio")
     return {"ok": True}
 
 
@@ -144,7 +162,9 @@ def reset_password_conserje(
 ):
     _require_admin(current_user)
     new_pass = secrets.token_urlsafe(8)
-    db.execute(text("UPDATE usuarios SET password_hash=:pw WHERE id=:id AND rol='conserje'"),
-               {"pw": hash_password(new_pass), "id": usuario_id})
+    res = db.execute(text("UPDATE usuarios SET password_hash=:pw, failed_attempts=0, locked_until=NULL WHERE id=:id AND rol='conserje' AND tenant_id=:tid"),
+                     {"pw": hash_password(new_pass), "id": usuario_id, "tid": _tenant_efectivo(current_user)})
     db.commit()
+    if res.rowcount == 0:
+        raise HTTPException(404, "Conserje no encontrado en este condominio")
     return {"ok": True, "nueva_password": new_pass}

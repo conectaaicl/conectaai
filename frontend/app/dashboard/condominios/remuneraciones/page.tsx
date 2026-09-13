@@ -1,4 +1,5 @@
 "use client"
+import { useSession } from "@/hooks/useSession"
 import { useState, useEffect, useCallback } from "react"
 
 const API = process.env.NEXT_PUBLIC_API_URL || ""
@@ -47,7 +48,7 @@ export default function RemuneracionesPage() {
   const [calc, setCalc] = useState<Calc>({})
   const [calcLoading, setCalcLoading] = useState(false)
   const [saving, setSaving] = useState(false)
-  const tenantId = 1
+  const { tenantId } = useSession()
 
   const defaultForm = {
     rut_trabajador: "", nombre_trabajador: "", cargo: "",

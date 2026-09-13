@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, func
 from app.core.database import get_db
 from app.models import ResidentePortal
 from datetime import datetime, timedelta
@@ -10,6 +10,12 @@ import bcrypt, jwt, os
 router = APIRouter(prefix="/api/portal/auth", tags=["portal_auth"])
 SECRET = os.getenv("SECRET_KEY") or os.getenv("JWT_SECRET_KEY", "")
 security = HTTPBearer(auto_error=False)
+
+
+def _norm_rut(rut: str) -> str:
+    """12.345.678-k -> 12345678-K : el mismo RUT escrito con o sin puntos encuentra la misma cuenta."""
+    import re as _re
+    return _re.sub(r"[^0-9kK-]", "", (rut or "")).upper()
 
 
 def _tenant_tipo(db: Session, tenant_id: int) -> str:
@@ -29,8 +35,13 @@ def _tenant_id_from_host(request: Request, db: Session) -> int:
     if not host:
         raise HTTPException(400, "No se pudo determinar el dominio de la solicitud")
     row = db.execute(text(
-        "SELECT id FROM tenants WHERE lower(dominio) = :host"
+        "SELECT id FROM tenants WHERE lower(dominio) = :host AND estado='activo'"
     ), {"host": host}).fetchone()
+    if not row and host.endswith(".conectaai.cl"):
+        # tenants creados por el wizard: <subdominio>.conectaai.cl
+        row = db.execute(text(
+            "SELECT id FROM tenants WHERE subdominio = :s AND estado='activo'"
+        ), {"s": host.split(".")[0]}).fetchone()
     if not row:
         raise HTTPException(400, f"Este dominio ({host}) no tiene un condominio configurado. Contacta a soporte.")
     return row[0]
@@ -52,6 +63,24 @@ def get_residente(creds: HTTPAuthorizationCredentials=Depends(security), db: Ses
     except jwt.ExpiredSignatureError: raise HTTPException(401, "Sesión expirada")
     except HTTPException: raise
     except: raise HTTPException(401, "Token inválido")
+
+@router.get("/info-publica")
+def info_publica(request: Request, db: Session = Depends(get_db)):
+    """Identidad del condominio/gimnasio para login y registro (sin sesion). No expone nada sensible."""
+    tenant_id = _tenant_id_from_host(request, db)
+    row = db.execute(text(
+        "SELECT nombre, COALESCE(tipo,'condominio'), COALESCE(metadata->>'tipo_unidad','departamentos'), logo_url, color_primario "
+        "FROM tenants WHERE id = :tid"
+    ), {"tid": tenant_id}).fetchone()
+    nombre, tipo, tipo_unidad, logo, color = row
+    es_gym = tipo == 'gimnasio'
+    return {
+        "nombre": nombre, "tipo": tipo, "tipo_unidad": tipo_unidad, "es_gimnasio": es_gym,
+        "portal_label": "Portal Socios" if es_gym else "Portal Residentes",
+        "unidad_label": "Casa" if tipo_unidad == "casas" else ("Puesto" if tipo == "cowork" else "Departamento"),
+        "logo_url": logo, "color_primario": color,
+    }
+
 
 @router.get("/departamentos-publico")
 def departamentos_publico(request: Request, db: Session = Depends(get_db)):
@@ -80,7 +109,7 @@ def departamentos_publico(request: Request, db: Session = Depends(get_db)):
 def registro(data: dict, request: Request, db: Session=Depends(get_db)):
     tenant_id = _tenant_id_from_host(request, db)
     es_gimnasio = _tenant_tipo(db, tenant_id) == 'gimnasio'
-    rut = data.get("rut","").strip()
+    rut = _norm_rut(data.get("rut",""))
     nombre = data.get("nombre_completo","").strip()
     password = data.get("password","")
     depto_id = data.get("departamento_id")
@@ -88,7 +117,7 @@ def registro(data: dict, request: Request, db: Session=Depends(get_db)):
         campo = "RUT, nombre y contraseña" if es_gimnasio else "RUT, nombre, contraseña y departamento"
         raise HTTPException(400, f"{campo} son requeridos")
     if len(password) < 6: raise HTTPException(400, "Contraseña mínimo 6 caracteres")
-    if db.query(ResidentePortal).filter(ResidentePortal.rut==rut, ResidentePortal.tenant_id==tenant_id).first():
+    if db.query(ResidentePortal).filter(func.replace(ResidentePortal.rut, ".", "")==rut, ResidentePortal.tenant_id==tenant_id).first():
         raise HTTPException(400, "Ya existe una cuenta con ese RUT")
     if depto_id:
         # Validate that departamento_id belongs to this tenant (CRIT-04 fix)
@@ -109,8 +138,8 @@ def registro(data: dict, request: Request, db: Session=Depends(get_db)):
 @router.post("/login")
 def login(data: dict, request: Request, db: Session=Depends(get_db)):
     tenant_id = _tenant_id_from_host(request, db)
-    rut = data.get("rut","").strip()
-    r = db.query(ResidentePortal).filter(ResidentePortal.rut==rut, ResidentePortal.tenant_id==tenant_id).first()
+    rut = _norm_rut(data.get("rut",""))
+    r = db.query(ResidentePortal).filter(func.replace(ResidentePortal.rut, ".", "")==rut, ResidentePortal.tenant_id==tenant_id).first()
     if not r: raise HTTPException(401, "RUT o contraseña incorrectos")
     if r.locked_until and r.locked_until > datetime.utcnow():
         raise HTTPException(403, "Cuenta bloqueada. Intente en 15 minutos.")

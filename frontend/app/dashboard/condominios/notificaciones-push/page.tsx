@@ -20,7 +20,7 @@ interface BroadcastForm {
 
 export default function PushNotificationsPage() {
   const { tenantId } = useSession()
-  const tid = tenantId || 1
+  const tid = tenantId
 
   const [stats, setStats] = useState<Stats | null>(null)
   const [form, setForm] = useState<BroadcastForm>({ titulo: '', mensaje: '', url: '/portal/avisos' })

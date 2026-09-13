@@ -1,4 +1,5 @@
 "use client"
+import { useSession } from "@/hooks/useSession"
 import { useState, useEffect, useCallback } from "react"
 
 const API = process.env.NEXT_PUBLIC_API_URL || ""
@@ -32,7 +33,7 @@ export default function AsambleasPage() {
   const [estadoFilter, setEstadoFilter] = useState("")
   const [totalUnidades, setTotalUnidades] = useState("")
   const [newPt, setNewPt] = useState({ nombre: "", rut: "", tipo: "propietario", metodo: "presencial", poder_otorgado_por: "" })
-  const tenantId = 1
+  const { tenantId } = useSession()
 
   const [form, setForm] = useState({
     titulo: "", tipo: "ordinaria", descripcion: "",

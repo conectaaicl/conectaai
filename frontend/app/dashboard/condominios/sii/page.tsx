@@ -73,7 +73,7 @@ function fmt(n: number) {
 
 export default function SIIPage() {
   const { tenantId } = useSession()
-  const tid = tenantId || 1
+  const tid = tenantId
 
   const [tab, setTab] = useState<'config' | 'emitir' | 'documentos'>('config')
   const [config, setConfig] = useState<SIIConfig>({ configurado: false })

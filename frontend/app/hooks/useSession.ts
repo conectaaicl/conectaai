@@ -32,5 +32,5 @@ export function useSession() {
       .catch(() => setLoading(false))
   }, [])
 
-  return { user, loading, tenantId: user?.tenant_id ?? 1 }
+  return { user, loading, tenantId: user?.tenant_id ?? 0 }
 }

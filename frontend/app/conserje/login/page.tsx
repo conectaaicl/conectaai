@@ -14,14 +14,13 @@ export default function ConserjeLogin() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true); setError('')
-    const r = await fetch('/api/auth/login', {
-      method: 'POST', credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    })
+    // Mismo camino que el login de admin: /api/login (route de Next) reenvia como formulario al backend y fija la cookie
+    const fd = new FormData(); fd.append('email', email.trim().toLowerCase()); fd.append('password', password)
+    const r = await fetch('/api/login', { method: 'POST', credentials: 'include', body: fd })
+    const data = await r.json().catch(() => ({}))
     setLoading(false)
-    if (r.ok) { router.replace('/conserje/central') }
-    else { setError('Credenciales incorrectas') }
+    if (r.ok && data?.success) { router.replace('/conserje/central') }
+    else { setError(data?.error || data?.detail || 'Credenciales incorrectas') }
   }
 
   return (

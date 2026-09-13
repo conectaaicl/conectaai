@@ -16,7 +16,7 @@ class PersonaBase(BaseModel):
 
 
 class PersonaCreate(PersonaBase):
-    tenant_id: Optional[int] = 1  # Por defecto tenant 1
+    tenant_id: Optional[int] = None  # ignorado: el backend usa siempre el tenant del JWT
 
 
 class PersonaUpdate(BaseModel):
@@ -31,6 +31,8 @@ class PersonaUpdate(BaseModel):
 
 
 class PersonaResponse(PersonaBase):
+    # En la respuesta el correo puede venir vacio (vecinos cargados por RUT desde el wizard)
+    email: str = ""
     id: int
     tenant_id: int
     created_at: datetime
