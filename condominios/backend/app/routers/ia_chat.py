@@ -8,8 +8,9 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/ia/chat", tags=["IA"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/ia/chat", tags=["IA"], dependencies=[Depends(check_feature("asistente_ia"))])
 SYSTEM_PROMPT = """Eres un asistente de gestión de condominios. Tienes acceso a la base de datos de un edificio.
 Cuando el usuario haga una pregunta sobre datos, responde con JSON en este formato:
 {"tipo": "query", "explicacion": "...", "sql": "SELECT ... WHERE tenant_id=:tid ..."}

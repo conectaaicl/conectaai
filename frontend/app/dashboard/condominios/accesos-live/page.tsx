@@ -62,17 +62,12 @@ export default function AccesosLivePage() {
   const [pulso, setPulso] = useState(false)
   const tid = useRef<string | null>(null)
 
-  useEffect(() => {
-    tid.current = typeof window !== 'undefined' ? localStorage.getItem('current_condominio_id') : null
-  }, [])
-
+  // El tenant lo resuelve el backend desde la sesion; no depende de localStorage.
   const fetchData = useCallback(async () => {
-    const t = tid.current
-    if (!t) return
     try {
       const [evRes, rsRes] = await Promise.all([
-        fetch(`/api/accesos/live?tenant_id=${t}&limit=80`),
-        fetch(`/api/accesos/resumen-hoy?tenant_id=${t}`),
+        fetch(`/api/accesos/live?limit=80`, { credentials: 'include' }),
+        fetch(`/api/accesos/resumen-hoy`, { credentials: 'include' }),
       ])
       if (evRes.ok) setEventos(await evRes.json())
       if (rsRes.ok) setResumen(await rsRes.json())
@@ -82,10 +77,7 @@ export default function AccesosLivePage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => {
-    tid.current = typeof window !== 'undefined' ? localStorage.getItem('current_condominio_id') : null
-    fetchData()
-  }, [fetchData])
+  useEffect(() => { fetchData() }, [fetchData])
 
   useEffect(() => {
     if (!autoRefresh) return

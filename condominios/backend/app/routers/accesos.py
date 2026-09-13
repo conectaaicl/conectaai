@@ -141,7 +141,7 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
     try:
         from sqlalchemy import text as _text
         rows = db.execute(_text("""
-            SELECT r.id, r.tipo_evento, r.metodo, r.uid_tarjeta, r.exitoso, r.created_at,
+            SELECT r.id, r.tipo_evento, r.metodo, r.uid_tarjeta, r.exitoso, r.created_at, r.descripcion,
                    COALESCE(u.nombre_completo, r.uid_tarjeta, 'Tarjeta') as persona,
                    COALESCE(p.nombre, 'Puerta') as ubicacion,
                    COALESCE(p.ubicacion, '') as zona
@@ -153,15 +153,21 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
         """), {"tid": tenant_id, "lim": limit}).fetchall()
         for r in rows:
             d = dict(r._mapping)
+            te, met, desc = d.get("tipo_evento") or "acceso", d.get("metodo") or "", d.get("descripcion") or ""
+            if met in ("citofono", "patente", "sensor", "dispositivo") or te in ("timbre", "alarma"):
+                persona = desc or te          # eventos de hardware: lo importante es el mensaje y la puerta
+            else:
+                persona = d.get("persona") or "Desconocido"
             events.append({
+                "id": d.get("id"),
                 "fuente": "puerta",
-                "tipo": d.get("tipo_evento") or "acceso",
-                "persona": d.get("persona") or "Desconocido",
+                "tipo": te,
+                "persona": persona,
                 "ubicacion": d.get("ubicacion") or "Puerta",
                 "zona": d.get("zona") or "",
                 "metodo": d.get("metodo") or "rfid",
                 "exitoso": bool(d.get("exitoso", True)),
-                "descripcion": "",
+                "descripcion": desc,
                 "ts": d.get("created_at").isoformat() if d.get("created_at") else "",
             })
     except Exception:
@@ -189,8 +195,10 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
     # 3. Visitas QR (last 24h)
     try:
         desde = datetime.now() - timedelta(hours=24)
+        from sqlalchemy import text as _t2
+        cids = [r[0] for r in db.execute(_t2("SELECT id FROM condominios WHERE tenant_id=:t"), {"t": tenant_id}).fetchall()]
         visitas = db.query(VisitaQR).filter(
-            VisitaQR.condominio_id == tenant_id,
+            VisitaQR.condominio_id.in_(cids or [-1]),
             VisitaQR.hora_entrada >= desde,
         ).order_by(VisitaQR.hora_entrada.desc()).limit(limit).all()
         for v in visitas:
@@ -221,6 +229,16 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
     except Exception:
         pass
     events.sort(key=lambda x: x["ts"], reverse=True)
+    ACCION = {"timbre": "Tocaron el timbre", "acceso_patente": "Ingreso por patente", "denegado_patente": "Patente no autorizada",
+              "apertura": "Puerta abierta", "cierre": "Puerta cerrada", "alarma": "ALARMA", "entrada": "Entrada", "salida": "Salida",
+              "acceso": "Acceso", "abrir": "Apertura remota", "cerrar": "Cierre remoto"}
+    for i, e in enumerate(events):
+        e.setdefault("id", f"{e['fuente']}-{i}-{e['ts']}")
+        e["nombre"] = e.get("persona") or "—"
+        e["accion"] = ACCION.get(e.get("tipo"), str(e.get("tipo") or "").replace("_", " ").capitalize())
+        e["puerta"] = e.get("ubicacion") or ""
+        e["timestamp"] = e.get("ts")
+        e["estado"] = "timbre" if e.get("tipo") == "timbre" else ("alarma" if e.get("tipo") == "alarma" else ("ok" if e.get("exitoso") else "denegado"))
     return events[:limit]
 
 

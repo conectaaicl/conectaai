@@ -9,8 +9,9 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.routers.auth import get_current_user
 
-router = APIRouter(prefix="/api/facial", tags=["Reconocimiento Facial"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/facial", tags=["Reconocimiento Facial"], dependencies=[Depends(check_feature("facial"))])
 MARCAS = ["zkteco", "hikvision", "dahua", "otro"]
 
 def _ensure_tables(db: Session):

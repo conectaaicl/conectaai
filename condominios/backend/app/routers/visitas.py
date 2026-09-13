@@ -22,7 +22,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 import httpx
 
-router = APIRouter(prefix="/api/visitas", tags=["Visitas"])
+from app.core.features import check_feature
+
+router = APIRouter(prefix="/api/visitas", tags=["Visitas"], dependencies=[Depends(check_feature("visitas"))])
 router_estac = APIRouter(prefix="/api/estacionamientos", tags=["Estacionamientos"])
 
 

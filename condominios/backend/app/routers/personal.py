@@ -9,8 +9,9 @@ from app.models.personal import Turno, Asistencia, Sueldo, Adelanto, Evaluacion,
 from app.models.persona import Persona
 from app.schemas.personal import *
 
-router = APIRouter(prefix="/api/personal", tags=["Personal"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/personal", tags=["Personal"], dependencies=[Depends(check_feature("personal"))])
 # ============ TURNOS ============
 @router.post("/turnos", response_model=TurnoResponse)
 def crear_turno(turno: TurnoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):

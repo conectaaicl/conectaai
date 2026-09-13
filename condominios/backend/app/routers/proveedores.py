@@ -18,8 +18,9 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/proveedores", tags=["Proveedores"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/proveedores", tags=["Proveedores"], dependencies=[Depends(check_feature("proveedores"))])
 RUBROS = ["plomeria", "electricidad", "gas", "ascensores", "jardines", "limpieza",
           "seguridad", "pintura", "cerrajeria", "informatica", "climatizacion", "otro"]
 

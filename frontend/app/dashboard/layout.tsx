@@ -46,6 +46,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'SEGURIDAD Y ACCESO',
     items: [
       { href: '/dashboard/condominios/puertas', label: 'Puertas y Accesos', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6', featureKey: 'puertas' },
+      { href: '/dashboard/condominios/vehiculos', label: 'Vehículos y Patentes', icon: 'M8 17a2 2 0 100-4 2 2 0 000 4zm8 0a2 2 0 100-4 2 2 0 000 4zM3 13l2-5a2 2 0 011.9-1.4h10.2A2 2 0 0119 8l2 5v4a1 1 0 01-1 1h-1a2 2 0 01-4 0H9a2 2 0 01-4 0H4a1 1 0 01-1-1v-4z', featureKey: 'puertas' },
       { href: '/dashboard/condominios/kiosco-acceso', label: 'Kiosco de Prueba (RFID/Código)', icon: 'M9 17V7a2 2 0 012-2h2a2 2 0 012 2v10M5 21h14a2 2 0 002-2v-2a2 2 0 00-2-2H5a2 2 0 00-2 2v2a2 2 0 002 2z', featureKey: 'puertas' },
       { href: '/dashboard/condominios/rfid', label: 'RFID y Tarjetas QR', icon: 'M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z', featureKey: 'rfid' },
       { href: '/dashboard/condominios/camaras', label: 'Camaras IP', icon: 'M15 10l4.553-2.069A1 1 0 0121 8.87V15.13a1 1 0 01-1.447.9L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z', featureKey: 'camaras' },
@@ -65,7 +66,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: '/dashboard/condominios/accesos-live', label: 'Monitor Accesos Live', icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', featureKey: 'accesos_qr' },
       { href: '/dashboard/condominios/reservas', label: 'Reservas', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z', featureKey: 'reservas' },
       { href: '/dashboard/condominios/ordenes', label: 'Ordenes de Trabajo', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z', featureKey: 'ordenes' },
-      { href: '/dashboard/condominios/mantenciones', label: 'Mantenciones QR', icon: 'M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z' },
+      { href: '/dashboard/condominios/mantenciones', label: 'Mantenciones QR', icon: 'M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z', featureKey: 'mantenciones' },
       { href: '/dashboard/condominios/checklist', label: 'Checklist de Rondas', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4', featureKey: 'checklist' },
       { href: '/dashboard/condominios/mascotas', label: 'Mascotas', icon: 'M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064', featureKey: 'mascotas' },
     ],
@@ -448,6 +449,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter()
   const { user } = useSession()
   const { isDark, toggle: toggleDark } = useDarkMode()
+  // Varias paginas antiguas leen localStorage.current_condominio_id como tenant; se fija desde la sesion real
+  useEffect(() => {
+    if (user?.tenant_id) { try { localStorage.setItem('current_condominio_id', String(user.tenant_id)) } catch {} }
+  }, [user?.tenant_id])
   const initials = user?.nombre_completo?.split(" ").map((n: string) => n[0]).slice(0, 2).join("") || "?"
 
   // Tenants tipo "gimnasio" ven un sidebar dedicado y minimo, no el mega-menu de condominios
@@ -470,7 +475,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [activeFeatures])
 
   useEffect(() => {
-    const CACHE_KEY = 'tenant_features_cache'
+    const CACHE_KEY = 'tenant_features_cache_' + (typeof window !== 'undefined' ? window.location.hostname : '')
     const CACHE_TTL = 5 * 60 * 1000
     try {
       const cached = localStorage.getItem(CACHE_KEY)

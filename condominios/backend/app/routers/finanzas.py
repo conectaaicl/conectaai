@@ -32,9 +32,9 @@ def _persona_de_depto(db, depto_id, tenant_id):
     except Exception:
         return None, None, None
 
-router = APIRouter(prefix="/api/finanzas", tags=["Finanzas"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/finanzas", tags=["Finanzas"], dependencies=[Depends(check_feature("finanzas"))])
 # Finanzas se alimenta de los COBROS reales que genera "Gastos Comunes" (gastos_periodos/gastos_cobros).
 # La tabla legacy GastoComun ya no se usa aqui: tenia datos sin tenant y un modelo distinto.
 from types import SimpleNamespace as _NS

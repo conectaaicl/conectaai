@@ -7,9 +7,9 @@ from sqlalchemy import text
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/resumenes", tags=["Resumenes"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/resumenes", tags=["Resumenes"], dependencies=[Depends(check_feature("resumenes_ia"))])
 def ensure_table(db):
     db.execute(text("""
         CREATE TABLE IF NOT EXISTS resumenes_semanales (

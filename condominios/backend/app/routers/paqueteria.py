@@ -17,8 +17,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 import httpx
 
-router = APIRouter(prefix="/api/paqueteria", tags=["Paquetería"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/paqueteria", tags=["Paquetería"], dependencies=[Depends(check_feature("paqueteria"))])
 CARRIERS = [
     "chilexpress", "bluexpress", "mercadolibre", "aliexpress",
     "correos_chile", "starken", "dhl", "fedex", "ups",

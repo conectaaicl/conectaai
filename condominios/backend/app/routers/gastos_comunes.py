@@ -10,8 +10,9 @@ import httpx
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/gastos-comunes", tags=["Gastos Comunes"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/gastos-comunes", tags=["Gastos Comunes"], dependencies=[Depends(check_feature("gastos_comunes"))])
 MAIL_API_URL = os.getenv("MAIL_API_URL", "http://localhost:3004/api/send")
 
 # -------------------------------------------------

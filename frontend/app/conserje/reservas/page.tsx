@@ -34,7 +34,7 @@ const ESTADO_COLORS: Record<string, string> = {
 export default function ConserjeReservas() {
   const [reservas, setReservas] = useState<Reserva[]>([])
   const [loading, setLoading] = useState(true)
-  const [filtro, setFiltro] = useState<'hoy' | 'pendiente' | 'todos'>('hoy')
+  const [filtro, setFiltro] = useState<'hoy' | 'pendiente' | 'todos'>('todos')
 
   const load = useCallback(async () => {
     try {

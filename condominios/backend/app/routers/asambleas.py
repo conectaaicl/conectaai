@@ -7,8 +7,9 @@ from app.models import Asamblea, ParticipanteAsamblea
 from typing import Optional
 from datetime import datetime
 
-router = APIRouter(prefix="/api/condominios/asambleas", tags=["asambleas"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/condominios/asambleas", tags=["asambleas"], dependencies=[Depends(check_feature("asambleas"))])
 @router.get("")
 def list_asambleas(condominio_id: Optional[int]=None,
                    estado: Optional[str]=None, current_user: dict = Depends(get_current_user), db: Session=Depends(get_db)):

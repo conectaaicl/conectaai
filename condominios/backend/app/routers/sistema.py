@@ -411,7 +411,7 @@ class EventoCreate(BaseModel):
     detalle: Optional[str] = None
 
 
-def _match_rfid(db: Session, card_uid: str) -> dict:
+def _match_rfid(db: Session, card_uid: str, tenant_id: int) -> dict:
     """Returns {persona_id, persona_nombre, nombre_titular, resultado}"""
     try:
         row = db.execute(text(
@@ -460,7 +460,7 @@ def recibir_evento(body: EventoCreate, current_user: dict = Depends(get_current_
 
     # RFID matching
     if body.card_uid:
-        match = _match_rfid(db, body.card_uid, body.tenant_id)
+        match = _match_rfid(db, body.card_uid, tenant_id)
         persona_id = match["persona_id"]
         persona_nombre = match["persona_nombre"]
         resultado = match["resultado"]

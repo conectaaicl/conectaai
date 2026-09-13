@@ -7,9 +7,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.incidencia import Incidencia
 
-router = APIRouter(prefix="/api/incidencias", tags=["Incidencias"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/incidencias", tags=["Incidencias"], dependencies=[Depends(check_feature("incidencias"))])
 # ─── Schemas ────────────────────────────────────────────────────────────────
 
 class IncidenciaCreate(BaseModel):
@@ -42,6 +42,8 @@ def incidencia_to_dict(i: Incidencia) -> dict:
         "tenant_id": i.tenant_id,
         "condominio_id": i.condominio_id,
         "departamento_id": i.departamento_id,
+        "departamento": getattr(i, "_depto_numero", None),
+        "residente_nombre": getattr(i, "_residente_nombre", None),
         "titulo": i.titulo,
         "descripcion": i.descripcion,
         "categoria": i.categoria,
@@ -120,6 +122,17 @@ def listar_incidencias(
     if condominio_id:
         q = q.filter(Incidencia.condominio_id == condominio_id)
     items = q.order_by(Incidencia.created_at.desc()).offset(skip).limit(limit).all()
+    dids = {i.departamento_id for i in items if i.departamento_id}
+    info = {}
+    if dids:
+        from sqlalchemy import text as _t
+        for r in db.execute(_t("SELECT d.id, d.numero, COALESCE(rp.nombre_completo, p.nombre_completo) FROM departamentos d "
+                                "LEFT JOIN residentes_portal rp ON rp.departamento_id=d.id AND rp.tenant_id=d.tenant_id "
+                                "LEFT JOIN personas p ON p.id=d.residente_id WHERE d.id = ANY(:ids)"), {"ids": list(dids)}).fetchall():
+            info[r[0]] = (r[1], r[2])
+    for i in items:
+        num, nom = info.get(i.departamento_id, (None, None))
+        i._depto_numero, i._residente_nombre = num, nom
     return [incidencia_to_dict(i) for i in items]
 
 

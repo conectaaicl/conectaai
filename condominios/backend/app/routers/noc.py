@@ -9,8 +9,9 @@ from datetime import datetime, date
 import os
 import jwt as _jwt
 
-router = APIRouter(prefix="/api/noc", tags=["NOC"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/noc", tags=["NOC"], dependencies=[Depends(check_feature("noc"))])
 SECRET_KEY = os.getenv("SECRET_KEY", "")
 ALGORITHM = "HS256"
 SA_COOKIE = "sa_session"

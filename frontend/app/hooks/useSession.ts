@@ -26,7 +26,7 @@ export function useSession() {
     fetch('/api/auth/me', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data) { _cache = data; setUser(data) }
+        if (data) { _cache = data; setUser(data); try { if (data.tenant_id) localStorage.setItem('current_condominio_id', String(data.tenant_id)) } catch {} }
         setLoading(false)
       })
       .catch(() => setLoading(false))

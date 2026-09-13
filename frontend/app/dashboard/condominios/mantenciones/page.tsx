@@ -50,6 +50,13 @@ function Inner() {
   async function abrirReporte(id: number) {
     const d = await fetch('/api/mantenciones/reportes/' + id, { credentials: 'include' }).then(r => r.ok ? r.json() : null); if (d) setVer(d)
   }
+  async function crearOrden(r: Reporte) {
+    const titulo = `Seguimiento ${r.activo_nombre}: ${(r.observaciones || r.descripcion).slice(0, 80)}`
+    const res = await fetch('/api/condominios/ordenes', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ titulo, descripcion: `Origen: reporte de mantención #${r.id} (${r.tecnico_nombre}${r.empresa ? ', ' + r.empresa : ''}).\n\nTrabajo realizado: ${r.descripcion}\n\nObservaciones: ${r.observaciones || '-'}${r.proximo_mantenimiento ? '\n\nPróxima mantención sugerida: ' + r.proximo_mantenimiento : ''}`,
+        tipo: 'mantencion', prioridad: r.tipo_trabajo === 'emergencia' ? 'urgente' : 'media', proveedor: r.empresa || null, estado: 'abierta' }) })
+    if (res.ok) { alert('Orden de trabajo creada. La ves en Operaciones → Órdenes de Trabajo.'); } else { alert('No se pudo crear la orden') }
+  }
   async function revisar(id: number) {
     await fetch(`/api/mantenciones/reportes/${id}/revisar`, { method: 'PATCH', credentials: 'include' }); setVer(null); load()
   }
@@ -196,6 +203,7 @@ function Inner() {
             {ver.firma_data && <div className="mt-4"><p className="text-[11px] text-gray-500 uppercase mb-1">Firma del técnico</p><img src={ver.firma_data} alt="Firma" className="border border-gray-200 rounded-lg bg-white max-h-32" /></div>}
             <div className="flex gap-2 mt-5">
               <button onClick={() => window.print()} className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm">Imprimir</button>
+              <button onClick={() => crearOrden(ver)} className="flex-1 py-2 rounded-xl border border-teal-300 text-teal-800 text-sm font-semibold">Crear orden de trabajo</button>
               {ver.estado === 'recibido' && <button onClick={() => revisar(ver.id)} className="flex-1 py-2 rounded-xl bg-emerald-600 text-white text-sm font-semibold">Marcar como revisado</button>}
               <button onClick={() => setVer(null)} className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm">Cerrar</button>
             </div>

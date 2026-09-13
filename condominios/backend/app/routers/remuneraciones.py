@@ -8,8 +8,9 @@ from datetime import datetime
 from typing import Optional
 import io
 
-router = APIRouter(prefix="/api/condominios/remuneraciones", tags=["remuneraciones"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/condominios/remuneraciones", tags=["remuneraciones"], dependencies=[Depends(check_feature("remuneraciones"))])
 # Tabla impuesto único 2024 (UF simplificada)
 TRAMOS_IU = [
     (0, 13.5, 0.0, 0.0),

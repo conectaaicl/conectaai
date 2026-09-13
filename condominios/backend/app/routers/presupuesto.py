@@ -11,8 +11,9 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/presupuesto", tags=["presupuesto"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/presupuesto", tags=["presupuesto"], dependencies=[Depends(check_feature("presupuesto"))])
 # ── Categorias predefinidas ────────────────────────────────────────────────
 CATEGORIAS_DEFAULT = [
     {"nombre": "Administración",      "icono": "🏢", "color": "#6366f1"},

@@ -123,6 +123,9 @@ app.include_router(ordenes.router)
 
 from app.routers import mantenciones as mantenciones_router
 app.include_router(mantenciones_router.router)
+
+from app.routers import vehiculos as vehiculos_router
+app.include_router(vehiculos_router.router)
 app.include_router(documentos.router)
 app.include_router(avisos_lectura.router)
 app.include_router(recordatorios.router)

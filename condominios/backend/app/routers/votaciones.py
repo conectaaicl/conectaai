@@ -8,9 +8,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 from app.models.votacion import Votacion, VotoRespuesta
 
-router = APIRouter(prefix="/api/votaciones", tags=["Votaciones"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/votaciones", tags=["Votaciones"], dependencies=[Depends(check_feature("votaciones"))])
 # ─── Schemas ────────────────────────────────────────────────────────────────
 
 class VotacionCreate(BaseModel):

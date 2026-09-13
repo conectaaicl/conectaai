@@ -7,8 +7,9 @@ from typing import Optional
 from app.core.database import get_db
 from app.core.dependencies import get_current_user, require_admin
 
-router = APIRouter(prefix="/api/anomalias", tags=["Anomalias"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/anomalias", tags=["Anomalias"], dependencies=[Depends(check_feature("anomalias"))])
 CREATE_TABLE_SQL = (
     "CREATE TABLE IF NOT EXISTS anomalias_detectadas ("
     "id SERIAL PRIMARY KEY, "

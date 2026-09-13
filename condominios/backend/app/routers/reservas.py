@@ -9,9 +9,9 @@ from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime, date
 
-router = APIRouter(prefix="/api/reservas", tags=["Reservas"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/reservas", tags=["Reservas"], dependencies=[Depends(check_feature("reservas"))])
 # ─── Schemas ────────────────────────────────────────────────────────────────
 
 class EspacioCreate(BaseModel):

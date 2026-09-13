@@ -18,9 +18,9 @@ from pydantic import BaseModel
 from app.core.database import get_db
 from app.core.dependencies import get_current_user
 
-router = APIRouter(prefix="/api/checklist", tags=["Checklist"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/checklist", tags=["Checklist"], dependencies=[Depends(check_feature("checklist"))])
 def _ensure_tables(db: Session):
     db.execute(text("""
         CREATE TABLE IF NOT EXISTS checklist_plantillas (

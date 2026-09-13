@@ -6,9 +6,9 @@ from app.models import OrdenTrabajo
 from datetime import datetime
 from typing import Optional
 
-router = APIRouter(prefix="/api/condominios", tags=["ordenes"])
+from app.core.features import check_feature
 
-
+router = APIRouter(prefix="/api/condominios", tags=["ordenes"], dependencies=[Depends(check_feature("ordenes"))])
 @router.get("/ordenes")
 def list_ordenes(
     condominio_id: Optional[int] = None,
@@ -59,7 +59,8 @@ def get_stats(current_user: dict = Depends(get_current_user), db: Session = Depe
 @router.post("/ordenes")
 def create_orden(data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = current_user["tenant_id"]
-    o = OrdenTrabajo(**{k: v for k, v in data.items() if hasattr(OrdenTrabajo, k)})
+    o = OrdenTrabajo(**{k: v for k, v in data.items() if hasattr(OrdenTrabajo, k) and k != "tenant_id"})
+    o.tenant_id = tenant_id
     if not o.fecha_inicio:
         o.fecha_inicio = datetime.utcnow()
     db.add(o)
@@ -71,7 +72,7 @@ def create_orden(data: dict, current_user: dict = Depends(get_current_user), db:
 @router.put("/ordenes/{orden_id}")
 def update_orden(orden_id: int, data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = current_user["tenant_id"]
-    o = db.query(OrdenTrabajo).filter(OrdenTrabajo.id == orden_id).first()
+    o = db.query(OrdenTrabajo).filter(OrdenTrabajo.id == orden_id, OrdenTrabajo.tenant_id == tenant_id).first()
     if not o:
         raise HTTPException(status_code=404, detail="Orden no encontrada")
     for k, v in data.items():
@@ -86,7 +87,7 @@ def update_orden(orden_id: int, data: dict, current_user: dict = Depends(get_cur
 @router.delete("/ordenes/{orden_id}")
 def delete_orden(orden_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     tenant_id = current_user["tenant_id"]
-    o = db.query(OrdenTrabajo).filter(OrdenTrabajo.id == orden_id).first()
+    o = db.query(OrdenTrabajo).filter(OrdenTrabajo.id == orden_id, OrdenTrabajo.tenant_id == tenant_id).first()
     if o:
         db.delete(o)
         db.commit()

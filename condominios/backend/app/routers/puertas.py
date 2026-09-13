@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request, Header
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.core.database import get_db
@@ -142,3 +142,101 @@ def registro_puerta(puerta_id: int, limit: int = 50, db: Session = Depends(get_d
         ORDER BY r.created_at DESC LIMIT :lim
     """), {"pid": puerta_id, "lim": limit}).fetchall()
     return [dict(r._mapping) for r in rows]
+
+
+
+# ---------------------------------------------------------------------------
+# Eventos que envia el HARDWARE de cada puerta (citofono, controlador, camara ALPR)
+# Autenticacion: el secreto de la puerta (webhook_secret) en el header X-Device-Secret
+# o en ?secret= (para dispositivos simples). Cada evento queda con el NOMBRE de la puerta,
+# asi conserjeria sabe si tocaron el porton de visitas o la puerta principal.
+# ---------------------------------------------------------------------------
+
+class EventoDispositivoIn(BaseModel):
+    tipo: str = "timbre"          # timbre | apertura | cierre | acceso | denegado | patente | alarma
+    patente: Optional[str] = None
+    card_uid: Optional[str] = None
+    detalle: Optional[str] = None
+
+
+def _registrar(db, tenant_id: int, puerta_id: int, tipo_evento: str, metodo: str, descripcion: str, exitoso: bool, uid: Optional[str] = None):
+    row = db.execute(text(
+        "INSERT INTO registros_acceso_puertas (puerta_id, tenant_id, tipo_evento, metodo, uid_tarjeta, descripcion, exitoso) "
+        "VALUES (:p, :t, :te, :m, :u, :d, :e) RETURNING id, created_at"
+    ), {"p": puerta_id, "t": tenant_id, "te": tipo_evento, "m": metodo, "u": uid, "d": descripcion[:250], "e": exitoso}).fetchone()
+    return row
+
+
+def _publicar(tenant_id: int, data: dict):
+    try:
+        from app.routers.sistema import _publish_evento
+        _publish_evento(tenant_id, data)
+    except Exception:
+        pass
+
+
+@router.get("/puertas/{puerta_id}/evento")
+@router.post("/puertas/{puerta_id}/evento")
+async def evento_dispositivo(
+    puerta_id: int, request: Request,
+    body: Optional[EventoDispositivoIn] = None,
+    tipo: Optional[str] = None, patente: Optional[str] = None, secret: Optional[str] = None,
+    x_device_secret: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+):
+    row = db.execute(text("SELECT id, tenant_id, nombre, ubicacion, webhook_url, webhook_secret, activa FROM puertas WHERE id=:id"), {"id": puerta_id}).fetchone()
+    if not row:
+        raise HTTPException(404, "Puerta no encontrada")
+    pid, tenant_id, nombre, ubicacion, webhook_url, webhook_secret, activa = row
+    provided = x_device_secret or secret
+    if not webhook_secret or not provided or provided != webhook_secret:
+        raise HTTPException(401, "Secreto de dispositivo inválido")
+    if not activa:
+        raise HTTPException(400, "Puerta inactiva")
+
+    ev_tipo = (body.tipo if body else tipo) or "timbre"
+    ev_pat = (body.patente if body else patente) or ""
+    detalle = (body.detalle if body else None) or ""
+    resultado = {"puerta": nombre, "puerta_id": pid, "tipo": ev_tipo}
+
+    if ev_tipo == "timbre":
+        r = _registrar(db, tenant_id, pid, "timbre", "citofono", f"🔔 Tocaron el timbre en {nombre}", True)
+        resultado.update({"accion": "aviso_conserjeria"})
+    elif ev_tipo == "patente":
+        from app.routers.vehiculos import norm_patente, _ensure as _ensure_veh
+        _ensure_veh(db)
+        pat = norm_patente(ev_pat)
+        veh = db.execute(text("SELECT id, depto_numero, persona_nombre, estado, tipo FROM vehiculos WHERE tenant_id=:t AND patente=:p"), {"t": tenant_id, "p": pat}).fetchone()
+        if veh and veh[3] == "aprobado":
+            desc = f"🚗 {pat} · Depto {veh[1] or '-'} · {veh[2] or ''} — portón abierto"
+            r = _registrar(db, tenant_id, pid, "acceso_patente", "patente", desc, True, pat)
+            db.execute(text("UPDATE puertas SET estado='abierta', updated_at=NOW() WHERE id=:id"), {"id": pid})
+            asyncio.create_task(_trigger_webhook(webhook_url, webhook_secret, "abrir", nombre))
+            resultado.update({"accion": "abrir", "autorizado": True, "depto": veh[1], "persona": veh[2]})
+        else:
+            motivo = "patente bloqueada" if veh and veh[3] == "bloqueado" else "pendiente de aprobación" if veh else "patente no registrada"
+            r = _registrar(db, tenant_id, pid, "denegado_patente", "patente", f"⛔ {pat or '?'} — {motivo}", False, pat)
+            resultado.update({"accion": "denegar", "autorizado": False, "motivo": motivo})
+    elif ev_tipo in ("apertura", "cierre"):
+        db.execute(text("UPDATE puertas SET estado=:e, updated_at=NOW() WHERE id=:id"), {"e": "abierta" if ev_tipo == "apertura" else "cerrada", "id": pid})
+        r = _registrar(db, tenant_id, pid, ev_tipo, "sensor", f"{nombre}: {'abierta' if ev_tipo == 'apertura' else 'cerrada'} {detalle}".strip(), True)
+    elif ev_tipo == "alarma":
+        r = _registrar(db, tenant_id, pid, "alarma", "sensor", f"🚨 Alarma en {nombre} {detalle}".strip(), False)
+    else:
+        r = _registrar(db, tenant_id, pid, ev_tipo, "dispositivo", f"{nombre}: {detalle or ev_tipo}", ev_tipo != "denegado", (body.card_uid if body else None))
+    db.commit()
+    resultado["registro_id"] = r[0]
+    _publicar(tenant_id, {"fuente": "puerta", "tipo": ev_tipo, "puerta": nombre, "puerta_id": pid, "detalle": detalle or ev_pat, "ts": str(r[1])})
+    return resultado
+
+
+@router.post("/puertas/{puerta_id}/generar-secreto")
+def generar_secreto(puerta_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Crea/rota el secreto que el dispositivo de esta puerta usa para reportar eventos."""
+    import secrets as _s
+    sec = _s.token_urlsafe(18)
+    res = db.execute(text("UPDATE puertas SET webhook_secret=:s, updated_at=NOW() WHERE id=:id AND tenant_id=:t"), {"s": sec, "id": puerta_id, "t": current_user["tenant_id"]})
+    db.commit()
+    if res.rowcount == 0:
+        raise HTTPException(404, "Puerta no encontrada")
+    return {"ok": True, "secret": sec}

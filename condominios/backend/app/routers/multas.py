@@ -17,8 +17,9 @@ from app.core.database import get_db
 from app.core.dependencies import get_current_user
 import httpx
 
-router = APIRouter(prefix="/api/multas", tags=["Multas"])
+from app.core.features import check_feature
 
+router = APIRouter(prefix="/api/multas", tags=["Multas"], dependencies=[Depends(check_feature("multas"))])
 TIPOS = ["ruido", "mascotas", "basura", "estacionamiento", "visitas", "reglamento", "otro"]
 
 

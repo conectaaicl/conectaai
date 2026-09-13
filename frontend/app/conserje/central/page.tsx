@@ -286,9 +286,9 @@ export default function CentralConserje() {
             <div className="space-y-3 overflow-y-auto max-h-[420px] pr-1">
               {eventos.map((ev, i) => (
                 <div key={String(ev.id) + i} className="flex gap-3 items-start">
-                  <div className={'w-2 h-2 rounded-full shrink-0 mt-1.5 ' + (ev.estado === 'ok' || ev.accion?.includes('entr') ? 'bg-emerald-400' : ev.estado === 'denegado' ? 'bg-red-400' : 'bg-brand-400')} />
+                  <div className={'w-2 h-2 rounded-full shrink-0 mt-1.5 ' + (ev.estado === 'timbre' ? 'bg-amber-400 animate-ping' : ev.estado === 'alarma' ? 'bg-red-500 animate-pulse' : ev.estado === 'ok' || ev.accion?.includes('entr') ? 'bg-emerald-400' : ev.estado === 'denegado' ? 'bg-red-400' : 'bg-brand-400')} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-slate-300 font-medium truncate">{ev.nombre}</p>
+                    <p className={'text-xs font-medium truncate ' + (ev.estado === 'timbre' ? 'text-amber-300' : ev.estado === 'alarma' ? 'text-red-300' : 'text-slate-300')}>{ev.nombre}</p>
                     <p className="text-xs text-slate-500 truncate">{ev.accion}{ev.puerta ? ' · ' + ev.puerta : ''}</p>
                     <p className="text-xs text-slate-600">{timeAgo(ev.timestamp)}</p>
                   </div>

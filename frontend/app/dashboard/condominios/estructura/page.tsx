@@ -42,17 +42,17 @@ export default function EstructuraPage() {
   }
   async function fetchResumen(id:number){
     setLoadingResumen(true)
-    try{const res=await fetch('/api/condominios'+id+'/resumen?tenant_id='+tenantId);if(res.ok)setResumen(await res.json())}catch{}finally{setLoadingResumen(false)}
+    try{const res=await fetch('/api/condominios/'+id+'/resumen?tenant_id='+tenantId);if(res.ok)setResumen(await res.json())}catch{}finally{setLoadingResumen(false)}
   }
   async function fetchTorres(id:number){
-    try{const res=await fetch('/api/condominios'+id+'/torres');if(res.ok)setTorres(await res.json());else setTorres([])}catch{setTorres([])}
+    try{const res=await fetch('/api/condominios/'+id+'/torres');if(res.ok)setTorres(await res.json());else setTorres([])}catch{setTorres([])}
   }
   function openCreate(){setEditingCond(null);setFormCond({nombre:'',direccion:'',comuna:'',region:'Metropolitana',ciudad:'Santiago',tipo:'edificio',rut_condominio:'',telefono_contacto:'',email_contacto:'',website:'',logo_url:'',empresa_administradora:'',administrador_nombre:'',administrador_rut:'',administrador_telefono:'',administrador_email:'',contrato_inicio:''});setShowModalCond(true)}
   function openEdit(c:Condominio){setEditingCond(c);setFormCond({...c});setShowModalCond(true)}
   async function saveCond(e:React.FormEvent){
     e.preventDefault()
     try{
-      const url=editingCond?'/api/condominios'+editingCond.id:'/api/condominios'
+      const url=editingCond?'/api/condominios/'+editingCond.id:'/api/condominios'
       const method=editingCond?'PUT':'POST'
       const payload=editingCond?{...formCond}:{...formCond,tenant_id:tenantId}
       const res=await fetch(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
@@ -62,14 +62,14 @@ export default function EstructuraPage() {
   }
   async function deleteCond(id:number){
     if(!confirm('Eliminar condominio? Se eliminaran todas sus torres, pisos y departamentos.'))return
-    try{const res=await fetch('/api/condominios'+id,{method:'DELETE'});if(res.ok){fetchCondominios();if(selectedCondominio===id){setSelectedCondominio(null);setResumen(null);setTorres([])};setMsg({type:'ok',text:'Condominio eliminado'});setTimeout(()=>setMsg(null),3000)}}catch{setMsg({type:'err',text:'Error al eliminar'})}
+    try{const res=await fetch('/api/condominios/'+id,{method:'DELETE'});if(res.ok){fetchCondominios();if(selectedCondominio===id){setSelectedCondominio(null);setResumen(null);setTorres([])};setMsg({type:'ok',text:'Condominio eliminado'});setTimeout(()=>setMsg(null),3000)}}catch{setMsg({type:'err',text:'Error al eliminar'})}
   }
   async function createTorre(e:React.FormEvent){
     e.preventDefault()
     const condId=formTorre.condominio_id||selectedCondominio
     if(!condId)return
     try{
-      const res=await fetch('/api/condominios'+condId+'/torres',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:formTorre.nombre,numero_pisos:formTorre.numero_pisos})})
+      const res=await fetch('/api/condominios/'+condId+'/torres',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nombre:formTorre.nombre,numero_pisos:formTorre.numero_pisos})})
       if(res.ok){setShowModalTorre(false);if(selectedCondominio){fetchTorres(selectedCondominio);fetchResumen(selectedCondominio)};setFormTorre({nombre:'',numero_pisos:1,condominio_id:0});setMsg({type:'ok',text:'Torre creada con sus pisos'});setTimeout(()=>setMsg(null),3000)}
       else{const err=await res.json();setMsg({type:'err',text:'Error: '+JSON.stringify(err)})}
     }catch{setMsg({type:'err',text:'Error al crear torre'})}
