@@ -142,7 +142,6 @@ app.include_router(convenios_router.portal_router)
 app.include_router(documentos.router)
 app.include_router(avisos_lectura.router)
 app.include_router(recordatorios.router)
-app.include_router(condominios.router)
 app.include_router(finanzas.router)
 app.include_router(personal.router)
 app.include_router(admin.router)
@@ -166,6 +165,8 @@ app.include_router(portal_dashboard.router)
 from app.routers import remuneraciones, asambleas, proveedores, pagos_online
 app.include_router(remuneraciones.router)
 app.include_router(asambleas.router)
+# condominios va despues de los routers /api/condominios/<algo> para que {condominio_id} no los capture
+app.include_router(condominios.router)
 app.include_router(proveedores.router)
 app.include_router(pagos_online.router)
 

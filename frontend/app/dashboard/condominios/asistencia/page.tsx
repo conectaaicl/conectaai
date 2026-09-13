@@ -44,7 +44,7 @@ export default function AsistenciaPage() {
       if (search) params.set('identificador', search)
       const [r1, r2] = await Promise.all([
         fetch(`/api/biometrico/registros?${params}`, { credentials: 'include' }).then(r => r.json()),
-        fetch(`/api/biometrico/resumen`, { credentials: 'include' }).then(r => r.json()),
+        fetch(`/api/biometrico/resumen?mes=${new Date().toISOString().slice(0, 7)}`, { credentials: 'include' }).then(r => r.json()),
       ])
       setRegistros(r1.registros || [])
       setResumen(r2)

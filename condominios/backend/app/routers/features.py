@@ -181,6 +181,8 @@ def set_tenant_tipo(tenant_id: int, body: TipoBody, current_user: dict = Depends
 
 @router.get("/tenants")
 def list_tenants_for_features(current_user: dict = Depends(require_admin), db: Session = Depends(get_db)):
+    if current_user.get("rol") != "superadmin":
+        raise HTTPException(status_code=403, detail="Solo superadmin")
     rows = db.execute(text(
         "SELECT id, nombre, COALESCE(tipo, 'condominio') as tipo, "
         "email_contacto as email_admin, created_at "

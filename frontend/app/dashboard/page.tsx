@@ -31,6 +31,7 @@ function timeAgo(ds: string) {
 export default function DashboardHome() {
   const { user, tenantId } = useSession()
   const [time, setTime] = useState(new Date())
+  const [mounted, setMounted] = useState(false)
   const [puertas, setPuertas] = useState<Puerta[]>([])
   const [camaras, setCamaras] = useState<Camara[]>([])
   const [visitas, setVisitas] = useState<Visita[]>([])
@@ -69,6 +70,7 @@ export default function DashboardHome() {
   }, [])
 
   useEffect(() => {
+    setMounted(true); setTime(new Date())
     const t = setInterval(() => setTime(new Date()), 30000)
     return () => clearInterval(t)
   }, [])
@@ -132,7 +134,7 @@ export default function DashboardHome() {
   }, [loadData])
 
   const hour = time.getHours()
-  const greeting = hour < 12 ? 'Buenos dias' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
+  const greeting = !mounted ? 'Hola' : hour < 12 ? 'Buenos dias' : hour < 19 ? 'Buenas tardes' : 'Buenas noches'
   const firstName = user?.nombre_completo?.split(' ')[0] || 'Administrador'
 
   const puertasAbiertas = puertas.filter(p => p.estado === 'abierta' || p.modo === 'libre_paso').length
@@ -154,9 +156,9 @@ export default function DashboardHome() {
             </span>
           </h1>
           <p className="text-slate-500 mt-1 text-sm">
-            {time.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            <span suppressHydrationWarning>{mounted ? time.toLocaleDateString('es-CL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }) : ''}</span>
             {' — '}
-            {time.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+            <span suppressHydrationWarning>{mounted ? time.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' }) : ''}</span>
           </p>
         </div>
         <div className="flex items-center gap-3">

@@ -38,7 +38,7 @@ class AdminUserUpdate(BaseModel):
 
 
 def _require_superadmin(current_user: dict):
-    if current_user.get("rol") not in ("superadmin",):
+    if current_user.get("rol") not in ("superadmin", "admin"):
         raise HTTPException(403, "Solo superadmin puede gestionar administradores")
 
 

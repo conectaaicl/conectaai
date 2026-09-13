@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 
-const TENANT_ID = 1
+const TENANT_ID = 0  // el backend toma el tenant del JWT; 0 = no informado
 
 const DEDOS = [
   { value: 'pulgar_der', label: 'Pulgar derecho' },

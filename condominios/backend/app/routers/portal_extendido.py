@@ -339,12 +339,12 @@ def documentos_portal(
         params["cid"] = r.condominio_id
 
     rows = db.execute(text(f"""
-        SELECT id, nombre, tipo, descripcion, url, created_at
+        SELECT id, titulo AS nombre, titulo, categoria AS tipo, categoria, descripcion, archivo_url AS url, archivo_url, nombre_archivo, tamano_bytes, creado_en AS created_at
         FROM documentos
         WHERE tenant_id=:tid
-          AND (es_publico=true OR es_publico IS NULL)
+          AND (visible_residentes=true OR visible_residentes IS NULL)
           {cond}
-        ORDER BY created_at DESC LIMIT 50
+        ORDER BY creado_en DESC LIMIT 50
     """), params).fetchall()
 
     return [dict(row._mapping) for row in rows]

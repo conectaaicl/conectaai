@@ -128,6 +128,7 @@ class NegocioIn(BaseModel):
     proxima_fecha: Optional[str] = None
 
 
+@router.get("")
 @router.get("/")
 def listar(q: Optional[str] = None, etapa: Optional[str] = None, v: dict = Depends(get_vendedor), db: Session = Depends(get_db)):
     _ensure(db)
@@ -141,6 +142,7 @@ def listar(q: Optional[str] = None, etapa: Optional[str] = None, v: dict = Depen
         FROM ventas_negocios n WHERE {' AND '.join(w)} ORDER BY n.updated_at DESC LIMIT 300""", **p)
 
 
+@router.post("", status_code=201)
 @router.post("/", status_code=201)
 def crear(body: NegocioIn, v: dict = Depends(get_vendedor), db: Session = Depends(get_db)):
     _ensure(db)
