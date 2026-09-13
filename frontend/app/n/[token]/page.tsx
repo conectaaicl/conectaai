@@ -1,14 +1,15 @@
 'use client'
 import { useEffect, useState, use } from 'react'
+import FirmaPad from '../../components/FirmaPad'
 
 const clp = (n: number) => '$' + Math.round(n || 0).toLocaleString('es-CL')
 
 export default function PropuestaNegocio({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params)
   const [d, setD] = useState<any>(null); const [err, setErr] = useState('')
-  const [nombre, setNombre] = useState(''); const [tel, setTel] = useState(''); const [com, setCom] = useState(''); const [busy, setBusy] = useState(false); const [ok, setOk] = useState('')
+  const [nombre, setNombre] = useState(''); const [tel, setTel] = useState(''); const [com, setCom] = useState(''); const [busy, setBusy] = useState(false); const [ok, setOk] = useState(''); const [firma, setFirma] = useState('')
   useEffect(() => { fetch(`/api/ventas-terreno/negocios/p/${token}`).then(async r => { if (!r.ok) throw new Error('Propuesta no encontrada'); return r.json() }).then(x => { setD(x); setNombre(x.negocio?.contacto || ''); setTel(x.negocio?.telefono || '') }).catch(e => setErr(e.message)) }, [token])
-  async function aceptar() { setBusy(true); try { const r = await fetch(`/api/ventas-terreno/negocios/p/${token}/aceptar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, telefono: tel, comentario: com }) }); const j = await r.json(); if (!r.ok) throw new Error(j.detail || 'Error'); setOk(j.mensaje); setD({ ...d, aceptada: true }) } catch (e: any) { setErr(e.message) } finally { setBusy(false) } }
+  async function aceptar() { setBusy(true); try { const r = await fetch(`/api/ventas-terreno/negocios/p/${token}/aceptar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nombre, telefono: tel, comentario: com, firma_data: firma || null }) }); const j = await r.json(); if (!r.ok) throw new Error(j.detail || 'Error'); setOk(j.mensaje); setD({ ...d, aceptada: true }) } catch (e: any) { setErr(e.message) } finally { setBusy(false) } }
   if (err && !d) return <div className="min-h-screen flex items-center justify-center text-slate-600">{err}</div>
   if (!d) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#0F766E] border-t-transparent rounded-full animate-spin" /></div>
   const n = d.negocio; const wa = `${d.wa}?text=${encodeURIComponent(`Hola ${d.vendedor?.nombre || ''}, vi la propuesta para ${n.nombre} y tengo una consulta.`)}`
@@ -28,6 +29,7 @@ export default function PropuestaNegocio({ params }: { params: Promise<{ token: 
           <div className="divide-y divide-[#DDE4E6]">{d.items.map((i: any) => <div key={i.producto} className="py-3 flex items-center gap-3 text-sm"><span className="text-2xl">{i.icon}</span><div className="flex-1"><b>{i.nombre}</b><div className="text-xs text-[#7A8F98]">{i.cantidad} {i.unidad}{i.setup ? ` · puesta en marcha ${clp(i.setup)}: ${i.setup_desc}` : ''}</div></div><b className="text-[#0F766E]">{clp(i.subtotal_mensual)}/mes</b></div>)}</div>
           {!d.aceptada && !ok && <div className="mt-5 grid md:grid-cols-3 gap-2">
             <input className="border border-[#DDE4E6] rounded-xl px-3 py-3 text-sm" placeholder="Tu nombre" value={nombre} onChange={e => setNombre(e.target.value)} /><input className="border border-[#DDE4E6] rounded-xl px-3 py-3 text-sm" placeholder="WhatsApp" inputMode="tel" value={tel} onChange={e => setTel(e.target.value)} /><input className="border border-[#DDE4E6] rounded-xl px-3 py-3 text-sm" placeholder="Comentario (opcional)" value={com} onChange={e => setCom(e.target.value)} />
+            <div className="md:col-span-3"><FirmaPad onChange={setFirma} /></div>
             <button onClick={aceptar} disabled={busy || !nombre} className="md:col-span-3 bg-[#0F766E] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-base">{busy ? 'Enviando…' : 'Quiero partir'}</button>
             <p className="md:col-span-3 text-[11px] text-[#7A8F98] text-center">No pagas nada todavía: te contactamos para coordinar la puesta en marcha.</p></div>}
           {err && <p className="text-sm text-rose-700 mt-2">{err}</p>}

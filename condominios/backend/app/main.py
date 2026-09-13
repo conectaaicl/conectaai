@@ -20,6 +20,9 @@ app.add_middleware(
         "https://conectaai.cl",
         "https://www.conectaai.cl",
         "https://condo.conectaai.cl",
+        "https://ventas.conectaai.cl",
+        "https://terrablinds.cl",
+        "https://www.terrablinds.cl",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -278,6 +281,12 @@ from app.routers import ventas_cortinas as ventas_cortinas_router
 app.include_router(ventas_cortinas_router.router)
 from app.routers import ventas_negocios as ventas_negocios_router
 app.include_router(ventas_negocios_router.router)
+from app.routers import ventas_cron as ventas_cron_router
+app.include_router(ventas_cron_router.router)
+from app.routers import ventas_extras as ventas_extras_router
+app.include_router(ventas_extras_router.router)
+from app.routers import ventas_working as ventas_working_router
+app.include_router(ventas_working_router.router)
 app.include_router(ventas_demo_router.router)
 from app.routers import egresos as egresos_router
 app.include_router(egresos_router.router)

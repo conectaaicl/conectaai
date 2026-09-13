@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, use } from 'react'
+import FirmaPad from '../../components/FirmaPad'
 
 const clp = (n: number) => '$' + Math.round(n || 0).toLocaleString('es-CL')
 
@@ -7,11 +8,11 @@ export default function PropuestaTerraBlinds({ params }: { params: Promise<{ tok
   const { token } = use(params)
   const [d, setD] = useState<any>(null); const [err, setErr] = useState('')
   const [nivel, setNivel] = useState(''); const [nombre, setNombre] = useState(''); const [tel, setTel] = useState(''); const [com, setCom] = useState('')
-  const [busy, setBusy] = useState(false); const [ok, setOk] = useState('')
+  const [busy, setBusy] = useState(false); const [ok, setOk] = useState(''); const [firma, setFirma] = useState('')
   useEffect(() => { fetch(`/api/ventas-terreno/cortinas/p/${token}`).then(async r => { if (!r.ok) throw new Error('Propuesta no encontrada'); return r.json() }).then(x => { setD(x); setNivel(x.nivel_aceptado || x.nivel_sugerido); setNombre(x.cliente?.nombre || ''); setTel(x.cliente?.telefono || '') }).catch(e => setErr(e.message)) }, [token])
   async function aceptar() {
     setBusy(true)
-    try { const r = await fetch(`/api/ventas-terreno/cortinas/p/${token}/aceptar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nivel, nombre, telefono: tel, comentario: com }) }); const j = await r.json(); if (!r.ok) throw new Error(j.detail || 'Error'); setOk(j.mensaje); setD({ ...d, aceptada: true, nivel_aceptado: nivel }) } catch (e: any) { setErr(e.message) } finally { setBusy(false) }
+    try { const r = await fetch(`/api/ventas-terreno/cortinas/p/${token}/aceptar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nivel, nombre, telefono: tel, comentario: com, firma_data: firma || null }) }); const j = await r.json(); if (!r.ok) throw new Error(j.detail || 'Error'); setOk(j.mensaje); setD({ ...d, aceptada: true, nivel_aceptado: nivel }) } catch (e: any) { setErr(e.message) } finally { setBusy(false) }
   }
   if (err && !d) return <div className="min-h-screen flex items-center justify-center text-slate-600">{err}</div>
   if (!d) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-[#0B1F2A] border-t-transparent rounded-full animate-spin" /></div>
@@ -41,6 +42,7 @@ export default function PropuestaTerraBlinds({ params }: { params: Promise<{ tok
             <input className="border border-[#DDE4E6] rounded-xl px-3 py-3 text-sm" placeholder="Tu nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
             <input className="border border-[#DDE4E6] rounded-xl px-3 py-3 text-sm" placeholder="WhatsApp" inputMode="tel" value={tel} onChange={e => setTel(e.target.value)} />
             <input className="border border-[#DDE4E6] rounded-xl px-3 py-3 text-sm" placeholder="Comentario (opcional)" value={com} onChange={e => setCom(e.target.value)} />
+            <div className="md:col-span-3"><FirmaPad onChange={setFirma} color="#0A1F5C" /></div>
             <button onClick={aceptar} disabled={busy || !nombre} className="md:col-span-3 bg-[#1F5FD6] disabled:opacity-50 text-white font-extrabold py-4 rounded-2xl text-base">{busy ? 'Enviando…' : `Aceptar nivel ${n[nivel]?.nombre} · ${clp(n[nivel]?.total)}`}</button>
             <p className="md:col-span-3 text-[11px] text-[#7A8F98] text-center">Al aceptar no pagas nada todavía: te contactamos para confirmar telas, colores y fecha. 50% al confirmar, 50% contra instalación.</p>
           </div>}

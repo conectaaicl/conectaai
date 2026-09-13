@@ -78,6 +78,7 @@ def _ensure(db: Session):
         enviado_email BOOLEAN DEFAULT FALSE, enviado_wa BOOLEAN DEFAULT FALSE, enviado_en TIMESTAMPTZ, abierto_en TIMESTAMPTZ, aperturas INTEGER DEFAULT 0,
         aceptada_en TIMESTAMPTZ, aceptada_por VARCHAR(160), created_at TIMESTAMPTZ DEFAULT NOW());
     """))
+    db.execute(text("ALTER TABLE ventas_negocios_propuestas ADD COLUMN IF NOT EXISTS firma_url VARCHAR(255)"))
     db.commit(); _OK = True
 
 
@@ -430,6 +431,7 @@ def publica_pdf(token: str, db: Session = Depends(get_db)):
 
 
 class AceptarIn(BaseModel):
+    firma_data: Optional[str] = None
     nombre: str
     telefono: Optional[str] = None
     comentario: Optional[str] = None
@@ -439,11 +441,14 @@ class AceptarIn(BaseModel):
 def aceptar(token: str, body: AceptarIn, db: Session = Depends(get_db)):
     p = _row(db, "SELECT * FROM ventas_negocios_propuestas WHERE token=:t", t=token)
     if not p: raise HTTPException(404, "Propuesta no encontrada")
-    db.execute(text("UPDATE ventas_negocios_propuestas SET aceptada_en=COALESCE(aceptada_en, NOW()), aceptada_por=:q WHERE id=:id"), {"q": body.nombre[:160], "id": p["id"]})
+    from app.routers.ventas_extras import guardar_firma
+    firma = guardar_firma("negocio", token, body.firma_data or "")
+    db.execute(text("ALTER TABLE ventas_negocios_propuestas ADD COLUMN IF NOT EXISTS firma_url VARCHAR(255)"))
+    db.execute(text("UPDATE ventas_negocios_propuestas SET aceptada_en=COALESCE(aceptada_en, NOW()), aceptada_por=:q, firma_url=COALESCE(NULLIF(:f,''), firma_url) WHERE id=:id"), {"q": body.nombre[:160], "f": firma, "id": p["id"]})
     db.execute(text("UPDATE ventas_negocios SET etapa='negociacion', proxima_accion='Llamar: aceptó la propuesta, coordinar puesta en marcha', proxima_fecha=CURRENT_DATE, updated_at=NOW() WHERE id=:id"), {"id": p["negocio_id"]}); db.commit()
     n = _row(db, "SELECT * FROM ventas_negocios WHERE id=:id", id=p["negocio_id"])
     v = _row(db, "SELECT nombre, telefono, email FROM ventas_vendedores WHERE id=:id", id=p["vendedor_id"]) or {}
-    aviso = f"🚀 ¡{n['nombre']} quiere partir!\n{', '.join(i['nombre'] for i in p['items'])} · {_clp(p['total_mensual'])}/mes\n{body.nombre} · {n.get('telefono') or body.telefono or ''}\n{body.comentario or ''}\n{VENTAS_URL}/ventas/negocios/{n['id']}"
+    aviso = f"🚀 ¡{n['nombre']} quiere partir!\n{', '.join(i['nombre'] for i in p['items'])} · {_clp(p['total_mensual'])}/mes\n{body.nombre} · {n.get('telefono') or body.telefono or ''}\n{body.comentario or ''}\n{('Firma: ' + firma) if firma else ''}\n{VENTAS_URL}/ventas/negocios/{n['id']}"
     tel = "".join(ch for ch in (v.get("telefono") or "56998101891") if ch.isdigit()); tel = "56" + tel if len(tel) == 9 else tel
     if EVOLUTION_API_URL and EVOLUTION_API_KEY:
         try: httpx.post(f"{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_INSTANCE}", headers={"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}, json={"number": tel, "text": aviso}, timeout=10.0)

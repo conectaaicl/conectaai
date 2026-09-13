@@ -144,6 +144,8 @@ def _ensure(db: Session):
         enviado_email BOOLEAN DEFAULT FALSE, enviado_wa BOOLEAN DEFAULT FALSE, enviado_en TIMESTAMPTZ, abierto_en TIMESTAMPTZ, aperturas INTEGER DEFAULT 0,
         aceptada_en TIMESTAMPTZ, nivel_aceptado VARCHAR(20), aceptada_por VARCHAR(160), created_at TIMESTAMPTZ DEFAULT NOW());
     """))
+    db.execute(text("ALTER TABLE ventas_cortinas_propuestas ADD COLUMN IF NOT EXISTS firma_url VARCHAR(255)"))
+    db.execute(text("ALTER TABLE ventas_cortinas_propuestas ADD COLUMN IF NOT EXISTS working_orden_id INTEGER")); db.execute(text("ALTER TABLE ventas_cortinas_propuestas ADD COLUMN IF NOT EXISTS working_numero INTEGER"))
     db.commit(); _OK = True
 
 
@@ -525,6 +527,7 @@ def publica_pdf(token: str, db: Session = Depends(get_db)):
 
 
 class AceptarIn(BaseModel):
+    firma_data: Optional[str] = None
     nivel: str
     nombre: str
     telefono: Optional[str] = None
@@ -536,12 +539,15 @@ def aceptar(token: str, body: AceptarIn, db: Session = Depends(get_db)):
     p = _row(db, "SELECT * FROM ventas_cortinas_propuestas WHERE token=:t", t=token)
     if not p: raise HTTPException(404, "Propuesta no encontrada")
     if body.nivel not in NIVELES: raise HTTPException(400, "Nivel inválido")
-    db.execute(text("UPDATE ventas_cortinas_propuestas SET aceptada_en=COALESCE(aceptada_en, NOW()), nivel_aceptado=:n, aceptada_por=:q WHERE id=:id"), {"n": body.nivel, "q": body.nombre[:160], "id": p["id"]})
+    from app.routers.ventas_extras import guardar_firma
+    firma = guardar_firma("cortinas", token, body.firma_data or "")
+    db.execute(text("ALTER TABLE ventas_cortinas_propuestas ADD COLUMN IF NOT EXISTS firma_url VARCHAR(255)"))
+    db.execute(text("UPDATE ventas_cortinas_propuestas SET aceptada_en=COALESCE(aceptada_en, NOW()), nivel_aceptado=:n, aceptada_por=:q, firma_url=COALESCE(NULLIF(:f,''), firma_url) WHERE id=:id"), {"n": body.nivel, "q": body.nombre[:160], "f": firma, "id": p["id"]})
     db.execute(text("UPDATE ventas_cortinas_leads SET etapa='aceptada', proxima_accion='Coordinar telas e instalación', proxima_fecha=CURRENT_DATE, updated_at=NOW() WHERE id=:id"), {"id": p["lead_id"]}); db.commit()
     l = _row(db, "SELECT * FROM ventas_cortinas_leads WHERE id=:id", id=p["lead_id"])
     v = _row(db, "SELECT nombre, telefono, email FROM ventas_vendedores WHERE id=:id", id=p["vendedor_id"]) or {}
     total = p["niveles"][body.nivel]["total"]
-    aviso = f"✅ ¡{l['nombre']} aceptó la propuesta TerraBlinds!\nNivel {NIVELES[body.nivel]['nombre']} · {_clp(total)}\n{l.get('telefono') or body.telefono or ''} · {l.get('comuna') or ''}\n{body.comentario or ''}\n{VENTAS_URL}/ventas/cortinas/{l['id']}"
+    aviso = f"✅ ¡{l['nombre']} aceptó la propuesta TerraBlinds!\nNivel {NIVELES[body.nivel]['nombre']} · {_clp(total)}\n{l.get('telefono') or body.telefono or ''} · {l.get('comuna') or ''}\n{body.comentario or ''}\n{('Firma: ' + firma) if firma else ''}\n{VENTAS_URL}/ventas/cortinas/{l['id']}"
     tel = "".join(ch for ch in (v.get("telefono") or TB_WA) if ch.isdigit()); tel = "56" + tel if len(tel) == 9 else tel
     if EVOLUTION_API_URL and EVOLUTION_API_KEY:
         try: httpx.post(f"{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_INSTANCE}", headers={"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}, json={"number": tel, "text": aviso}, timeout=10.0)
@@ -552,6 +558,12 @@ def aceptar(token: str, body: AceptarIn, db: Session = Depends(get_db)):
     if l.get("email"):
         try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": l["email"], "from": "ventas@conectaai.cl", "reply_to": TB_MAIL, "subject": "Recibimos tu aceptación — TerraBlinds", "html": f"<div style='font-family:Inter,Arial;max-width:560px;margin:auto'><h2>¡Gracias, {l['nombre'].split()[0]}!</h2><p>Registramos tu aceptación del nivel <b>{NIVELES[body.nivel]['nombre']}</b> por <b>{_clp(total)}</b>. {v.get('nombre') or 'Nuestro equipo'} te contactará hoy para coordinar telas, colores e instalación.</p><p style='color:#7A8F98;font-size:12px'>TerraBlinds · {TB_WEB}</p></div>"}, timeout=10.0)
         except Exception: pass
+    try:
+        from app.routers.ventas_working import intentar_ot
+        p2 = _row(db, "SELECT * FROM ventas_cortinas_propuestas WHERE id=:id", id=p["id"])
+        intentar_ot(db, p2, l)
+    except Exception:
+        pass
     return {"ok": True, "mensaje": f"¡Listo! {v.get('nombre') or 'TerraBlinds'} te contactará hoy para coordinar telas e instalación."}
 
 

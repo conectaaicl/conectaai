@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Phone, MessageCircle, Mail, FileText, Gift, Flame, Clock, ExternalLink, RefreshCw, Pencil, Check } from 'lucide-react'
 import { vjson, clp, ETAPAS, RESULTADOS, fecha, hace, diasRestantes, telLink, waLink } from '../../lib'
+import FotosPanel from '../../../components/FotosPanel'
 
 const inp = 'w-full bg-white border border-[#DDE4E6] rounded-xl px-3 py-2.5 text-sm text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#14B8A6]'
 const Card = ({ title, icon: I, children, right }: any) => (
@@ -163,6 +164,7 @@ export default function EdificioDetalle({ params }: { params: Promise<{ id: stri
           </div>))}
       </Card>}
 
+      <FotosPanel tipo="edificio" id={id} />
       {/* Dolores + historial */}
       <div className="grid md:grid-cols-2 gap-4">
         <Card title="Lo que le duele">

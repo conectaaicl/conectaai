@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, use } from 'react'
 import Link from 'next/link'
 import { Phone, MessageCircle, Mail, Plus, Trash2, FileText, Check, RefreshCw } from 'lucide-react'
 import { vjson, clp, fecha, hace, telLink, waLink, ETC } from '../../lib'
+import FotosPanel from '../../../components/FotosPanel'
 
 const inp = 'w-full bg-white border border-[#DDE4E6] rounded-xl px-3 py-2.5 text-sm text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#C8B48A]'
 const AMBIENTES = ['Living', 'Comedor', 'Dormitorio principal', 'Dormitorio 2', 'Dormitorio 3', 'Cocina', 'Baño', 'Estudio', 'Terraza', 'Oficina', 'Sala de reuniones', 'Recepción']
@@ -31,6 +32,7 @@ export default function CortinaDetalle({ params }: { params: Promise<{ id: strin
       setMsg({ ok: true, t: `Propuesta lista · ${r.envio.email === 'enviado' ? 'correo enviado' : r.envio.email || 'sin correo'}${r.envio.whatsapp === 'enviado' ? ' · WhatsApp enviado' : ''}`, wa: r.envio.wa_link }); load()
     } catch (e: any) { setMsg({ ok: false, t: e.message }) } finally { setBusy(false) }
   }
+  async function crearOT(pid: number) { setBusy(true); try { const r = await vjson(`/cortinas/propuestas/${pid}/working`, { method: 'POST' }); setMsg({ ok: true, t: r.ya_existia ? `Ya existía la OT #${r.numero} en ConectaWork` : `OT #${r.numero} creada en ConectaWork` }); if (r.url) window.open(r.url, '_blank'); load() } catch (e: any) { setMsg({ ok: false, t: e.message }) } finally { setBusy(false) } }
   async function reenviar(pid: number, canal: string) { setBusy(true); try { const r = await vjson(`/cortinas/propuestas/${pid}/reenviar?canal=${canal}`, { method: 'POST' }); if (canal === 'whatsapp' && r.whatsapp !== 'enviado' && r.wa_link) window.open(r.wa_link, '_blank'); setMsg({ ok: true, t: r.whatsapp === 'enviado' ? 'WhatsApp enviado automáticamente' : r.email === 'enviado' ? 'Correo reenviado' : r.email ? 'Correo: ' + r.email : 'Se abrió WhatsApp con el mensaje listo', wa: r.wa_link }) } catch (e: any) { setMsg({ ok: false, t: e.message }) } finally { setBusy(false) } }
 
   if (!l) return <div className="p-8 text-sm text-[#7A8F98]">{msg?.t || 'Cargando…'}</div>
@@ -80,10 +82,13 @@ export default function CortinaDetalle({ params }: { params: Promise<{ id: strin
         <button onClick={enviar} disabled={busy || !validos.length} className="bg-[#0B1F2A] disabled:opacity-50 text-white font-bold px-6 py-4 rounded-2xl text-base inline-flex items-center gap-2"><FileText size={18} /> {busy ? 'Generando…' : 'Generar propuesta y enviar'}</button>
       </section>}
 
+      <FotosPanel tipo="cortinas" id={id} />
       {l.propuestas?.length > 0 && <section className="bg-white border border-[#DDE4E6] rounded-2xl p-4 md:p-5"><h2 className="font-bold text-sm mb-2">Propuestas enviadas</h2>
         {l.propuestas.map((p: any) => (
           <div key={p.id} className="flex flex-wrap items-center gap-2 py-2 border-b border-[#DDE4E6] last:border-0 text-sm">
             <div className="flex-1 min-w-[200px]"><b>{p.aceptada_en ? `✅ Aceptó ${p.niveles[p.nivel_aceptado]?.nombre} · ${clp(p.niveles[p.nivel_aceptado]?.total)}` : `Sugerido ${p.niveles[p.nivel_sugerido]?.nombre} · ${clp(p.niveles[p.nivel_sugerido]?.total)}`}</b><div className="text-xs text-[#7A8F98]">{fecha(p.created_at)} · {p.enviado_email ? 'correo ✓' : 'sin correo'}{p.enviado_wa ? ' · WhatsApp ✓' : ''} · {p.aperturas ? `abierta ×${p.aperturas} (${hace(p.abierto_en)})` : 'aún no la abre'}{p.aceptada_en ? ` · aceptada ${hace(p.aceptada_en)} por ${p.aceptada_por}` : ''}</div></div>
+            {p.firma_url && <a href={p.firma_url} target="_blank" rel="noreferrer" className="text-xs font-bold bg-white border border-[#DDE4E6] px-3 py-2 rounded-xl">✍️ Firma</a>}
+            {p.aceptada_en && (p.working_numero ? <a href={`https://working.conectaai.cl/#/ordenes/${p.working_orden_id}`} target="_blank" rel="noreferrer" className="text-xs font-bold bg-indigo-600 text-white px-3 py-2 rounded-xl">🔧 OT #{p.working_numero} en ConectaWork</a> : <button onClick={() => crearOT(p.id)} disabled={busy} className="text-xs font-bold bg-indigo-600 text-white px-3 py-2 rounded-xl">🔧 Crear OT en ConectaWork</button>)}
             <a href={p.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0F766E] bg-[#DDF4F0] px-3 py-2 rounded-xl">Ver web</a><a href={p.pdf_url} target="_blank" rel="noreferrer" className="text-xs font-bold bg-white border border-[#DDE4E6] px-3 py-2 rounded-xl">PDF</a>
             <button onClick={() => reenviar(p.id, 'email')} disabled={busy} className="text-xs font-bold bg-white border border-[#DDE4E6] px-3 py-2 rounded-xl inline-flex items-center gap-1"><RefreshCw size={12} /> Correo</button><button onClick={() => reenviar(p.id, 'whatsapp')} disabled={busy} className="text-xs font-bold bg-[#25D366] text-white px-3 py-2 rounded-xl">WhatsApp</button>
           </div>))}</section>}

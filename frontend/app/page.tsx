@@ -1,4 +1,5 @@
 'use client'
+import DemoForm from './components/DemoForm'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 const WA_URL = "https://wa.me/56998101891?text=Hola%2C%20quiero%20consultar%20sobre%20ConectaAI%20Condominios"
@@ -186,11 +187,11 @@ function Hero() {
             Control de acceso RFID, duplicado de tarjetas, smart locks integrados, bot WhatsApp, portal del residente y gestión financiera — todo en una plataforma diseñada para edificios y condominios en Latinoamérica.
           </p>
           <div style={{ display:'flex', gap:16, flexWrap:'wrap', alignItems:'center', marginBottom:56 }}>
-            <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+            <a href="#demo"
               style={{ display:'flex', alignItems:'center', gap:10, padding:'16px 32px', borderRadius:14, background:'linear-gradient(135deg,#25d366,#128c3e)', color:'white', textDecoration:'none', fontSize:16, fontWeight:700, boxShadow:'0 8px 32px rgba(37,211,102,0.35)', transition:'all 0.2s' }}
               onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 40px rgba(37,211,102,0.45)' }}
               onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 32px rgba(37,211,102,0.35)' }}>
-              <WA /> Cotizar por WhatsApp
+              🎁 Prueba el demo 5 días gratis
             </a>
             <a href="#funcionalidades"
               style={{ display:'flex', alignItems:'center', gap:8, padding:'16px 28px', borderRadius:14, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.8)', textDecoration:'none', fontSize:15, fontWeight:600, backdropFilter:'blur(8px)', transition:'all 0.2s' }}
@@ -200,7 +201,7 @@ function Hero() {
             </a>
           </div>
           <div style={{ display:'flex', gap:0, flexWrap:'wrap' }}>
-            {[{v:'15',s:'+',l:'módulos integrados'},{v:'98',s:'%',l:'satisfacción clientes'},{v:'24',s:'/7',l:'soporte técnico'}].map((s,i) => (
+            {[{v:'3',s:'',l:'apps: admin, conserje y vecinos'},{v:'5',s:' días',l:'demo gratis con tu edificio'},{v:'$0',s:'',l:'costo de implementación'}].map((s,i) => (
               <div key={s.l} style={{ paddingRight:28, marginRight:28, borderRight:i<2?'1px solid rgba(255,255,255,0.1)':'none' }}>
                 <div style={{ fontSize:26, fontWeight:900, color:'#f8fafc', letterSpacing:'-0.03em', lineHeight:1 }}>{s.v}<span style={{ color:'#a78bfa' }}>{s.s}</span></div>
                 <div style={{ fontSize:12, color:'rgba(255,255,255,0.3)', fontWeight:500, marginTop:4 }}>{s.l}</div>
@@ -573,9 +574,9 @@ function Testimonials() {
 
 /* ─── PRICING ─── */
 const PLANS = [
-  {name:'Básico',highlight:false,desc:'Ideal para un edificio o condominio pequeño',features:['1 edificio','Hasta 50 departamentos','Control de acceso TCP/IP','Paquetería básica','Portal del residente','Soporte por email'],cta:'Consultar precio'},
-  {name:'Profesional',highlight:true,badge:'Más popular',desc:'Para complejos medianos con mayor exigencia',features:['Hasta 3 edificios','Hasta 200 departamentos','RFID + cámaras integradas','Bot WhatsApp incluido','Push notifications','Panel conserje avanzado','Soporte prioritario'],cta:'Consultar precio'},
-  {name:'Enterprise',highlight:false,desc:'Multi-edificio, multi-ciudad o marca blanca',features:['Edificios ilimitados','Residentes ilimitados','IoT personalizado','API pública + webhooks','SLA 99.9% garantizado','Onboarding dedicado','Soporte 24/7 directo'],cta:'Cotizar'},
+  {name:'Pro',highlight:false,desc:'Desde $800 por unidad al mes · mínimo $40.000',features:['Admin + Conserje + App de vecinos','Gastos comunes y convenios de pago','Visitas con QR de un solo uso','Encomiendas, reservas, votaciones y avisos','Incidencias y órdenes de trabajo','Soporte por WhatsApp'],cta:'Probar 5 días gratis'},
+  {name:'Pro + Accesos',highlight:true,badge:'Más elegido',desc:'Desde $1.050 por unidad al mes',features:['Todo lo del plan Pro','Mantenciones con QR firmado por técnicos','Control de acceso RFID y puertas TCP/IP','TAG vehicular UHF/NFC y lector de patentes (opcional)','Panel conserje táctil avanzado','Soporte prioritario'],cta:'Probar 5 días gratis'},
+  {name:'Empresas administradoras',highlight:false,desc:'Varios edificios, marca blanca',features:['Edificios ilimitados con tu marca','Reconocimiento facial y WhatsApp oficial','API pública + webhooks','Onboarding dedicado','Facturación centralizada','Soporte directo'],cta:'Conversemos'},
 ]
 
 function Pricing() {
@@ -585,7 +586,7 @@ function Pricing() {
         <div style={{ textAlign:'center', marginBottom:60 }}>
           <div style={{ display:'inline-block', fontSize:11, fontWeight:700, letterSpacing:'0.14em', color:'#10b981', textTransform:'uppercase', marginBottom:16, padding:'5px 14px', background:'rgba(16,185,129,0.08)', borderRadius:100, border:'1px solid rgba(16,185,129,0.2)' }}>Precios</div>
           <h2 style={{ fontSize:'clamp(28px,4vw,44px)', fontWeight:800, letterSpacing:'-0.025em', color:'#f1f5f9', lineHeight:1.2 }}>Planes a tu medida</h2>
-          <p style={{ fontSize:15, color:'rgba(255,255,255,0.32)', marginTop:12 }}>Cotización personalizada según el tamaño de tu condominio.</p>
+          <p style={{ fontSize:15, color:'rgba(255,255,255,0.32)', marginTop:12 }}>Precio por unidad al mes, IVA incluido, sin costo de implementación y sin permanencia. El hardware se cotiza aparte.</p>
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:16, alignItems:'stretch' }} className="ca-plans-grid">
           {PLANS.map(p => (
@@ -604,7 +605,7 @@ function Pricing() {
                   </li>
                 ))}
               </ul>
-              <a href={WA_URL} target="_blank" rel="noopener noreferrer"
+              <a href="#demo"
                 style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:9, padding:'14px', borderRadius:12, textDecoration:'none', fontSize:14, fontWeight:700, transition:'all 0.2s', background:p.highlight?'linear-gradient(135deg,#7c3aed,#4f46e5)':'transparent', color:p.highlight?'white':'rgba(255,255,255,0.52)', border:p.highlight?'none':'1px solid rgba(255,255,255,0.1)', boxShadow:p.highlight?'0 8px 24px rgba(124,58,237,0.35)':'none' }}
                 onMouseEnter={e => { if(!p.highlight){e.currentTarget.style.borderColor='rgba(255,255,255,0.25)';e.currentTarget.style.color='#fff'} else{e.currentTarget.style.transform='translateY(-1px)'} }}
                 onMouseLeave={e => { if(!p.highlight){e.currentTarget.style.borderColor='rgba(255,255,255,0.1)';e.currentTarget.style.color='rgba(255,255,255,0.52)'} e.currentTarget.style.transform='translateY(0)' }}>
@@ -678,13 +679,14 @@ function CTA() {
           ¿Listo para modernizar<br />
           <span style={{ background:'linear-gradient(135deg,#a78bfa,#34d399)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>tu condominio?</span>
         </h2>
-        <p style={{ fontSize:17, color:'rgba(255,255,255,0.42)', marginBottom:40, lineHeight:1.7 }}>Cotiza en minutos. Nuestro equipo te responde hoy con una propuesta personalizada para tu edificio.</p>
+        <p style={{ fontSize:17, color:'rgba(255,255,255,0.42)', marginBottom:32, lineHeight:1.7 }}>Crea tu demo gratis en 10 segundos: recibes la propuesta en PDF y las claves de las tres apps con el nombre de tu edificio.</p>
+        <div id="demo" style={{ marginBottom:32 }}><DemoForm /></div>
         <div style={{ display:'flex', gap:16, justifyContent:'center', flexWrap:'wrap' }}>
           <a href={WA_URL} target="_blank" rel="noopener noreferrer"
             style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'18px 36px', borderRadius:16, background:'linear-gradient(135deg,#25d366,#128c3e)', color:'white', textDecoration:'none', fontSize:16, fontWeight:700, boxShadow:'0 8px 36px rgba(37,211,102,0.4)', transition:'all 0.2s' }}
             onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 12px 44px rgba(37,211,102,0.5)' }}
             onMouseLeave={e => { e.currentTarget.style.transform='translateY(0)'; e.currentTarget.style.boxShadow='0 8px 36px rgba(37,211,102,0.4)' }}>
-            <WA /> Cotizar por WhatsApp →
+            <WA /> Prefiero hablar por WhatsApp
           </a>
           <a href="/login" style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'18px 32px', borderRadius:16, background:'rgba(255,255,255,0.06)', border:'1px solid rgba(255,255,255,0.12)', color:'rgba(255,255,255,0.72)', textDecoration:'none', fontSize:16, fontWeight:600, backdropFilter:'blur(8px)', transition:'all 0.2s' }}
             onMouseEnter={e => { e.currentTarget.style.background='rgba(255,255,255,0.1)'; e.currentTarget.style.color='#fff' }}

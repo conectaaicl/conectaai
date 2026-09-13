@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { MapPin, PlusCircle, Building2, Kanban, Gift, Presentation, Blinds, FileText, Store, LogOut, Wifi, WifiOff } from 'lucide-react'
+import { MapPin, PlusCircle, Building2, Kanban, Gift, Presentation, Blinds, FileText, Store, BarChart3, LogOut, Wifi, WifiOff } from 'lucide-react'
 import { vfetch } from './lib'
 
 const NAV = [
@@ -15,6 +15,7 @@ const NAV = [
   { href: '/ventas/negocios',  label: 'Negocios',     icon: Store },
   { href: '/ventas/presentaciones', label: 'Presentaciones', icon: Presentation },
   { href: '/ventas/cortinas',  label: 'Cortinas',     icon: Blinds },
+  { href: '/ventas/resultados', label: 'Resultados',  icon: BarChart3 },
 ]
 
 export default function VentasLayout({ children }: { children: React.ReactNode }) {

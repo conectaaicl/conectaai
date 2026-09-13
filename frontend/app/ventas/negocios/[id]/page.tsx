@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Phone, MessageCircle, Mail, FileText, Clock, RefreshCw, Pencil, Check } from 'lucide-react'
 import { vjson, clp, fecha, hace, telLink, waLink, ETAPAS, RESULTADOS } from '../../lib'
+import FotosPanel from '../../../components/FotosPanel'
 
 const inp = 'w-full bg-white border border-[#DDE4E6] rounded-xl px-3 py-2.5 text-sm text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#14B8A6]'
 const Card = ({ title, icon: I, children, right }: any) => <section className="bg-white border border-[#DDE4E6] rounded-2xl p-4 md:p-5"><div className="flex items-center justify-between mb-3"><h2 className="font-bold flex items-center gap-2 text-sm">{I && <I size={16} className="text-[#0F766E]" />}{title}</h2>{right}</div>{children}</section>
@@ -74,10 +75,12 @@ export default function NegocioDetalle({ params }: { params: Promise<{ id: strin
       {n.propuestas?.length > 0 && <Card title="Propuestas" icon={FileText}>{n.propuestas.map((p: any) => (
         <div key={p.id} className="flex flex-wrap items-center gap-2 py-2 border-b border-[#DDE4E6] last:border-0 text-sm">
           <div className="flex-1 min-w-[200px]"><b>{p.aceptada_en ? '🚀 Quiere partir · ' : ''}{clp(p.total_mensual)}/mes{p.total_setup ? ` + ${clp(p.total_setup)}` : ''}</b><div className="text-xs text-[#7A8F98]">{(p.items || []).map((i: any) => i.nombre).join(', ')} · {fecha(p.created_at)} · {p.enviado_email ? 'correo ✓' : 'sin correo'}{p.enviado_wa ? ' · WhatsApp ✓' : ''} · {p.aperturas ? `abierta ×${p.aperturas} (${hace(p.abierto_en)})` : 'aún no la abre'}</div></div>
+          {p.firma_url && <a href={p.firma_url} target="_blank" rel="noreferrer" className="text-xs font-bold bg-white border border-[#DDE4E6] px-3 py-2 rounded-xl">✍️ Firma</a>}
           <a href={p.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-[#0F766E] bg-[#DDF4F0] px-3 py-2 rounded-xl">Ver web</a><a href={p.pdf_url} target="_blank" rel="noreferrer" className="text-xs font-bold bg-white border border-[#DDE4E6] px-3 py-2 rounded-xl">PDF</a>
           <button onClick={() => reenviar(p.id, 'email')} disabled={busy} className="text-xs font-bold bg-white border border-[#DDE4E6] px-3 py-2 rounded-xl inline-flex items-center gap-1"><RefreshCw size={12} /> Correo</button><button onClick={() => reenviar(p.id, 'whatsapp')} disabled={busy} className="text-xs font-bold bg-[#25D366] text-white px-3 py-2 rounded-xl">WhatsApp</button>
         </div>))}</Card>}
 
+      <FotosPanel tipo="negocio" id={id} />
       <div className="grid md:grid-cols-2 gap-4">
         <Card title="Lo que le duele">{(n.dolores || []).length === 0 ? <p className="text-sm text-[#7A8F98]">Sin dolores registrados.</p> : <ul className="space-y-2">{n.dolores.map((k: string) => n.catalogo_dolores?.[k] && <li key={k} className="text-sm"><b>{n.catalogo_dolores[k][0]}</b><div className="text-xs text-[#35505C]">{n.catalogo_dolores[k][1]}</div></li>)}</ul>}{n.notas && <p className="mt-3 text-xs text-[#35505C] bg-slate-50 rounded-xl p-3 whitespace-pre-wrap">{n.notas}</p>}</Card>
         <Card title="Historial" icon={Clock}>{n.visitas.length === 0 && <p className="text-sm text-[#7A8F98]">Sin visitas.</p>}<ul className="space-y-2">{n.visitas.map((v: any) => <li key={v.id} className="text-sm flex gap-3"><span className="text-xs text-[#7A8F98] tabular-nums w-14 shrink-0">{fecha(v.fecha)}</span><div><b>{RESULTADOS[v.resultado] || v.resultado}</b>{v.nota && <div className="text-xs text-[#35505C]">{v.nota}</div>}</div></li>)}</ul></Card>
