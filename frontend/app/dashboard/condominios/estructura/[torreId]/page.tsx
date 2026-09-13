@@ -30,15 +30,17 @@ export default function TorreDetallePage() {
         fetch('/api/personas')
       ])
       if (pisosRes.ok) {
-        const pisosData = await pisosRes.json()
+        const raw = await pisosRes.json()
+        // El API devuelve { torre, pisos: [{..., departamentos: [...]}] }; se acepta tambien una lista simple
+        const pisosData: any[] = Array.isArray(raw) ? raw : (raw?.pisos || [])
         setPisos(pisosData)
+        const mapa: Record<number, any[]> = {}
         for (const piso of pisosData) {
+          if (Array.isArray(piso.departamentos)) { mapa[piso.id] = piso.departamentos; continue }
           const deptosRes = await fetch(`/api/condominios/pisos/${piso.id}/departamentos`)
-          if (deptosRes.ok) {
-            const deptosData = await deptosRes.json()
-            setDepartamentos(prev => ({ ...prev, [piso.id]: deptosData }))
-          }
+          if (deptosRes.ok) mapa[piso.id] = await deptosRes.json()
         }
+        setDepartamentos(prev => ({ ...prev, ...mapa }))
       }
       if (personasRes.ok) setPersonas(await personasRes.json())
     } catch (err) {
