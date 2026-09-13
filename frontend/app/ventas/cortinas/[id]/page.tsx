@@ -6,7 +6,7 @@ import { vjson, clp, fecha, hace, telLink, waLink, ETC } from '../../lib'
 
 const inp = 'w-full bg-white border border-[#DDE4E6] rounded-xl px-3 py-2.5 text-sm text-[#0B1F2A] focus:outline-none focus:ring-2 focus:ring-[#C8B48A]'
 const AMBIENTES = ['Living', 'Comedor', 'Dormitorio principal', 'Dormitorio 2', 'Dormitorio 3', 'Cocina', 'Baño', 'Estudio', 'Terraza', 'Oficina', 'Sala de reuniones', 'Recepción']
-const vacio = () => ({ ambiente: 'Living', producto: 'blackout', ancho_cm: '', alto_cm: '', cantidad: 1, motorizado: false, color: '', nota: '' })
+const vacio = () => ({ ambiente: 'Living', producto: 'roller-blackout', ancho_cm: '', alto_cm: '', cantidad: 1, motorizado: false, color: '', nota: '' })
 
 export default function CortinaDetalle({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -50,15 +50,15 @@ export default function CortinaDetalle({ params }: { params: Promise<{ id: strin
 
       {/* Medición */}
       <section className="bg-white border border-[#DDE4E6] rounded-2xl p-4 md:p-5">
-        <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-sm">Espacios medidos</h2>{dirty && <button onClick={guardar} disabled={busy} className="bg-[#0F766E] text-white text-xs font-bold px-3 py-2 rounded-xl inline-flex items-center gap-1"><Check size={14} /> Guardar medidas</button>}</div>
+        <div className="flex items-center justify-between mb-3"><h2 className="font-bold text-sm">Espacios medidos <span className="font-normal text-[#7A8F98]">· catálogo de terrablinds.cl ({cat?.productos?.length || 0} productos)</span></h2>{dirty && <button onClick={guardar} disabled={busy} className="bg-[#0F766E] text-white text-xs font-bold px-3 py-2 rounded-xl inline-flex items-center gap-1"><Check size={14} /> Guardar medidas</button>}</div>
         <div className="space-y-3">{esp.map((e, i) => (
           <div key={i} className="bg-[#F3F6F5] border border-[#DDE4E6] rounded-2xl p-3 grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
             <label className="block md:col-span-2"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Ambiente</span><input list="ambientes" className={inp} value={e.ambiente} onChange={ev => upd(i, 'ambiente', ev.target.value)} /></label>
-            <label className="block md:col-span-2"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Producto</span><select className={inp} value={e.producto} onChange={ev => upd(i, 'producto', ev.target.value)}>{cat?.productos.map((p: any) => <option key={p.key} value={p.key}>{p.icon} {p.nombre} · {clp(cat.precios[p.key])}/m²</option>)}</select></label>
+            <label className="block md:col-span-2"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Producto</span><select className={inp} value={e.producto} onChange={ev => upd(i, 'producto', ev.target.value)}>{cat?.productos.map((p: any) => <option key={p.key} value={p.key}>{p.icon} {p.nombre} · {cat.precios[p.key] ? clp(cat.precios[p.key]) + (p.por_unidad ? '/u' : '/m²') : 'a cotizar'}</option>)}</select></label>
             <label className="block"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Ancho cm</span><input className={inp} inputMode="decimal" value={e.ancho_cm} onChange={ev => upd(i, 'ancho_cm', ev.target.value.replace(',', '.'))} /></label>
             <label className="block"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Alto cm</span><input className={inp} inputMode="decimal" value={e.alto_cm} onChange={ev => upd(i, 'alto_cm', ev.target.value.replace(',', '.'))} /></label>
             <label className="block"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Cant.</span><input className={inp} inputMode="numeric" value={e.cantidad} onChange={ev => upd(i, 'cantidad', ev.target.value.replace(/\D/g, ''))} /></label>
-            <label className="block md:col-span-2"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Color / tela</span><input className={inp} placeholder="Ej: Blanco hueso, lino" value={e.color || ''} onChange={ev => upd(i, 'color', ev.target.value)} /></label>
+            <label className="block md:col-span-2"><span className="text-[10px] font-bold uppercase text-[#7A8F98]">Color / tela</span><input list={`colores-${i}`} className={inp} placeholder="Ej: Blanco hueso, lino" value={e.color || ''} onChange={ev => upd(i, 'color', ev.target.value)} /><datalist id={`colores-${i}`}>{(cat?.productos.find((p: any) => p.key === e.producto)?.colores || []).map((c: string) => <option key={c} value={c} />)}</datalist></label>
             <label className="flex items-center gap-2 text-sm font-semibold py-2 md:col-span-2"><input type="checkbox" className="w-5 h-5 accent-[#0F766E]" checked={!!e.motorizado} onChange={ev => upd(i, 'motorizado', ev.target.checked)} /> Motorizada</label>
             <div className="flex items-center justify-end md:col-span-1"><button onClick={() => { setEsp(esp.filter((_, j) => j !== i)); setDirty(true) }} className="text-rose-500 p-2"><Trash2 size={16} /></button></div>
           </div>))}</div>

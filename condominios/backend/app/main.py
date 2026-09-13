@@ -276,6 +276,8 @@ from app.routers import ventas_presentaciones as ventas_pres_router
 app.include_router(ventas_pres_router.router)
 from app.routers import ventas_cortinas as ventas_cortinas_router
 app.include_router(ventas_cortinas_router.router)
+from app.routers import ventas_negocios as ventas_negocios_router
+app.include_router(ventas_negocios_router.router)
 app.include_router(ventas_demo_router.router)
 from app.routers import egresos as egresos_router
 app.include_router(egresos_router.router)

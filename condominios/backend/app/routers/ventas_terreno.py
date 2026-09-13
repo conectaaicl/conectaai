@@ -43,6 +43,8 @@ EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "terrablinds")
 VENTAS_URL = os.getenv("VENTAS_URL", "https://ventas.conectaai.cl")
 MARCA = os.getenv("VENTAS_MARCA", "ConectaAI Condominios")
+LOGO_CAI = UPLOAD_DIR / "branding" / "conectaai" / "logo.png"
+LOGO_CAI_URL = f"{VENTAS_URL}/uploads/branding/conectaai/logo.png"
 
 ETAPAS = ["visitado", "propuesta", "demo", "negociacion", "cliente", "perdido"]
 RESULTADOS = {"no_estaba": "No estaba", "interesado": "Interesado — pidió propuesta", "tiene_sistema": "Ya tiene sistema",
@@ -523,6 +525,45 @@ def crear_propuesta(eid: int, body: PropuestaIn, request: Request, v: dict = Dep
     return {"propuesta": {**prop, "url": f"{VENTAS_URL}/p/{token}", "pdf_url": f"{VENTAS_URL}/api/ventas-terreno/p/{token}/pdf"}, "demo": demo_row, "envio": envio, "precio": pr}
 
 
+@router.get("/propuestas")
+def listar_propuestas(v: dict = Depends(get_vendedor), db: Session = Depends(get_db)):
+    """Todas las propuestas del vendedor (condominios + cortinas) para la seccion Propuestas."""
+    _ensure_schema(db)
+    mine = "" if v["rol"] == "admin" else "AND (e.vendedor_id=:vid OR e.vendedor_id IS NULL)"
+    condo = _rows(db, f"""SELECT pr.id, pr.token, pr.precio_unidad, pr.unidades, pr.total_mensual, pr.enviado_email, pr.enviado_wa, pr.enviado_en, pr.abierto_en, pr.aperturas, pr.created_at,
+        e.id AS edificio_id, e.nombre, e.comuna, e.etapa, e.administrador_nombre, e.administrador_email, e.administrador_telefono,
+        d.dominio AS demo_dominio, d.vence AS demo_vence, d.estado AS demo_estado
+        FROM ventas_propuestas pr JOIN ventas_edificios e ON e.id=pr.edificio_id LEFT JOIN ventas_demos d ON d.id=pr.demo_id WHERE 1=1 {mine} ORDER BY pr.id DESC LIMIT 200""", vid=v["id"])
+    for p in condo:
+        p["tipo"] = "condominio"; p["url"] = f"{VENTAS_URL}/p/{p['token']}"; p["pdf_url"] = f"{VENTAS_URL}/api/ventas-terreno/p/{p['token']}/pdf"; p["ficha"] = f"/ventas/edificios/{p['edificio_id']}"
+    cort = []
+    try:
+        mine_l = mine.replace("e.vendedor_id", "l.vendedor_id")
+        cort = _rows(db, f"""SELECT pr.id, pr.token, pr.niveles, pr.nivel_sugerido, pr.enviado_email, pr.enviado_wa, pr.enviado_en, pr.abierto_en, pr.aperturas, pr.aceptada_en, pr.nivel_aceptado, pr.created_at,
+            l.id AS lead_id, l.nombre, l.comuna, l.etapa, l.telefono AS administrador_telefono, l.email AS administrador_email
+            FROM ventas_cortinas_propuestas pr JOIN ventas_cortinas_leads l ON l.id=pr.lead_id WHERE 1=1 {mine_l} ORDER BY pr.id DESC LIMIT 200""", vid=v["id"])
+    except Exception:
+        db.rollback()
+    for p in cort:
+        niv = p["niveles"] or {}; k = p["nivel_aceptado"] or p["nivel_sugerido"]
+        p["tipo"] = "cortinas"; p["total_mensual"] = None; p["total"] = (niv.get(k) or {}).get("total"); p["nivel"] = (niv.get(k) or {}).get("nombre")
+        p["url"] = f"{VENTAS_URL}/tb/{p['token']}"; p["pdf_url"] = f"{VENTAS_URL}/api/ventas-terreno/cortinas/p/{p['token']}/pdf"; p["ficha"] = f"/ventas/cortinas/{p['lead_id']}"
+    neg = []
+    try:
+        mine_n = mine.replace("e.vendedor_id", "n.vendedor_id")
+        neg = _rows(db, f"""SELECT pr.id, pr.token, pr.items, pr.total_mensual, pr.total_setup, pr.enviado_email, pr.enviado_wa, pr.enviado_en, pr.abierto_en, pr.aperturas, pr.aceptada_en, pr.created_at,
+            n.id AS negocio_id, n.nombre, n.comuna, n.etapa, n.telefono AS administrador_telefono, n.email AS administrador_email
+            FROM ventas_negocios_propuestas pr JOIN ventas_negocios n ON n.id=pr.negocio_id WHERE 1=1 {mine_n} ORDER BY pr.id DESC LIMIT 200""", vid=v["id"])
+    except Exception:
+        db.rollback()
+    for p in neg:
+        p["tipo"] = "negocio"; p["productos"] = ", ".join(i["nombre"] for i in (p["items"] or []))
+        p["url"] = f"{VENTAS_URL}/n/{p['token']}"; p["pdf_url"] = f"{VENTAS_URL}/api/ventas-terreno/negocios/p/{p['token']}/pdf"; p["ficha"] = f"/ventas/negocios/{p['negocio_id']}"
+    todas = sorted(condo + cort + neg, key=lambda x: x["created_at"], reverse=True)
+    return {"propuestas": todas, "resumen": {"total": len(todas), "abiertas": sum(1 for x in todas if x.get("aperturas")), "aceptadas": sum(1 for x in cort + neg if x.get("aceptada_en")),
+            "sin_abrir": sum(1 for x in todas if x.get("enviado_en") and not x.get("abierto_en"))}}
+
+
 @router.post("/propuestas/{pid}/reenviar")
 def reenviar(pid: int, canal: str = "email", v: dict = Depends(get_vendedor), db: Session = Depends(get_db)):
     prop = _row(db, "SELECT * FROM ventas_propuestas WHERE id=:id", id=pid)
@@ -565,7 +606,7 @@ def _enviar_propuesta(db, prop, e, d, v, pdf_bytes, *, email: bool, whatsapp: bo
                                  f"<td style='padding:10px;border-bottom:1px solid #eee'>{'RUT' if k == 'residente' else 'Usuario'}: <code>{c.get(k, {}).get('rut') or c.get(k, {}).get('email')}</code><br>Clave: <code>{c.get(k, {}).get('password')}</code></td></tr>"
                                  for k, lbl in (("admin", "Administración"), ("conserje", "Conserjería"), ("residente", "App de vecinos"))) + "</table>")
         html = (f"<div style='font-family:Inter,Arial,sans-serif;max-width:620px;margin:auto;background:#fff'>"
-                f"<div style='background:#0B1F2A;color:#fff;padding:28px 28px 22px;border-radius:14px 14px 0 0'><p style='margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#7FD1C6'>Propuesta para</p>"
+                f"<div style='background:#0B1F2A;color:#fff;padding:28px 28px 22px;border-radius:14px 14px 0 0'><img src='{LOGO_CAI_URL}' alt='ConectaAI' width='84' height='84' style='display:block;background:#fff;border-radius:16px;padding:6px;margin-bottom:14px'><p style='margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#7FD1C6'>Propuesta para</p>"
                 f"<h1 style='margin:6px 0 0;font-size:26px'>{e['nombre']}</h1><p style='margin:6px 0 0;color:#B9C8CC'>{prop['unidades']} unidades · {e.get('comuna') or ''}</p></div>"
                 f"<div style='border:1px solid #DDE4E6;border-top:none;padding:28px;border-radius:0 0 14px 14px'>"
                 f"<p style='font-size:15px;color:#0B1F2A'>Hola {e.get('administrador_nombre') or ''},</p>"
@@ -621,6 +662,9 @@ def _pdf_propuesta(prop: dict, e: dict, d: Optional[dict], v: dict) -> bytes:
     if isinstance(dol, str): dol = json.loads(dol)
 
     def footer(n):
+        if LOGO_CAI.exists():
+            try: c.drawImage(ImageReader(str(LOGO_CAI)), W - 82, H - 62, 42, 42)
+            except Exception: pass
         c.setFont("Helvetica", 8); c.setFillColor(MUT)
         c.drawString(40, 28, f"{MARCA} · Propuesta para {e['nombre']} · {datetime.now().strftime('%d/%m/%Y')}")
         c.drawRightString(W - 40, 28, f"{n}")
@@ -638,10 +682,14 @@ def _pdf_propuesta(prop: dict, e: dict, d: Optional[dict], v: dict) -> bytes:
     # 1. Portada
     c.setFillColor(INK); c.rect(0, 0, W, H, fill=1, stroke=0)
     c.setFillColor(TEAL); c.rect(0, H - 14, W, 14, fill=1, stroke=0)
+    if LOGO_CAI.exists():
+        c.setFillColor(HexColor("#FFFFFF")); c.roundRect(W - 190, H - 200, 140, 140, 18, fill=1, stroke=0)
+        try: c.drawImage(ImageReader(str(LOGO_CAI)), W - 182, H - 192, 124, 124)
+        except Exception: pass
     c.setFillColor(HexColor("#7FD1C6")); c.setFont("Helvetica-Bold", 11); c.drawString(50, H - 120, "PROPUESTA COMERCIAL")
     c.setFillColor(HexColor("#FFFFFF")); c.setFont("Helvetica-Bold", 34)
     y = H - 175
-    for ln in wrap(e["nombre"], W - 100, "Helvetica-Bold", 34): c.drawString(50, y, ln); y -= 40
+    for ln in wrap(e["nombre"], W - 260, "Helvetica-Bold", 30): c.drawString(50, y, ln); y -= 36
     c.setFont("Helvetica", 14); c.setFillColor(HexColor("#B9C8CC"))
     c.drawString(50, y - 6, f"{prop['unidades']} unidades · {e.get('tipo', 'departamentos').capitalize()}" + (f" · {e['comuna']}" if e.get("comuna") else ""))
     if e.get("direccion"): c.drawString(50, y - 26, e["direccion"])

@@ -31,23 +31,94 @@ router = APIRouter(prefix="/api/ventas-terreno/cortinas", tags=["TerraBlinds cor
 TB_WA = os.getenv("TERRABLINDS_WA", "56998101891")
 TB_MAIL = os.getenv("TERRABLINDS_MAIL", "terrablinds@gmail.com")
 TB_WEB = "https://terrablinds.cl"
+TB_API = os.getenv("TERRABLINDS_API", "https://terrablinds.cl/api/products")
+LOGO_TB = UPLOAD_DIR / "branding" / "terrablinds" / "logo.png"
+LOGO_TB_URL = f"{VENTAS_URL}/uploads/branding/terrablinds/logo.png"
+IMG_CACHE = UPLOAD_DIR / "ventas" / "tb_img"
 
-# Precios de referencia CLP por m2 instalado (IVA incl.). Ajustables: TERRABLINDS_PRECIOS='{"blackout":38000,...}'
-_PRECIOS_DEF = {"blackout": 38000, "sunscreen": 42000, "duo": 55000, "venecianas": 45000, "persianas_ext": 120000, "toldo": 95000, "toldo_vertical": 70000, "metalica": 85000}
+# Precios de respaldo CLP por m2 cuando el catalogo no trae precio (toldos/persianas). Override: TERRABLINDS_PRECIOS (json por categoria o slug)
+_PRECIOS_DEF = {"Cortinas Roller": 38000, "Persianas": 45000, "Toldos": 95000, "Mallas": 45000, "Cierres de Terraza": 0, "Domótica": 0, "Control de Acceso": 0,
+                "blackout": 38000, "sunscreen": 42000, "duo": 55000, "venecianas": 45000, "persianas_ext": 120000, "toldo": 95000, "toldo_vertical": 70000, "metalica": 85000}
 PRECIOS = {**_PRECIOS_DEF, **json.loads(os.getenv("TERRABLINDS_PRECIOS", "{}") or "{}")}
 MOTOR_UNIDAD = int(os.getenv("TERRABLINDS_MOTOR", "95000"))
 M2_MINIMO = 1.0
-PRODUCTOS = [
-    {"key": "blackout", "nombre": "Roller Blackout", "desc": "Oscurecimiento total. Dormitorios, salas de TV y oficinas con proyector.", "icon": "🌑"},
-    {"key": "sunscreen", "nombre": "Roller Sunscreen", "desc": "Filtra el sol y el calor sin perder la vista al exterior. Living, comedor, oficinas.", "icon": "☀️"},
-    {"key": "duo", "nombre": "Roller Duo (Zebra)", "desc": "Doble tela: regulas luz y privacidad en la misma cortina.", "icon": "🔲"},
-    {"key": "venecianas", "nombre": "Persianas Venecianas", "desc": "Aluminio o madera; control fino de la luz.", "icon": "🪟"},
-    {"key": "persianas_ext", "nombre": "Persianas Exteriores", "desc": "Aislación térmica y seguridad en fachada.", "icon": "🏠"},
-    {"key": "toldo", "nombre": "Toldo Retráctil", "desc": "Sombra para terrazas y balcones, brazo articulado.", "icon": "⛱️"},
-    {"key": "toldo_vertical", "nombre": "Toldo Vertical", "desc": "Lona vertical para terrazas y quinchos.", "icon": "📐"},
-    {"key": "metalica", "nombre": "Cortina Metálica", "desc": "Enrollable para locales y bodegas, manual o motorizada.", "icon": "🔩"},
+_ICON_CAT = {"Cortinas Roller": "🪟", "Persianas": "🏠", "Toldos": "⛱️", "Mallas": "🛡️", "Cierres de Terraza": "🏡", "Domótica": "📡", "Control de Acceso": "🔐"}
+# Respaldo si terrablinds.cl no responde
+_PRODUCTOS_FALLBACK = [
+    {"key": "roller-blackout", "nombre": "Roller Blackout", "categoria": "Cortinas Roller", "desc": "Oscurecimiento total. Dormitorios, salas de TV y oficinas con proyector.", "icon": "🌑", "precio_m2": 38000, "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None},
+    {"key": "roller-screen", "nombre": "Roller Screen", "categoria": "Cortinas Roller", "desc": "Filtra el sol y el calor sin perder la vista al exterior.", "icon": "☀️", "precio_m2": 38000, "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None},
+    {"key": "roller-duo-blackout", "nombre": "Roller Duo Blackout", "categoria": "Cortinas Roller", "desc": "Doble tela: regulas luz y privacidad en la misma cortina.", "icon": "🔲", "precio_m2": 45000, "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None},
+    {"key": "toldo-retractil", "nombre": "Toldo Retráctil", "categoria": "Toldos", "desc": "Sombra para terrazas y balcones, brazo articulado.", "icon": "⛱️", "precio_m2": 95000, "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None},
+    {"key": "persiana-de-exterior", "nombre": "Persiana de Exterior", "categoria": "Persianas", "desc": "Aislación térmica y seguridad en fachada.", "icon": "🏠", "precio_m2": 120000, "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None},
 ]
-PROD = {p["key"]: p for p in PRODUCTOS}
+_CAT_CACHE = {"ts": 0.0, "items": []}
+
+
+def _limpiar(html: str, n: int = 160) -> str:
+    import re as _re
+    t = _re.sub(r"<[^>]+>", " ", html or ""); t = _re.sub(r"\s+", " ", t).strip()
+    return (t[: n - 1] + "…") if len(t) > n else t
+
+
+def catalogo_tb(force: bool = False) -> list:
+    """Productos reales de terrablinds.cl (cache 10 min). Precio por m2 del catalogo; si viene en 0, respaldo por categoria."""
+    import time as _t
+    if not force and _CAT_CACHE["items"] and _t.time() - _CAT_CACHE["ts"] < 600:
+        return _CAT_CACHE["items"]
+    try:
+        r = httpx.get(TB_API, timeout=6.0); r.raise_for_status()
+        items = []
+        for p in r.json():
+            if not p.get("is_active", True): continue
+            cat = p.get("category") or "Otros"
+            m2 = float(p.get("base_price_m2") or 0)
+            unit = float(p.get("price_unit") or 0)
+            if not m2 and not p.get("is_unit_price"):
+                m2 = PRECIOS.get(p.get("slug"), PRECIOS.get(cat, 0))
+            img = (p.get("images") or [None])[0]
+            items.append({"key": p["slug"], "id_tb": p["id"], "nombre": p["name"], "categoria": cat, "desc": p.get("short_description") or _limpiar(p.get("description")),
+                          "icon": _ICON_CAT.get(cat, "🪟"), "precio_m2": int(m2), "por_unidad": bool(p.get("is_unit_price")), "precio_unidad": int(unit),
+                          "colores": [c if isinstance(c, str) else (c.get("name") or c.get("nombre") or str(c)) for c in (p.get("colors") or [])],
+                          "imagen": (TB_WEB + img) if img and img.startswith("/") else img, "plazo_dias": p.get("lead_time_days"), "features": p.get("features") or []})
+        orden = {"Cortinas Roller": 0, "Persianas": 1, "Toldos": 2, "Mallas": 3, "Cierres de Terraza": 4, "Domótica": 5, "Control de Acceso": 6}
+        items.sort(key=lambda x: (orden.get(x["categoria"], 9), x["nombre"]))
+        if items:
+            _CAT_CACHE.update(ts=_t.time(), items=items)
+            return items
+    except Exception as ex:
+        print("catalogo terrablinds:", ex)
+    return _CAT_CACHE["items"] or _PRODUCTOS_FALLBACK
+
+
+_ALIAS = {"blackout": "roller-blackout", "sunscreen": "roller-screen", "duo": "roller-duo-blackout", "toldo": "toldo-retractil", "toldo_vertical": "toldos-verticales",
+          "persianas_ext": "persiana-exterior", "venecianas": "minipersiana", "metalica": "cortinas-verticales"}
+
+
+def _prod(key: str) -> dict:
+    items = catalogo_tb()
+    for it in items:
+        if it["key"] == key: return it
+    for it in items:
+        if it["key"] == _ALIAS.get(key): return it
+    return {"key": key, "nombre": key.replace("-", " ").title(), "categoria": "Otros", "desc": "", "icon": "🪟", "precio_m2": PRECIOS.get(key, 40000), "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None}
+
+
+def _imagen_local(url):
+    """Descarga (y cachea) la foto del producto para el PDF."""
+    if not url: return None
+    try:
+        IMG_CACHE.mkdir(parents=True, exist_ok=True)
+        import hashlib
+        f = IMG_CACHE / (hashlib.md5(url.encode()).hexdigest() + ".jpg")
+        if not f.exists():
+            r = httpx.get(url, timeout=8.0, follow_redirects=True); r.raise_for_status()
+            from PIL import Image as _Im
+            im = _Im.open(io.BytesIO(r.content)).convert("RGB"); im.thumbnail((600, 600)); im.save(f, "JPEG", quality=82)
+        return f
+    except Exception:
+        return None
+
+
 # Niveles: mismo proyecto, tres formas de hacerlo (tecnica de anclaje de precio)
 NIVELES = {
     "esencial": {"nombre": "Esencial", "desc": "Telas estándar, accionamiento manual con cadena. Garantía 2 años.", "factor": 1.0, "motor": False},
@@ -91,10 +162,15 @@ def calcular(espacios: List[dict], descuento_pct: int = 0) -> dict:
     """Detalle por espacio y total por nivel."""
     filas, out = [], {}
     for e in espacios:
-        prod = PROD.get(e["producto"], PROD["blackout"])
-        m2 = max((e["ancho_cm"] / 100) * (e["alto_cm"] / 100), M2_MINIMO) * max(int(e.get("cantidad", 1)), 1)
-        base = PRECIOS.get(e["producto"], 40000)
-        filas.append({**e, "producto_nombre": prod["nombre"], "m2": round(m2, 2), "precio_m2": base, "subtotal": int(round(m2 * base))})
+        prod = _prod(e["producto"])
+        cant = max(int(e.get("cantidad", 1)), 1)
+        m2 = max((e["ancho_cm"] / 100) * (e["alto_cm"] / 100), M2_MINIMO) * cant
+        if prod.get("por_unidad"):
+            base = prod.get("precio_unidad") or 0; sub = base * cant
+        else:
+            base = prod.get("precio_m2") or 0; sub = m2 * base
+        filas.append({**e, "producto_nombre": prod["nombre"], "categoria": prod.get("categoria"), "imagen": prod.get("imagen"), "por_unidad": bool(prod.get("por_unidad")),
+                      "m2": round(m2, 2), "precio_m2": int(base), "subtotal": int(round(sub)), "a_cotizar": not base})
     for k, n in NIVELES.items():
         total = 0
         for f in filas:
@@ -108,8 +184,9 @@ def calcular(espacios: List[dict], descuento_pct: int = 0) -> dict:
 
 
 @router.get("/catalogo")
-def catalogo(v: dict = Depends(get_vendedor)):
-    return {"productos": PRODUCTOS, "precios": PRECIOS, "motor": MOTOR_UNIDAD, "niveles": NIVELES, "etapas": ETAPAS}
+def catalogo(refrescar: bool = False, v: dict = Depends(get_vendedor)):
+    prods = catalogo_tb(force=refrescar)
+    return {"productos": prods, "precios": {p["key"]: (p["precio_unidad"] if p["por_unidad"] else p["precio_m2"]) for p in prods}, "motor": MOTOR_UNIDAD, "niveles": NIVELES, "etapas": ETAPAS, "logo": LOGO_TB_URL, "fuente": TB_API}
 
 
 class LeadIn(BaseModel):
@@ -266,13 +343,14 @@ def _enviar(db, prop, l, calc, v, pdf, email: bool, wa: bool) -> dict:
     url = f"{VENTAS_URL}/tb/{prop['token']}"
     if email and l.get("email"):
         n = calc["niveles"]; s = prop["nivel_sugerido"]
-        REC = "<div style='font-size:11px;color:#0F766E;font-weight:700'>Recomendado</div>"
-        cards = "".join(f"<td style='padding:14px;border:2px solid {'#0F766E' if k == s else '#eee'};border-radius:12px;text-align:center;width:33%'><div style='font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7A8F98'>{n[k]['nombre']}</div><div style='font-size:22px;font-weight:800;color:#0B1F2A'>{_clp(n[k]['total'])}</div><div style='font-size:11px;color:#7A8F98'>o 12 × {_clp(n[k]['mensual_12'])}</div>{REC if k == s else ''}</td>" for k in ("esencial", "confort", "premium"))
-        filas = "".join(f"<tr><td style='padding:8px;border-bottom:1px solid #eee'>{f['ambiente']}</td><td style='padding:8px;border-bottom:1px solid #eee'>{f['producto_nombre']}{' · motor' if f.get('motorizado') else ''}</td><td style='padding:8px;border-bottom:1px solid #eee;text-align:right'>{int(f['ancho_cm'])}×{int(f['alto_cm'])} cm{' ×' + str(f['cantidad']) if f.get('cantidad', 1) > 1 else ''}</td></tr>" for f in calc["filas"])
-        html = (f"<div style='font-family:Inter,Arial,sans-serif;max-width:640px;margin:auto'><div style='background:#0B1F2A;color:#fff;padding:28px;border-radius:14px 14px 0 0'><p style='margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#C8B48A'>TerraBlinds · Propuesta</p><h1 style='margin:6px 0 0;font-size:26px'>Tus cortinas, {l['nombre'].split()[0]}</h1><p style='margin:6px 0 0;color:#B9C8CC'>{len(calc['filas'])} espacios · {calc['m2_total']} m² · {l.get('comuna') or ''}</p></div>"
+        REC = "<div style='font-size:11px;color:#1F5FD6;font-weight:700'>Recomendado</div>"
+        IMGTAG = lambda f: (f"<img src='{f['imagen']}' width='52' height='52' style='border-radius:8px;object-fit:cover'>" if f.get("imagen") else "")
+        cards = "".join(f"<td style='padding:14px;border:2px solid {'#1F5FD6' if k == s else '#eee'};border-radius:12px;text-align:center;width:33%'><div style='font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7A8F98'>{n[k]['nombre']}</div><div style='font-size:22px;font-weight:800;color:#0B1F2A'>{_clp(n[k]['total'])}</div><div style='font-size:11px;color:#7A8F98'>o 12 × {_clp(n[k]['mensual_12'])}</div>{REC if k == s else ''}</td>" for k in ("esencial", "confort", "premium"))
+        filas = "".join(f"<tr><td style='padding:8px;border-bottom:1px solid #eee;width:56px'>{IMGTAG(f)}</td><td style='padding:8px;border-bottom:1px solid #eee'>{f['ambiente']}</td><td style='padding:8px;border-bottom:1px solid #eee'>{f['producto_nombre']}{' · motor' if f.get('motorizado') else ''}</td><td style='padding:8px;border-bottom:1px solid #eee;text-align:right'>{int(f['ancho_cm'])}×{int(f['alto_cm'])} cm{' ×' + str(f['cantidad']) if f.get('cantidad', 1) > 1 else ''}</td></tr>" for f in calc["filas"])
+        html = (f"<div style='font-family:Inter,Arial,sans-serif;max-width:640px;margin:auto'><div style='background:#0A1F5C;color:#fff;padding:28px;border-radius:14px 14px 0 0'><img src='{LOGO_TB_URL}' alt='TerraBlinds' width='84' height='84' style='display:block;background:#fff;border-radius:16px;padding:6px;margin-bottom:14px'><p style='margin:0;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#9DB9FF'>TerraBlinds · Propuesta</p><h1 style='margin:6px 0 0;font-size:26px'>Tus cortinas, {l['nombre'].split()[0]}</h1><p style='margin:6px 0 0;color:#B9C8CC'>{len(calc['filas'])} espacios · {calc['m2_total']} m² · {l.get('comuna') or ''}</p></div>"
                 f"<div style='border:1px solid #DDE4E6;border-top:none;padding:26px;border-radius:0 0 14px 14px'><p style='color:#35505C'>{prop.get('mensaje') or 'Gracias por recibirnos. Medimos tus espacios y preparamos tres formas de hacer tu proyecto; elige la que más te acomode y la aceptas con un clic.'}</p>"
                 f"<table style='width:100%;border-spacing:8px'><tr>{cards}</tr></table><table style='width:100%;border-collapse:collapse;font-size:13px;margin-top:8px'>{filas}</table>"
-                f"<p style='margin:22px 0'><a href='{url}' style='background:#0F766E;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700'>Ver propuesta y aceptar</a></p>"
+                f"<p style='margin:22px 0'><a href='{url}' style='background:#1F5FD6;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700'>Ver propuesta y aceptar</a></p>"
                 f"<p style='font-size:13px;color:#35505C'>Incluye fabricación propia, instalación y garantía. Precios con IVA, válidos 15 días.<br>{v['nombre']} · TerraBlinds · {v.get('telefono') or ''} · {TB_WEB}</p></div></div>")
         payload = {"to": l["email"], "from": "ventas@conectaai.cl", "reply_to": TB_MAIL, "subject": f"Propuesta TerraBlinds para {l['nombre']} — {len(calc['filas'])} espacios", "html": html}
         if pdf: payload["attachments"] = [{"filename": "Propuesta-TerraBlinds.pdf", "content": base64.b64encode(pdf).decode(), "contentType": "application/pdf"}]
@@ -303,7 +381,7 @@ def _pdf(prop, l, calc, v) -> bytes:
     from reportlab.pdfbase.pdfmetrics import stringWidth
     import qrcode
     W, H = A4; buf = io.BytesIO(); c = canvas.Canvas(buf, pagesize=A4)
-    INK, ORO, MUT, ARENA, TEAL = HexColor("#0B1F2A"), HexColor("#C8B48A"), HexColor("#7A8F98"), HexColor("#F4EFE6"), HexColor("#0F766E")
+    INK, ORO, MUT, ARENA, TEAL = HexColor("#0A1F5C"), HexColor("#9DB9FF"), HexColor("#6B7A99"), HexColor("#EEF3FF"), HexColor("#1F5FD6")
 
     def wrap(t, w, f="Helvetica", s=10.5):
         out, cur = [], ""
@@ -315,13 +393,20 @@ def _pdf(prop, l, calc, v) -> bytes:
         return out
 
     def foot(n):
+        if LOGO_TB.exists():
+            try: c.drawImage(ImageReader(str(LOGO_TB)), W - 82, H - 62, 42, 42)
+            except Exception: pass
         c.setFont("Helvetica", 8); c.setFillColor(MUT); c.drawString(40, 28, f"TerraBlinds · Propuesta para {l['nombre']} · {datetime.now().strftime('%d/%m/%Y')} · válida 15 días"); c.drawRightString(W - 40, 28, str(n))
 
     # Portada
-    c.setFillColor(INK); c.rect(0, 0, W, H, fill=1, stroke=0); c.setFillColor(ORO); c.rect(0, H - 12, W, 12, fill=1, stroke=0)
+    c.setFillColor(INK); c.rect(0, 0, W, H, fill=1, stroke=0); c.setFillColor(TEAL); c.rect(0, H - 12, W, 12, fill=1, stroke=0)
+    if LOGO_TB.exists():
+        c.setFillColor(HexColor("#FFFFFF")); c.roundRect(W - 190, H - 200, 140, 140, 18, fill=1, stroke=0)
+        try: c.drawImage(ImageReader(str(LOGO_TB)), W - 182, H - 192, 124, 124)
+        except Exception: pass
     c.setFillColor(ORO); c.setFont("Helvetica-Bold", 11); c.drawString(50, H - 120, "TERRABLINDS · PROPUESTA DE PROYECTO")
     c.setFillColor(HexColor("#FFFFFF")); c.setFont("Helvetica-Bold", 34); y = H - 172
-    for ln in wrap(f"Las cortinas de {l['nombre']}", W - 100, "Helvetica-Bold", 34): c.drawString(50, y, ln); y -= 40
+    for ln in wrap(f"Las cortinas de {l['nombre']}", W - 260, "Helvetica-Bold", 30): c.drawString(50, y, ln); y -= 36
     c.setFont("Helvetica", 14); c.setFillColor(HexColor("#B9C8CC"))
     c.drawString(50, y - 6, f"{len(calc['filas'])} espacios · {calc['m2_total']} m² · {l.get('tipo', 'casa').capitalize()}" + (f" · {l['comuna']}" if l.get("comuna") else ""))
     if l.get("direccion"): c.drawString(50, y - 26, l["direccion"])
@@ -343,7 +428,7 @@ def _pdf(prop, l, calc, v) -> bytes:
         c.setFillColor(INK); c.setFont("Helvetica-Bold", 10.5); c.drawString(50, y, f["ambiente"][:22])
         c.setFont("Helvetica", 10); c.drawString(200, y, f["producto_nombre"] + (" · motor" if f.get("motorizado") else ""))
         c.drawString(370, y, f"{int(f['ancho_cm'])}×{int(f['alto_cm'])}" + (f" ×{f['cantidad']}" if f.get("cantidad", 1) > 1 else "")); c.drawString(460, y, f"{f['m2']}")
-        c.drawRightString(W - 50, y, _clp(f["subtotal"]))
+        c.drawRightString(W - 50, y, "a cotizar" if f.get("a_cotizar") else _clp(f["subtotal"]))
         if f.get("color") or f.get("nota"):
             y -= 12; c.setFont("Helvetica", 8.5); c.setFillColor(MUT); c.drawString(200, y, " · ".join(x for x in (f.get("color"), f.get("nota")) if x)[:70])
         y -= 20; c.setStrokeColor(HexColor("#F1F1F1")); c.line(50, y + 8, W - 50, y + 8)
@@ -351,13 +436,23 @@ def _pdf(prop, l, calc, v) -> bytes:
     c.setFillColor(MUT); c.setFont("Helvetica", 9)
     for i, ln in enumerate(wrap("La referencia es el valor Esencial por espacio (tela estándar, manual). Los niveles de la página siguiente aplican sobre todo el proyecto.", W - 100, "Helvetica", 9)):
         c.drawString(50, y - 6 - i * 12, ln)
-    prods = {f["producto"] for f in calc["filas"]}
+    prods = []
+    for f in calc["filas"]:
+        if f["producto"] not in [x["key"] for x in prods]: prods.append(_prod(f["producto"]))
     yy = y - 50
-    for k in prods:
-        p = PROD.get(k)
-        if not p or yy < 80: continue
-        c.setFillColor(ARENA); c.roundRect(50, yy - 36, W - 100, 42, 8, fill=1, stroke=0)
-        c.setFillColor(INK); c.setFont("Helvetica-Bold", 11); c.drawString(62, yy - 12, p["nombre"]); c.setFont("Helvetica", 9.5); c.setFillColor(HexColor("#35505C")); c.drawString(62, yy - 27, p["desc"][:95]); yy -= 52
+    for p in prods:
+        if yy < 90: break
+        c.setFillColor(ARENA); c.roundRect(50, yy - 64, W - 100, 70, 10, fill=1, stroke=0)
+        img = _imagen_local(p.get("imagen")); tx = 62
+        if img:
+            try: c.drawImage(ImageReader(str(img)), 58, yy - 60, 62, 62, preserveAspectRatio=True, anchor="c"); tx = 130
+            except Exception: pass
+        c.setFillColor(INK); c.setFont("Helvetica-Bold", 11.5); c.drawString(tx, yy - 16, p["nombre"] + (f"  ·  {p['categoria']}" if p.get("categoria") else ""))
+        c.setFont("Helvetica", 9.5); c.setFillColor(HexColor("#35505C"))
+        for i, ln in enumerate(wrap(p.get("desc") or "", W - tx - 60, "Helvetica", 9.5)[:2]): c.drawString(tx, yy - 32 - i * 12, ln)
+        if p.get("colores"):
+            c.setFont("Helvetica", 8.5); c.setFillColor(MUT); c.drawString(tx, yy - 57, ("Colores: " + ", ".join(p["colores"][:6]))[:90])
+        yy -= 80
     foot(2); c.showPage()
 
     # Tres formas de hacerlo
@@ -417,7 +512,7 @@ def publica(token: str, request: Request, db: Session = Depends(get_db)):
     if "bot" not in ua and "whatsapp" not in ua:
         db.execute(text("UPDATE ventas_cortinas_propuestas SET aperturas=aperturas+1, abierto_en=COALESCE(abierto_en, NOW()) WHERE id=:id"), {"id": p["id"]}); db.commit()
     return {"cliente": l, "espacios": p["espacios"], "niveles": p["niveles"], "nivel_sugerido": p["nivel_sugerido"], "descuento_pct": p["descuento_pct"], "mensaje": p["mensaje"],
-            "productos": {k: PROD[k] for k in {f["producto"] for f in p["espacios"]} if k in PROD}, "m2_total": round(sum(f["m2"] for f in p["espacios"]), 2),
+            "productos": {k: _prod(k) for k in {f["producto"] for f in p["espacios"]}}, "logo": LOGO_TB_URL, "m2_total": round(sum(f["m2"] for f in p["espacios"]), 2),
             "aceptada": bool(p["aceptada_en"]), "nivel_aceptado": p["nivel_aceptado"], "vendedor": v, "pdf_url": f"/api/ventas-terreno/cortinas/p/{token}/pdf",
             "wa": f"https://wa.me/{TB_WA}", "creada": p["created_at"], "web": TB_WEB}
 
