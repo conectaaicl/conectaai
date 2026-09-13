@@ -9,6 +9,7 @@ Demos comerciales: copia viva del tenant plantilla (Edificio Los Alamos) por pro
 - /api/demo/estado (publico por host o sesion) para el banner del frontend.
 """
 import json
+import logging
 import os
 import re
 import secrets
@@ -61,17 +62,24 @@ _PLAN = [
     ("convenios_pago", {"departamento_id": "departamentos"}),
     ("ordenes_trabajo", {"condominio_id": "condominios"}),
     ("proveedores", {"condominio_id": "condominios"}),
+    ("registros_acceso_puertas", {"puerta_id": "puertas"}),
+    ("qr_credenciales", {"residente_portal_id": "residentes_portal"}),
     ("tenant_features", {}),
 ]
+# Tablas con tenant_id que NO se copian a proposito (cuentas, bitacoras): no generan aviso.
+_IGNORAR = {"usuarios", "historial_eventos", "tenants", "push_subscriptions", "alertas_sistema", "ventas_demos"}
 # Tablas sin tenant_id: (tabla, columna de filtro, tabla del filtro, fk_map)
 _PLAN_CONDO = [
     ("espacios_comunes", "condominio_id", "condominios", {"condominio_id": "condominios"}),
     ("reservas", "espacio_id", "espacios_comunes", {"espacio_id": "espacios_comunes", "departamento_id": "departamentos", "persona_id": "personas"}),
     ("visitas_qr", "condominio_id", "condominios", {"condominio_id": "condominios", "departamento_id": "departamentos"}),
     ("convenios_cuotas", "convenio_id", "convenios_pago", {"convenio_id": "convenios_pago"}),
+    ("gastos_comunes", "departamento_id", "departamentos", {"departamento_id": "departamentos"}),
 ]
+# Claves dentro de columnas JSON que guardan ids de otras tablas: tabla -> columna -> {clave: tabla referenciada}
+_JSON_REMAP = {"personas": {"datos_contacto": {"condominio_id": "condominios", "departamento_id": "departamentos"}}}
 # Columnas que no se copian (secretos / tokens unicos) -> se regeneran o quedan NULL
-_REGEN = {"qr_token": lambda: secrets.token_urlsafe(16), "webhook_secret": lambda: None, "codigo_seguimiento": None}
+_REGEN = {"qr_token": lambda: secrets.token_urlsafe(16), "webhook_secret": lambda: None, "codigo_seguimiento": None, "secret": lambda: secrets.token_urlsafe(24)}
 
 
 def slugify(s: str) -> str:
@@ -106,12 +114,51 @@ def _coltypes(db: Session, table: str) -> dict:
     return _COLS_CACHE[table]
 
 
-def _copy_rows(db: Session, table: str, rows, fk_map: dict, maps: dict, new_tid: int, has_tenant: bool):
+_FK_CACHE: dict = {}
+
+
+def _fks_reales(db: Session, table: str) -> dict:
+    """FKs declaradas en Postgres: columna -> (tabla referenciada, nullable). Complementa el mapa escrito a mano."""
+    if table not in _FK_CACHE:
+        rows = db.execute(text("""
+            SELECT kcu.column_name, ccu.table_name, c.is_nullable
+            FROM information_schema.table_constraints tc
+            JOIN information_schema.key_column_usage kcu ON tc.constraint_name=kcu.constraint_name AND tc.table_schema=kcu.table_schema
+            JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name=tc.constraint_name
+            JOIN information_schema.columns c ON c.table_schema=tc.table_schema AND c.table_name=tc.table_name AND c.column_name=kcu.column_name
+            WHERE tc.constraint_type='FOREIGN KEY' AND tc.table_schema='public' AND tc.table_name=:t"""), {"t": table}).fetchall()
+        _FK_CACHE[table] = {r[0]: (r[1], r[2] == "YES") for r in rows}
+    return _FK_CACHE[table]
+
+
+def _remap_json(v, remap: dict, maps: dict):
+    """Reemplaza ids dentro de un JSON (conserva el tipo: '8' -> '12', 8 -> 12)."""
+    if not isinstance(v, dict):
+        return v
+    out = dict(v)
+    for k, ref in remap.items():
+        if k in out and out[k] not in (None, ""):
+            try:
+                nuevo = maps.get(ref, {}).get(int(out[k]))
+            except (TypeError, ValueError):
+                nuevo = None
+            if nuevo is not None:
+                out[k] = str(nuevo) if isinstance(out[k], str) else nuevo
+    return out
+
+
+def _copy_rows(db: Session, table: str, rows, fk_map: dict, maps: dict, new_tid: int, has_tenant: bool, saltadas: dict | None = None):
     types = _coltypes(db, table)
     cols = list(types.keys())
     has_id = "id" in cols
     ins_cols = [c for c in cols if c != "id"]
     maps.setdefault(table, {})
+    reales = _fks_reales(db, table)
+    # FKs reales solo hacia tablas que tambien se copian; las que apuntan a catalogos globales (features, etc.) se conservan tal cual
+    copiadas = {t for t, _ in _PLAN} | {t[0] for t in _PLAN_CONDO}
+    fks = {**{c: t for c, (t, _) in reales.items() if t in copiadas}, **fk_map}   # lo escrito a mano manda
+    nullable = {c: n for c, (_, n) in reales.items()}
+    json_remap = _JSON_REMAP.get(table, {})
     for r in rows:
         m = dict(r._mapping)
         data = {}
@@ -120,10 +167,12 @@ def _copy_rows(db: Session, table: str, rows, fk_map: dict, maps: dict, new_tid:
             v = m.get(c)
             if c == "tenant_id" and has_tenant:
                 v = new_tid
-            elif c in fk_map and v is not None:
-                v = maps.get(fk_map[c], {}).get(v)
-                if v is None and c in ("piso_id", "torre_id", "condominio_id", "periodo_id", "espacio_id", "activo_id", "convenio_id"):
+            elif c in fks and v is not None:
+                v = maps.get(fks[c], {}).get(v)
+                if v is None and not nullable.get(c, True):
                     skip = True  # FK obligatoria sin origen copiado
+            elif c in json_remap and v is not None:
+                v = _remap_json(v if not isinstance(v, str) else json.loads(v), json_remap[c], maps)
             elif c in _REGEN and v is not None:
                 gen = _REGEN[c]
                 v = gen() if gen else None
@@ -133,6 +182,7 @@ def _copy_rows(db: Session, table: str, rows, fk_map: dict, maps: dict, new_tid:
                 v = json.dumps(v)
             data[c] = v
         if skip:
+            if saltadas is not None: saltadas[table] = saltadas.get(table, 0) + 1
             continue
         sql = f"INSERT INTO {table} ({', '.join(data)}) VALUES ({', '.join(':' + c for c in data)})" + (" RETURNING id" if has_id else "")
         res = db.execute(text(sql), data)
@@ -174,16 +224,23 @@ def clonar_tenant(db: Session, *, nombre: str, direccion: str, comuna: str, emai
     new_tid = db.execute(text(f"INSERT INTO tenants ({', '.join(tdata)}) VALUES ({', '.join(':' + c for c in tdata)}) RETURNING id"), tdata).scalar()
 
     maps: dict = {"tenants": {src_tid: new_tid}}
+    saltadas: dict = {}
+    origen: dict = {}
     for table, fk in _PLAN:
+        if not _cols(db, table):
+            continue  # tabla aun no creada en esta BD
         rows = db.execute(text(f"SELECT * FROM {table} WHERE tenant_id=:t ORDER BY id"), {"t": src_tid}).fetchall() if "id" in _cols(db, table) \
             else db.execute(text(f"SELECT * FROM {table} WHERE tenant_id=:t"), {"t": src_tid}).fetchall()
-        _copy_rows(db, table, rows, fk, maps, new_tid, True)
+        origen[table] = len(rows)
+        _copy_rows(db, table, rows, fk, maps, new_tid, True, saltadas)
     for table, fcol, ftable, fk in _PLAN_CONDO:
         ids = list(maps.get(ftable, {}).keys())
-        if not ids:
+        if not ids or not _cols(db, table):
             continue
         rows = db.execute(text(f"SELECT * FROM {table} WHERE {fcol} = ANY(:ids) ORDER BY id"), {"ids": ids}).fetchall()
-        _copy_rows(db, table, rows, fk, maps, new_tid, False)
+        origen[table] = len(rows)
+        _copy_rows(db, table, rows, fk, maps, new_tid, False, saltadas)
+    advertencias = _verificar_clon(db, src_tid, origen, maps, saltadas)
 
     # El condominio toma el nombre y direccion del prospecto
     condo_ids = list(maps["condominios"].values())
@@ -218,7 +275,86 @@ def clonar_tenant(db: Session, *, nombre: str, direccion: str, comuna: str, emai
         "conserje": {"url": f"https://{dominio}/conserje/login", "email": cons_email, "password": cons_pw},
         "residente": {"url": f"https://{dominio}/portal/login", **(residente or {})},
         "copiado": {t: len(m) for t, m in maps.items() if m},
+        "advertencias": advertencias,
     }
+
+
+def _verificar_clon(db: Session, src_tid: int, origen: dict, maps: dict, saltadas: dict) -> list:
+    """Post-clon: filas saltadas, conteos origen vs copiadas y tablas con tenant_id con datos en la plantilla fuera del plan."""
+    avisos = []
+    for t, n in saltadas.items():
+        avisos.append(f"{t}: {n} fila(s) saltada(s) por FK sin origen")
+    for t, n in origen.items():
+        c = len(maps.get(t, {}))
+        if "id" in _cols(db, t) and c != n - saltadas.get(t, 0):
+            avisos.append(f"{t}: origen {n}, copiadas {c}")
+    planificadas = {t for t, _ in _PLAN} | {t[0] for t in _PLAN_CONDO} | _IGNORAR
+    con_tenant = [r[0] for r in db.execute(text("SELECT DISTINCT table_name FROM information_schema.columns WHERE table_schema='public' AND column_name='tenant_id'")).fetchall()]
+    for t in con_tenant:
+        if t in planificadas:
+            continue
+        n = db.execute(text(f"SELECT count(*) FROM {t} WHERE tenant_id=:t"), {"t": src_tid}).scalar()
+        if n:
+            avisos.append(f"{t}: {n} fila(s) en la plantilla y la tabla no esta en el plan de copia")
+    if avisos:
+        logging.getLogger("ventas_demo").warning("clon tenant %s: %s", src_tid, " | ".join(avisos))
+    return avisos
+
+
+def borrar_tenant(db: Session, tid: int) -> dict:
+    """Borrado FISICO de un tenant demo (pruebas y purga). Nunca la plantilla ni tenants que no sean demo.
+    1) tablas sin tenant_id que cuelgan (por FK real) de tablas con tenant_id, 2) tablas con tenant_id, 3) el tenant.
+    Se hacen varias pasadas con savepoints para respetar el orden de dependencias sin mantener una lista a mano."""
+    if tid == TENANT_PLANTILLA:
+        raise RuntimeError("No se borra la plantilla")
+    plan = db.execute(text("SELECT plan FROM tenants WHERE id=:t"), {"t": tid}).scalar()
+    if plan != "demo":
+        raise RuntimeError("Solo se borran tenants demo")
+    con_tenant = {r[0] for r in db.execute(text("SELECT DISTINCT table_name FROM information_schema.columns WHERE table_schema='public' AND column_name='tenant_id'")).fetchall()} - {"tenants"}
+    fks = db.execute(text("""
+        SELECT tc.table_name, kcu.column_name, ccu.table_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu ON tc.constraint_name=kcu.constraint_name AND tc.table_schema=kcu.table_schema
+        JOIN information_schema.constraint_column_usage ccu ON ccu.constraint_name=tc.constraint_name
+        WHERE tc.constraint_type='FOREIGN KEY' AND tc.table_schema='public'""")).fetchall()
+    borrado: dict = {}
+
+    def intentar(sql: str, params: dict, clave: str) -> bool:
+        sp = db.begin_nested()
+        try:
+            n = db.execute(text(sql), params).rowcount
+            sp.commit()
+            if n: borrado[clave] = borrado.get(clave, 0) + n
+            return True
+        except Exception:
+            sp.rollback()
+            return False
+
+    # 1) hijos sin tenant_id de tablas con tenant_id (y nietos: espacios_comunes -> reservas), varias pasadas
+    hijos = [(t, c, ref) for t, c, ref in fks if t not in con_tenant and ref in con_tenant]
+    nietos = [(t, c, ref) for t, c, ref in fks if t not in con_tenant and ref not in con_tenant and ref != "tenants"]
+    for _ in range(4):
+        pendiente = False
+        for t, c, ref in nietos:
+            for t2, c2, ref2 in hijos:
+                if t2 == ref:
+                    if not intentar(f"DELETE FROM {t} WHERE {c} IN (SELECT id FROM {ref} WHERE {c2} IN (SELECT id FROM {ref2} WHERE tenant_id=:t))", {"t": tid}, t): pendiente = True
+        for t, c, ref in hijos:
+            if not intentar(f"DELETE FROM {t} WHERE {c} IN (SELECT id FROM {ref} WHERE tenant_id=:t)", {"t": tid}, t): pendiente = True
+        if not pendiente: break
+    # 2) tablas con tenant_id, en orden inverso al plan y luego el resto, con pasadas hasta que no quede nada
+    orden = [t for t, _ in reversed(_PLAN)] + sorted(con_tenant - {t for t, _ in _PLAN})
+    for _ in range(6):
+        pendiente = False
+        for t in orden:
+            if t in con_tenant and not intentar(f"DELETE FROM {t} WHERE tenant_id=:t", {"t": tid}, t): pendiente = True
+        if not pendiente: break
+    if not intentar("DELETE FROM tenants WHERE id=:t", {"t": tid}, "tenants"):
+        db.rollback()
+        raise RuntimeError("No se pudo borrar el tenant: quedan filas que lo referencian")
+    db.commit()
+    _CACHE.pop(tid, None)
+    return borrado
 
 
 def extender_demo(db: Session, tenant_id: int, dias: int) -> str:
@@ -288,19 +424,11 @@ _ULTIMO: dict = {}   # (tenant, rol, modulo) -> ts
 
 
 def registrar_uso(db: Session, tenant_id: int, rol: str, path: str, method: str):
-    now = time.time()
-    ks = (tenant_id, rol, "_sesion")
-    if now - _ULTIMO.get(ks, 0) > 1800:
-        _ULTIMO[ks] = now
-        try:
-            db.execute(text("INSERT INTO ventas_eventos (tenant_id, tipo, rol, detalle, created_at) VALUES (:t, 'demo_login', :rol, 'Ingresó al demo', NOW())"), {"t": tenant_id, "rol": rol})
-            db.commit()
-        except Exception:
-            db.rollback()
     modulo = next((m for p, m in _MODULOS if path.startswith(p)), None)
     if not modulo:
         return
     key = (tenant_id, rol, modulo)
+    now = time.time()
     escritura = method not in ("GET", "HEAD", "OPTIONS")
     if not escritura and now - _ULTIMO.get(key, 0) < 600:
         return
