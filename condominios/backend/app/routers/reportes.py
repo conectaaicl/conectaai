@@ -304,11 +304,16 @@ def reporte_nomina(
                   "Sueldo Base $", "Estado", "Banco", "Cuenta"])
 
     rows = db.execute(text("""
-        SELECT nombre, rut, cargo, tipo_contrato, fecha_ingreso,
-               sueldo_base, estado, banco, numero_cuenta
-        FROM personal
-        WHERE tenant_id=:tid
-        ORDER BY nombre
+        SELECT p.nombre_completo AS nombre, p.rut,
+               (SELECT string_agg(r, ', ') FROM jsonb_array_elements_text(p.roles) r) AS cargo,
+               p.datos_contacto->>'tipo_contrato' AS tipo_contrato,
+               p.created_at::date AS fecha_ingreso,
+               (SELECT s.sueldo_base FROM sueldos s WHERE s.persona_id = p.id ORDER BY s.anio DESC, s.mes DESC LIMIT 1) AS sueldo_base,
+               p.estado, p.datos_contacto->>'banco' AS banco, p.datos_contacto->>'numero_cuenta' AS numero_cuenta
+        FROM personas p
+        WHERE p.tenant_id=:tid
+          AND p.roles ?| array['conserje','aseo','mantencion','administrador']
+        ORDER BY p.nombre_completo
     """), {"tid": tenant_id}).fetchall()
 
     total_sueldo = 0
@@ -355,7 +360,7 @@ def reporte_incidencias(
                   "Reportada", "Resuelta"])
 
     rows = db.execute(text("""
-        SELECT id, titulo, tipo, prioridad, estado,
+        SELECT id, titulo, categoria AS tipo, prioridad, estado,
                created_at::date, fecha_resolucion::date
         FROM incidencias
         WHERE tenant_id=:tid
@@ -401,12 +406,18 @@ def reporte_reservas(
                   "Estado", "Cobro $"])
 
     rows = db.execute(text("""
-        SELECT ec.nombre AS espacio, r.nombre_solicitante, r.departamento_num,
-               r.fecha, r.hora_inicio, r.hora_fin, r.estado, r.costo
+        SELECT ec.nombre AS espacio,
+               COALESCE(pe.nombre_completo, r.solicitado_por, '') AS nombre_solicitante,
+               COALESCE(d.numero, '') AS departamento_num,
+               r.fecha_inicio::date AS fecha, r.fecha_inicio::time AS hora_inicio, r.fecha_fin::time AS hora_fin,
+               r.estado, r.monto_cobrado AS costo
         FROM reservas r
-        JOIN espacios_comun ec ON ec.id = r.espacio_id
-        WHERE r.tenant_id=:tid AND r.fecha BETWEEN :d AND :h
-        ORDER BY r.fecha, r.hora_inicio
+        JOIN espacios_comunes ec ON ec.id = r.espacio_id
+        JOIN condominios c ON c.id = ec.condominio_id
+        LEFT JOIN departamentos d ON d.id = r.departamento_id
+        LEFT JOIN personas pe ON pe.id = r.persona_id
+        WHERE c.tenant_id=:tid AND r.fecha_inicio::date BETWEEN :d AND :h
+        ORDER BY r.fecha_inicio
     """), {"tid": tenant_id, "d": desde, "h": hasta}).fetchall()
 
     total_cobro = 0
@@ -453,7 +464,8 @@ def reporte_residentes(
         params["cid"] = condominio_id
 
     rows = db.execute(text(f"""
-        SELECT nombre_completo, rut, tipo,
+        SELECT nombre_completo, rut,
+               (SELECT string_agg(r, ', ') FROM jsonb_array_elements_text(roles) r) AS tipo,
                datos_contacto->>'departamento' AS depto,
                datos_contacto->>'torre' AS torre,
                email, telefono, estado

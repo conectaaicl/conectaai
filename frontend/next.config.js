@@ -126,7 +126,18 @@ const nextConfig = {
       { source: '/uploads/:path*', destination: 'http://backend-condominios:8003/uploads/:path*' },
       { source: '/api/features/:path*', destination: 'http://backend-condominios:8003/api/features/:path*' },
       { source: '/api/features', destination: 'http://backend-condominios:8003/api/features' },
-      { source: '/api/:path*',             destination: 'http://backend-core:8006/:path*' },
+      // CRM legado (backend-core :8006, sin prefijo /api). Solo estas rutas existen alla.
+      { source: '/api/deals/:path*',   destination: 'http://backend-core:8006/deals/:path*' },
+      { source: '/api/deals',          destination: 'http://backend-core:8006/deals' },
+      { source: '/api/leads/:path*',   destination: 'http://backend-core:8006/leads/:path*' },
+      { source: '/api/leads',          destination: 'http://backend-core:8006/leads/' },
+      { source: '/api/quotes/:path*',  destination: 'http://backend-core:8006/quotes/:path*' },
+      { source: '/api/actions/:path*', destination: 'http://backend-core:8006/actions/:path*' },
+      { source: '/api/actions',        destination: 'http://backend-core:8006/actions/' },
+      { source: '/api/ai/:path*',      destination: 'http://backend-core:8006/ai/:path*' },
+      { source: '/api/me',             destination: 'http://backend-core:8006/me' },
+      // Todo lo demas va al backend de condominios: un router nuevo ya no necesita rewrite propio.
+      { source: '/api/:path*',         destination: 'http://backend-condominios:8003/api/:path*' },
     ]
   },
   images: {

@@ -385,7 +385,7 @@ def personal_activo(current_user: dict = Depends(get_current_user), db: Session 
     tenant_id = current_user["tenant_id"]
     
     # Obtener todas las personas activas
-    personas_activas = db.query(Persona).filter(Persona.estado == "activo").all()
+    personas_activas = db.query(Persona).filter(Persona.estado == "activo", Persona.tenant_id == tenant_id).all()
     
     # Roles que consideramos "personal"
     ROLES_PERSONAL = ['conserje', 'aseo', 'mantencion', 'administrador']

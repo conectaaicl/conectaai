@@ -17,6 +17,7 @@ from typing import Optional
 from pydantic import BaseModel
 from app.core.database import get_db
 from app.routers.auth import get_current_user
+from app.routers.portal_auth import get_residente
 
 router = APIRouter(prefix="/api/push", tags=["Push Notifications"])
 
@@ -91,7 +92,11 @@ def get_vapid_public_key():
 
 
 @router.post("/subscribe", status_code=201)
-def subscribe(body: PushSubscribeRequest, db: Session = Depends(get_db)):
+def subscribe(body: PushSubscribeRequest, db: Session = Depends(get_db),
+              residente=Depends(get_residente)):
+    # tenant y persona salen del JWT del residente, nunca del body (evita suscribir a otro condominio)
+    body.tenant_id = residente.tenant_id
+    body.persona_id = residente.id
     _ensure_table(db)
     db.execute(text(
         "INSERT INTO push_subscriptions (tenant_id, persona_id, endpoint, p256dh, auth, user_agent) "

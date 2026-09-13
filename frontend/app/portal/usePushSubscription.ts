@@ -73,7 +73,7 @@ export function usePushSubscription(
           Authorization: 'Bearer ' + tk,
         },
         body: JSON.stringify({
-          tenant_id: res.tenant_id || 1,
+          tenant_id: res.tenant_id || 0,  // el backend lo toma del token; 0 = no informado
           persona_id: res.id || null,
           endpoint: sub.endpoint,
           p256dh: keys.p256dh || '',
