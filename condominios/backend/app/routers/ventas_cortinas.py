@@ -30,7 +30,7 @@ router = APIRouter(prefix="/api/ventas-terreno/cortinas", tags=["TerraBlinds cor
 
 TB_WA = os.getenv("TERRABLINDS_WA", "56998101891")
 TB_MAIL = os.getenv("TERRABLINDS_MAIL", "terrablinds@gmail.com")
-TB_FROM = "TerraBlinds@conectaai.cl"  # nombre visible "TerraBlinds"; respuestas a TB_MAIL
+TB_FROM = os.getenv("TERRABLINDS_FROM", "TerraBlinds <terrablinds@gmail.com>")  # requiere el alias "Enviar como" en Gmail; si no, MailSaaS usa la cuenta principal con este nombre
 TB_WEB = "https://terrablinds.cl"
 TB_API = os.getenv("TERRABLINDS_API", "https://terrablinds.cl/api/products")
 LOGO_TB = UPLOAD_DIR / "branding" / "terrablinds" / "logo.png"

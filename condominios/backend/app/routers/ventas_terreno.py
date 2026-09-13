@@ -45,7 +45,7 @@ VENTAS_URL = os.getenv("VENTAS_URL", "https://ventas.conectaai.cl")
 MARCA = os.getenv("VENTAS_MARCA", "ConectaAI Condominios")
 # Identidad de correo de ConectaAI (remitente visible y respuestas). TerraBlinds usa la suya en ventas_cortinas.
 VENTAS_MAIL = os.getenv("VENTAS_MAIL", "byconectaai@gmail.com")
-VENTAS_FROM = "ConectaAI@conectaai.cl"  # MailSaaS usa la parte local como nombre visible
+VENTAS_FROM = os.getenv("VENTAS_FROM", "ConectaAI <byconectaai@gmail.com>")  # nombre visible + direccion (cuenta SMTP de MailSaaS)
 LOGO_CAI = UPLOAD_DIR / "branding" / "conectaai" / "logo.png"
 LOGO_CAI_URL = f"{VENTAS_URL}/uploads/branding/conectaai/logo.png"
 
