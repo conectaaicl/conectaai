@@ -22,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.routers.ventas_terreno import get_vendedor, _row, _rows, MAIL_API_URL, MAIL_API_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE, VENTAS_URL, UPLOAD_DIR, LOGO_CAI, LOGO_CAI_URL
+from app.routers.ventas_terreno import get_vendedor, _row, _rows, MAIL_API_URL, MAIL_API_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE, VENTAS_URL, UPLOAD_DIR, LOGO_CAI, LOGO_CAI_URL, VENTAS_MAIL, VENTAS_FROM
 from app.routers.ventas_presentaciones import CATALOG, CAT
 
 router = APIRouter(prefix="/api/ventas-terreno/negocios", tags=["Ventas negocios"])
@@ -288,7 +288,7 @@ def _enviar(db, prop, n, calc, v, pdf, email: bool, wa: bool) -> dict:
                 f"<p style='margin:22px 0'><a href='{url}' style='background:#0F766E;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700'>Ver propuesta y partir</a></p>"
                 + (f"<h3 style='margin:18px 0 6px;color:#0B1F2A'>Pruébalo hoy</h3><ul style='color:#35505C;font-size:14px'>{demos}</ul>" if demos else "")
                 + f"<p style='font-size:14px;color:#35505C'>{v['nombre']} · ConectaAI<br>{v.get('telefono') or ''} · {v['email']}</p></div></div>")
-        payload = {"to": n["email"], "from": "ventas@conectaai.cl", "reply_to": v["email"], "subject": f"Propuesta ConectaAI para {n['nombre']}", "html": html}
+        payload = {"to": n["email"], "from": VENTAS_FROM, "reply_to": VENTAS_MAIL, "subject": f"Propuesta ConectaAI para {n['nombre']}", "html": html}
         if pdf: payload["attachments"] = [{"filename": "Propuesta-ConectaAI.pdf", "content": base64.b64encode(pdf).decode(), "contentType": "application/pdf"}]
         try:
             r = httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json=payload, timeout=20.0)
@@ -454,6 +454,6 @@ def aceptar(token: str, body: AceptarIn, db: Session = Depends(get_db)):
         try: httpx.post(f"{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_INSTANCE}", headers={"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}, json={"number": tel, "text": aviso}, timeout=10.0)
         except Exception: pass
     if v.get("email"):
-        try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": v["email"], "from": "ventas@conectaai.cl", "subject": f"🚀 {n['nombre']} quiere partir ({_clp(p['total_mensual'])}/mes)", "html": "<pre style='font-family:Inter,Arial;font-size:14px'>" + aviso + "</pre>"}, timeout=10.0)
+        try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": VENTAS_MAIL, "from": VENTAS_FROM, "subject": f"🚀 {n['nombre']} quiere partir ({_clp(p['total_mensual'])}/mes)", "html": "<pre style='font-family:Inter,Arial;font-size:14px'>" + aviso + "</pre>"}, timeout=10.0)
         except Exception: pass
     return {"ok": True, "mensaje": f"¡Genial! {v.get('nombre') or 'ConectaAI'} te contactará hoy para la puesta en marcha."}

@@ -43,6 +43,9 @@ EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
 EVOLUTION_INSTANCE = os.getenv("EVOLUTION_INSTANCE", "ventas")
 VENTAS_URL = os.getenv("VENTAS_URL", "https://ventas.conectaai.cl")
 MARCA = os.getenv("VENTAS_MARCA", "ConectaAI Condominios")
+# Identidad de correo de ConectaAI (remitente visible y respuestas). TerraBlinds usa la suya en ventas_cortinas.
+VENTAS_MAIL = os.getenv("VENTAS_MAIL", "byconectaai@gmail.com")
+VENTAS_FROM = "ConectaAI@conectaai.cl"  # MailSaaS usa la parte local como nombre visible
 LOGO_CAI = UPLOAD_DIR / "branding" / "conectaai" / "logo.png"
 LOGO_CAI_URL = f"{VENTAS_URL}/uploads/branding/conectaai/logo.png"
 
@@ -616,7 +619,7 @@ def _enviar_propuesta(db, prop, e, d, v, pdf_bytes, *, email: bool, whatsapp: bo
                 + cred_html +
                 f"<p style='margin-top:26px;font-size:14px;color:#35505C'>{v['nombre']} · {MARCA}<br>{v.get('telefono') or ''} · {v['email']}</p>"
                 "<p style='font-size:11px;color:#9ca3af'>Adjuntamos la propuesta en PDF. Al vencer el demo podrás seguir viendo el sistema, pero no modificarlo.</p></div></div>")
-        payload = {"to": e["administrador_email"], "from": "ventas@conectaai.cl", "reply_to": v["email"], "subject": f"Propuesta {MARCA} para {e['nombre']}" + (" + demo en vivo" if d else ""), "html": html}
+        payload = {"to": e["administrador_email"], "from": VENTAS_FROM, "reply_to": VENTAS_MAIL, "subject": f"Propuesta {MARCA} para {e['nombre']}" + (" + demo en vivo" if d else ""), "html": html}
         if pdf_bytes:
             payload["attachments"] = [{"filename": f"Propuesta-{demo.slugify(e['nombre'])}.pdf", "content": base64.b64encode(pdf_bytes).decode(), "contentType": "application/pdf"}]
         try:

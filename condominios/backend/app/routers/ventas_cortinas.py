@@ -30,6 +30,7 @@ router = APIRouter(prefix="/api/ventas-terreno/cortinas", tags=["TerraBlinds cor
 
 TB_WA = os.getenv("TERRABLINDS_WA", "56998101891")
 TB_MAIL = os.getenv("TERRABLINDS_MAIL", "terrablinds@gmail.com")
+TB_FROM = "TerraBlinds@conectaai.cl"  # nombre visible "TerraBlinds"; respuestas a TB_MAIL
 TB_WEB = "https://terrablinds.cl"
 TB_API = os.getenv("TERRABLINDS_API", "https://terrablinds.cl/api/products")
 LOGO_TB = UPLOAD_DIR / "branding" / "terrablinds" / "logo.png"
@@ -354,7 +355,7 @@ def _enviar(db, prop, l, calc, v, pdf, email: bool, wa: bool) -> dict:
                 f"<table style='width:100%;border-spacing:8px'><tr>{cards}</tr></table><table style='width:100%;border-collapse:collapse;font-size:13px;margin-top:8px'>{filas}</table>"
                 f"<p style='margin:22px 0'><a href='{url}' style='background:#1F5FD6;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700'>Ver propuesta y aceptar</a></p>"
                 f"<p style='font-size:13px;color:#35505C'>Incluye fabricación propia, instalación y garantía. Precios con IVA, válidos 15 días.<br>{v['nombre']} · TerraBlinds · {v.get('telefono') or ''} · {TB_WEB}</p></div></div>")
-        payload = {"to": l["email"], "from": "ventas@conectaai.cl", "reply_to": TB_MAIL, "subject": f"Propuesta TerraBlinds para {l['nombre']} — {len(calc['filas'])} espacios", "html": html}
+        payload = {"to": l["email"], "from": TB_FROM, "reply_to": TB_MAIL, "subject": f"Propuesta TerraBlinds para {l['nombre']} — {len(calc['filas'])} espacios", "html": html}
         if pdf: payload["attachments"] = [{"filename": "Propuesta-TerraBlinds.pdf", "content": base64.b64encode(pdf).decode(), "contentType": "application/pdf"}]
         try:
             r = httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json=payload, timeout=20.0)
@@ -552,11 +553,11 @@ def aceptar(token: str, body: AceptarIn, db: Session = Depends(get_db)):
     if EVOLUTION_API_URL and EVOLUTION_API_KEY:
         try: httpx.post(f"{EVOLUTION_API_URL}/message/sendText/{EVOLUTION_INSTANCE}", headers={"apikey": EVOLUTION_API_KEY, "Content-Type": "application/json"}, json={"number": tel, "text": aviso}, timeout=10.0)
         except Exception: pass
-    for to in {v.get("email"), TB_MAIL} - {None}:
-        try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": to, "from": "ventas@conectaai.cl", "subject": f"✅ {l['nombre']} aceptó la propuesta ({NIVELES[body.nivel]['nombre']} · {_clp(total)})", "html": "<pre style='font-family:Inter,Arial;font-size:14px'>" + aviso + "</pre>"}, timeout=10.0)
+    for to in {TB_MAIL}:
+        try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": to, "from": TB_FROM, "subject": f"✅ {l['nombre']} aceptó la propuesta ({NIVELES[body.nivel]['nombre']} · {_clp(total)})", "html": "<pre style='font-family:Inter,Arial;font-size:14px'>" + aviso + "</pre>"}, timeout=10.0)
         except Exception: pass
     if l.get("email"):
-        try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": l["email"], "from": "ventas@conectaai.cl", "reply_to": TB_MAIL, "subject": "Recibimos tu aceptación — TerraBlinds", "html": f"<div style='font-family:Inter,Arial;max-width:560px;margin:auto'><h2>¡Gracias, {l['nombre'].split()[0]}!</h2><p>Registramos tu aceptación del nivel <b>{NIVELES[body.nivel]['nombre']}</b> por <b>{_clp(total)}</b>. {v.get('nombre') or 'Nuestro equipo'} te contactará hoy para coordinar telas, colores e instalación.</p><p style='color:#7A8F98;font-size:12px'>TerraBlinds · {TB_WEB}</p></div>"}, timeout=10.0)
+        try: httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": l["email"], "from": TB_FROM, "reply_to": TB_MAIL, "subject": "Recibimos tu aceptación — TerraBlinds", "html": f"<div style='font-family:Inter,Arial;max-width:560px;margin:auto'><h2>¡Gracias, {l['nombre'].split()[0]}!</h2><p>Registramos tu aceptación del nivel <b>{NIVELES[body.nivel]['nombre']}</b> por <b>{_clp(total)}</b>. {v.get('nombre') or 'Nuestro equipo'} te contactará hoy para coordinar telas, colores e instalación.</p><p style='color:#7A8F98;font-size:12px'>TerraBlinds · {TB_WEB}</p></div>"}, timeout=10.0)
         except Exception: pass
     try:
         from app.routers.ventas_working import intentar_ot

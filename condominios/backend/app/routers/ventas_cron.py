@@ -18,7 +18,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.routers.ventas_terreno import _row, _rows, _telemetria, _temperatura, MAIL_API_URL, MAIL_API_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE, VENTAS_URL, MARCA, LOGO_CAI_URL
+from app.routers.ventas_terreno import _row, _rows, _telemetria, _temperatura, MAIL_API_URL, MAIL_API_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE, VENTAS_URL, MARCA, LOGO_CAI_URL, VENTAS_MAIL, VENTAS_FROM
 from app.routers import ventas_demo as demo
 
 router = APIRouter(prefix="/api/ventas-terreno/cron", tags=["Ventas cron"])
@@ -27,7 +27,7 @@ CRON_SECRET = os.getenv("CRON_SECRET", "")
 
 def _mail(to, subject, html):
     try:
-        r = httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": to, "from": "ventas@conectaai.cl", "subject": subject, "html": html}, timeout=15.0)
+        r = httpx.post(MAIL_API_URL, headers={"Authorization": "Bearer " + MAIL_API_KEY, "Content-Type": "application/json"}, json={"to": to, "from": VENTAS_FROM, "reply_to": VENTAS_MAIL, "subject": subject, "html": html}, timeout=15.0)
         return r.status_code < 300
     except Exception:
         return False

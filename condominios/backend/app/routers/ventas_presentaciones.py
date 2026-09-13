@@ -22,7 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.routers.ventas_terreno import get_vendedor, _row, _rows, MAIL_API_URL, MAIL_API_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE, VENTAS_URL
+from app.routers.ventas_terreno import get_vendedor, _row, _rows, MAIL_API_URL, MAIL_API_KEY, EVOLUTION_API_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE, VENTAS_URL, VENTAS_MAIL, VENTAS_FROM
 
 router = APIRouter(prefix="/api/ventas-terreno", tags=["Ventas presentaciones"])
 
@@ -120,7 +120,7 @@ def _enviar(db, p: dict, v: dict, wa: bool, email: bool) -> dict:
                 f"<div style='border:1px solid #DDE4E6;border-top:none;padding:24px;border-radius:0 0 14px 14px'><p style='color:#35505C'>Como conversamos, te dejo la presentación de las herramientas que pueden servirle a {p.get('empresa') or 'tu negocio'}:</p><table style='width:100%;border-collapse:collapse'>{cards}</table>"
                 f"<p style='margin:22px 0'><a href='{url}' style='background:#0F766E;color:#fff;padding:14px 22px;border-radius:10px;text-decoration:none;font-weight:700'>Ver presentación completa</a></p>"
                 f"<p style='font-size:14px;color:#35505C'>{v['nombre']} · ConectaAI<br>{v.get('telefono') or ''} · {v['email']}</p></div></div>")
-        payload = {"to": p["email"], "from": "ventas@conectaai.cl", "reply_to": v["email"], "subject": f"Presentación ConectaAI para {p.get('empresa') or p['nombre']}", "html": html}
+        payload = {"to": p["email"], "from": VENTAS_FROM, "reply_to": VENTAS_MAIL, "subject": f"Presentación ConectaAI para {p.get('empresa') or p['nombre']}", "html": html}
         try:
             pdf = _pdf(p, v)
             payload["attachments"] = [{"filename": "Presentacion-ConectaAI.pdf", "content": base64.b64encode(pdf).decode(), "contentType": "application/pdf"}]
