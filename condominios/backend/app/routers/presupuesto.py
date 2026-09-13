@@ -63,6 +63,13 @@ def _init(db: Session):
     db.commit()
 
 
+def _condo_del_tenant(db: Session, condominio_id: int, tenant_id: int) -> int:
+    row = db.execute(text("SELECT id FROM condominios WHERE id=:cid AND tenant_id=:tid"), {"cid": condominio_id, "tid": tenant_id}).fetchone()
+    if not row:
+        raise HTTPException(404, "Condominio no encontrado en este tenant")
+    return row[0]
+
+
 def _ensure_categorias(condominio_id: int, tenant_id: int, db: Session):
     """Crea categorias por defecto si el condominio no tiene ninguna."""
     count = db.execute(text(
@@ -102,6 +109,7 @@ class CategoriaUpdate(BaseModel):
 @router.get("/categorias")
 def get_categorias(condominio_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    _condo_del_tenant(db, condominio_id, tenant_id)
     """Listar categorias del condominio (crea las default si no existen)"""
     _init(db)
     _ensure_categorias(condominio_id, tenant_id, db)
@@ -117,6 +125,7 @@ def get_categorias(condominio_id: int, db: Session = Depends(get_db), current_us
 @router.post("/categorias")
 def crear_categoria(condominio_id: int, body: CategoriaCreate = ..., db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    _condo_del_tenant(db, condominio_id, tenant_id)
     _init(db)
     row = db.execute(text("""
         INSERT INTO presupuesto_categorias (tenant_id, condominio_id, nombre, icono, color)
@@ -144,6 +153,7 @@ def actualizar_categoria(cat_id: int, body: CategoriaUpdate, db: Session = Depen
 @router.get("/anual")
 def get_presupuesto_anual(condominio_id: int, anio: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    _condo_del_tenant(db, condominio_id, tenant_id)
     """
     Devuelve la tabla completa: categorias × 12 meses con proyectado, real y varianza.
     También calcula el real desde gastos_comunes cuando monto_real=0.
@@ -166,15 +176,15 @@ def get_presupuesto_anual(condominio_id: int, anio: int, db: Session = Depends(g
     data_map = {(r.categoria_id, r.mes): r for r in rows}
 
     # Get real gastos from gastos_comunes (estado=pagado/parcial) per month
+    # Real = lo efectivamente emitido en gastos comunes cada mes (periodos emitidos/cerrados del tenant)
     gc_real = db.execute(text("""
-        SELECT mes, SUM(monto_total) as total
-        FROM gastos_comunes
-        WHERE departamento_id IN (
-            SELECT id FROM departamentos WHERE condominio_id=:cid
-        ) AND anio=:anio AND estado IN ('pagado','parcial')
-        GROUP BY mes
-    """), {"cid": condominio_id, "anio": anio}).fetchall()
-    gc_map = {r.mes: float(r.total or 0) for r in gc_real}
+        SELECT CAST(split_part(periodo, '-', 2) AS INTEGER) AS mes, SUM(COALESCE(total_monto,0)) AS total
+        FROM gastos_periodos
+        WHERE tenant_id=:tid AND periodo LIKE :anio_like AND estado IN ('emitido','cerrado')
+          AND (condominio_id IS NULL OR condominio_id=:cid)
+        GROUP BY 1
+    """), {"tid": tenant_id, "anio_like": f"{int(anio):04d}-%", "cid": condominio_id}).fetchall()
+    gc_map = {int(r[0]): float(r[1] or 0) for r in gc_real}
 
     result = []
     for cat in cats:
@@ -230,6 +240,7 @@ def get_presupuesto_anual(condominio_id: int, anio: int, db: Session = Depends(g
 @router.put("/anual")
 def upsert_presupuesto(condominio_id: int, anio: int, body: PresupuestoUpsert = ..., db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    _condo_del_tenant(db, condominio_id, tenant_id)
     """Crear o actualizar un valor proyectado o real para categoría+mes"""
     _init(db)
     sets = ["updated_at=NOW()"]
@@ -256,6 +267,7 @@ def upsert_presupuesto(condominio_id: int, anio: int, body: PresupuestoUpsert = 
 @router.get("/resumen")
 def resumen_presupuesto(condominio_id: int, anio: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
+    _condo_del_tenant(db, condominio_id, tenant_id)
     """Resumen ejecutivo: estado del presupuesto anual."""
     _init(db)
     data = get_presupuesto_anual(condominio_id, anio, db, current_user)

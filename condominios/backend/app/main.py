@@ -120,6 +120,9 @@ app.include_router(comunicaciones.router)
 app.include_router(gym_membresias.router)
 app.include_router(paquetes.router)
 app.include_router(ordenes.router)
+
+from app.routers import mantenciones as mantenciones_router
+app.include_router(mantenciones_router.router)
 app.include_router(documentos.router)
 app.include_router(avisos_lectura.router)
 app.include_router(recordatorios.router)

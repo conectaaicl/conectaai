@@ -13,7 +13,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 
 _SECRET = os.getenv("SECRET_KEY", "")
-_EXEMPT_PREFIXES = ("/api/portal", "/api/superadmin", "/api/auth", "/api/scanner", "/api/health", "/docs", "/redoc", "/openapi.json")
+_EXEMPT_PREFIXES = ("/api/portal", "/api/superadmin", "/api/auth", "/api/scanner", "/api/mantenciones/publico", "/api/health", "/docs", "/redoc", "/openapi.json")
 
 
 def _session_tenant(request: Request):

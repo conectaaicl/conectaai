@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from '@/hooks/useSession'
+import NuevoPeriodoWizard from './NuevoPeriodoWizard'
 
 const API = '/api/gastos-comunes'
 
@@ -587,37 +588,15 @@ export default function GastosComunesPage() {
 
       {/* Nuevo Periodo */}
       {showNuevo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-bold text-slate-800 mb-4">Nuevo Periodo</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Periodo (YYYY-MM)</label>
-                <input type="text" value={nuevoPeriodo.periodo}
-                  onChange={e => setNuevoPeriodo(prev => ({ ...prev, periodo: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-                  placeholder="2026-05" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Notas (opcional)</label>
-                <textarea value={nuevoPeriodo.notas}
-                  onChange={e => setNuevoPeriodo(prev => ({ ...prev, notas: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm h-20 resize-none"
-                  placeholder="Observaciones para este periodo..." />
-              </div>
-            </div>
-            <div className="flex gap-3 mt-6">
-              <button onClick={() => setShowNuevo(false)}
-                className="flex-1 border border-slate-200 text-slate-700 py-2 rounded-xl text-sm hover:bg-slate-50">
-                Cancelar
-              </button>
-              <button onClick={crearPeriodo}
-                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-xl text-sm font-medium">
-                Crear Periodo
-              </button>
-            </div>
-          </div>
-        </div>
+        <NuevoPeriodoWizard
+          onClose={() => setShowNuevo(false)}
+          onCreated={r => {
+            setShowNuevo(false)
+            showToast(`Periodo creado: ${r.cobros_created} cobros repartidos en ${r.departamentos} unidades (total ${formatCLP(r.total_monto)}). Revisa y luego pulsa Emitir para avisar a los vecinos.`)
+            loadPeriodos()
+            setPanelPeriodoId(r.periodo_id)
+          }}
+        />
       )}
 
       {/* Agregar Item */}

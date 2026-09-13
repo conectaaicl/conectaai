@@ -118,30 +118,44 @@ def create_espacio(body: EspacioCreate, current_user: dict = Depends(get_current
 
 @router.get("")
 def list_reservas(
-    espacio_id: int = Query(...),
+    espacio_id: Optional[int] = Query(None),
     fecha: Optional[str] = Query(None, description="YYYY-MM-DD"),
+    estado: Optional[str] = Query(None),
+    limit: int = Query(200),
     current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List reservations for a space, optionally filtered by day."""
+    """Reservas del condominio; opcionalmente por espacio, dia o estado (sin espacio_id lista todas)."""
     tenant_id = current_user["tenant_id"]
     sql = ("SELECT r.id,r.espacio_id,r.departamento_id,r.persona_id,"
            "r.fecha_inicio::text,r.fecha_fin::text,r.estado,"
            "r.monto_cobrado::float,r.notas,r.created_at::text,"
-           "ec.nombre as espacio_nombre,"
-           "p.nombre_completo as persona_nombre,p.rut as persona_rut,p.telefono as persona_telefono "
+           "ec.nombre as espacio_nombre, d.numero as depto_numero,"
+           "COALESCE(p.nombre_completo, rp.nombre_completo) as persona_nombre,"
+           "COALESCE(p.rut, rp.rut) as persona_rut, COALESCE(p.telefono, rp.telefono) as persona_telefono "
            "FROM reservas r "
            "JOIN espacios_comunes ec ON ec.id=r.espacio_id "
            "JOIN condominios cnd ON cnd.id=ec.condominio_id "
+           "LEFT JOIN departamentos d ON d.id=r.departamento_id "
            "LEFT JOIN personas p ON p.id=r.persona_id "
-           "WHERE r.espacio_id=:eid AND cnd.tenant_id=:tid")
-    params = {"eid": espacio_id, "tid": tenant_id}
+           "LEFT JOIN residentes_portal rp ON rp.departamento_id=r.departamento_id AND rp.tenant_id=cnd.tenant_id AND r.persona_id IS NULL "
+           "WHERE cnd.tenant_id=:tid")
+    params: dict = {"tid": tenant_id}
+    if espacio_id:
+        sql += " AND r.espacio_id=:eid"; params["eid"] = espacio_id
     if fecha:
-        sql += " AND DATE(r.fecha_inicio)=:fecha"
-        params["fecha"] = fecha
-    sql += " ORDER BY r.fecha_inicio DESC"
+        sql += " AND DATE(r.fecha_inicio)=:fecha"; params["fecha"] = fecha
+    if estado:
+        sql += " AND r.estado=:estado"; params["estado"] = estado
+    sql += " ORDER BY (r.estado='pendiente') DESC, r.fecha_inicio DESC LIMIT :lim"; params["lim"] = limit
     rows = db.execute(text(sql), params).fetchall()
-    return [dict(r._mapping) for r in rows]
+    out = []
+    for r in rows:
+        d = dict(r._mapping)
+        # alias que usa la app de conserjeria
+        d["residente_nombre"] = d.get("persona_nombre"); d["departamento"] = d.get("depto_numero"); d["observaciones"] = d.get("notas")
+        out.append(d)
+    return out
 
 
 @router.post("", status_code=201)

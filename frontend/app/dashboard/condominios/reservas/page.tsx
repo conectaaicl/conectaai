@@ -139,15 +139,24 @@ export default function ReservasPage() {
     if (r.ok && selectedEspacio) { fetchReservas(selectedEspacio); setMsg({ type: 'ok', text: 'Estado actualizado' }) }
   }
 
+  const [pendientesTodos, setPendientesTodos] = useState<Reserva[]>([])
+  const cargarPendientes = useCallback(async () => {
+    try {
+      const r = await fetch('/api/reservas?estado=pendiente&limit=100', { credentials: 'include' })
+      if (r.ok) { const d = await r.json(); setPendientesTodos(Array.isArray(d) ? d : []) }
+    } catch { /* silencioso */ }
+  }, [])
+  useEffect(() => { cargarPendientes(); const iv = setInterval(cargarPendientes, 20000); return () => clearInterval(iv) }, [cargarPendientes])
+
   async function handleAprobar(id: number) {
     const r = await fetch('/api/reservas/' + id + '/aprobar?tenant_id=' + tenantId, { method: 'PATCH' })
-    if (r.ok) { setMsg({ type: 'ok', text: 'Reserva aprobada' }); if (selectedEspacio) fetchReservas(selectedEspacio) }
+    if (r.ok) { setMsg({ type: 'ok', text: 'Reserva aprobada' }); cargarPendientes(); if (selectedEspacio) fetchReservas(selectedEspacio) }
     else { const d = await r.json(); setMsg({ type: 'err', text: d.detail || 'Error' }) }
   }
   async function handleRechazar(id: number) {
     const motivo = prompt('Motivo del rechazo (opcional):') ?? ''
     const r = await fetch('/api/reservas/' + id + '/rechazar?tenant_id=' + tenantId + '&motivo=' + encodeURIComponent(motivo), { method: 'PATCH' })
-    if (r.ok) { setMsg({ type: 'ok', text: 'Reserva rechazada' }); if (selectedEspacio) fetchReservas(selectedEspacio) }
+    if (r.ok) { setMsg({ type: 'ok', text: 'Reserva rechazada' }); cargarPendientes(); if (selectedEspacio) fetchReservas(selectedEspacio) }
     else { const d = await r.json(); setMsg({ type: 'err', text: d.detail || 'Error' }) }
   }
   async function handleEliminarReserva(id: number) {
@@ -181,6 +190,29 @@ export default function ReservasPage() {
     <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* Solicitudes de reserva pendientes (de residentes o conserjeria) */}
+      <div className={`rounded-xl border p-4 mb-6 ${pendientesTodos.length ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-100'}`}>
+        <h2 className="font-semibold text-gray-900 mb-1">
+          Solicitudes por aprobar {pendientesTodos.length > 0 && <span className="ml-2 inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-amber-500 text-white text-xs font-bold">{pendientesTodos.length}</span>}
+        </h2>
+        <p className="text-xs text-gray-500 mb-3">Los vecinos solicitan desde su app; aqui las apruebas o rechazas. Conserjeria las ve al instante.</p>
+        {pendientesTodos.length === 0 ? <p className="text-sm text-gray-500">No hay solicitudes pendientes.</p> : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {pendientesTodos.map(r => (
+              <div key={r.id} className="bg-white border border-amber-200 rounded-lg p-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{r.espacio_nombre} <span className="text-gray-400 font-normal text-xs">#{r.id}</span></p>
+                  <p className="text-xs text-gray-600">{(r as any).depto_numero ? `Depto ${(r as any).depto_numero} · ` : ''}{r.persona_nombre || 'Residente'} · {r.fecha_inicio?.slice(0, 16).replace('T', ' ')} → {r.fecha_fin?.slice(11, 16)}</p>
+                  {r.notas && <p className="text-[11px] text-gray-400 truncate">{r.notas}</p>}
+                </div>
+                <button onClick={() => handleRechazar(r.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-200 text-red-700 hover:bg-red-50">Rechazar</button>
+                <button onClick={() => handleAprobar(r.id)} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Aprobar</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
         <div>
           <h1 className="text-2xl font-bold text-slate-800">{esGym ? 'Reservas y Clases' : 'Reservas'}</h1>
           <p className="text-sm text-slate-500">{esGym ? 'Salas, equipos y clases del gimnasio' : 'Espacios comunes y reservas de residentes'}</p>

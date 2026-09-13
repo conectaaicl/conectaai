@@ -121,7 +121,7 @@ def _condominio_id_de(r: ResidentePortal, db: Session) -> Optional[int]:
     return row[0] if row else None
 
 
-def _depto_numero(db: Session, r: ResidentePortal):
+def _numero_depto_de(db: Session, r: ResidentePortal):
     if not r.departamento_id:
         return None
     row = db.execute(text("SELECT numero FROM departamentos WHERE id=:d AND tenant_id=:t"), {"d": r.departamento_id, "t": r.tenant_id}).fetchone()
@@ -131,7 +131,7 @@ def _depto_numero(db: Session, r: ResidentePortal):
 @router.get("/mis-visitas")
 def mis_visitas_edificio(r: ResidentePortal = Depends(get_residente), db: Session = Depends(get_db)):
     """Visitas registradas por conserjeria hacia el departamento del residente, con su estado de aprobacion."""
-    num = _depto_numero(db, r)
+    num = _numero_depto_de(db, r)
     if not num:
         return []
     rows = db.execute(text("""
@@ -147,7 +147,7 @@ def mis_visitas_edificio(r: ResidentePortal = Depends(get_residente), db: Sessio
 @router.get("/mis-paquetes")
 def mis_paquetes(r: ResidentePortal = Depends(get_residente), db: Session = Depends(get_db)):
     """Encomiendas recibidas en conserjeria para el departamento del residente."""
-    num = _depto_numero(db, r)
+    num = _numero_depto_de(db, r)
     if not num:
         return []
     try:
@@ -278,9 +278,10 @@ def portal_crear_reserva(
     if not r.departamento_id:
         raise HTTPException(400, "Tu cuenta no tiene un departamento asignado")
 
+    cid = _condominio_id_de(r, db)
     espacio = db.execute(text(
-        "SELECT id FROM espacios_comunes WHERE id=:eid AND activo='si'"
-    ), {"eid": body.espacio_id}).fetchone()
+        "SELECT id FROM espacios_comunes WHERE id=:eid AND activo='si' AND condominio_id=:cid"
+    ), {"eid": body.espacio_id, "cid": cid}).fetchone()
     if not espacio:
         raise HTTPException(404, "Espacio no encontrado")
 

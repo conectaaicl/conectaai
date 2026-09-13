@@ -34,6 +34,81 @@ def _persona_de_depto(db, depto_id, tenant_id):
 
 router = APIRouter(prefix="/api/finanzas", tags=["Finanzas"])
 
+
+# Finanzas se alimenta de los COBROS reales que genera "Gastos Comunes" (gastos_periodos/gastos_cobros).
+# La tabla legacy GastoComun ya no se usa aqui: tenia datos sin tenant y un modelo distinto.
+from types import SimpleNamespace as _NS
+from datetime import date as _date
+
+
+def _cobro_a_gasto(row) -> "_NS":
+    d = dict(row._mapping)
+    per = (d.get("periodo") or "0000-00").split("-")
+    fv = d.get("fecha_vencimiento")
+    estado = d.get("estado") or "pendiente"
+    if estado == "pendiente" and fv and fv < _date.today():
+        estado = "atrasado"
+    return _NS(
+        id=d["id"], departamento_id=d.get("departamento_id"), mes=int(per[1]) if len(per) > 1 and per[1].isdigit() else 0,
+        anio=int(per[0]) if per[0].isdigit() else 0, monto_base=float(d.get("monto") or 0), multas=0.0, intereses=0.0,
+        otros_cargos=0.0, descuentos=0.0, monto_total=float(d.get("monto") or 0), estado=estado,
+        fecha_vencimiento=fv, fecha_pago=d.get("fecha_pago"), metodo_pago=d.get("metodo_pago"),
+        comprobante_url=d.get("comprobante_url"), categoria=d.get("concepto"), descripcion=f"Gastos comunes {d.get('periodo')}",
+        detalle=[{"concepto": d.get("concepto"), "categoria": d.get("concepto"), "monto": float(d.get("monto") or 0)}],
+        observaciones=d.get("notas"), created_at=d.get("created_at"), periodo=d.get("periodo"),
+        depto_numero=d.get("depto_numero"), persona_nombre=d.get("nombre_residente"), periodo_estado=d.get("periodo_estado"),
+    )
+
+
+_COBRO_SQL = ("SELECT c.*, p.periodo, p.estado AS periodo_estado FROM gastos_cobros c "
+              "JOIN gastos_periodos p ON p.id = c.periodo_id WHERE c.tenant_id = :tid")
+
+
+def _gasto_por_id(db, gasto_id: int, tenant_id: int):
+    from sqlalchemy import text as _t
+    row = db.execute(_t(_COBRO_SQL + " AND c.id = :id"), {"tid": tenant_id, "id": gasto_id}).fetchone()
+    return _cobro_a_gasto(row) if row else None
+
+
+def _gastos_filtrados(db, tenant_id: int, mes=None, anio=None, estado=None, departamento_id=None, limit=500, skip=0):
+    from sqlalchemy import text as _t
+    sql, params = _COBRO_SQL, {"tid": tenant_id}
+    if mes and anio:
+        sql += " AND p.periodo = :per"; params["per"] = f"{int(anio):04d}-{int(mes):02d}"
+    elif anio:
+        sql += " AND p.periodo LIKE :per"; params["per"] = f"{int(anio):04d}-%"
+    if departamento_id:
+        sql += " AND c.departamento_id = :did"; params["did"] = departamento_id
+    if estado == "atrasado":
+        sql += " AND c.estado = 'pendiente' AND c.fecha_vencimiento < CURRENT_DATE"
+    elif estado == "pendiente":
+        sql += " AND c.estado = 'pendiente' AND (c.fecha_vencimiento IS NULL OR c.fecha_vencimiento >= CURRENT_DATE)"
+    elif estado:
+        sql += " AND c.estado = :est"; params["est"] = estado
+    sql += " ORDER BY p.periodo DESC, length(c.depto_numero), c.depto_numero, c.id LIMIT :lim OFFSET :off"
+    params["lim"] = limit; params["off"] = skip
+    return [_cobro_a_gasto(r) for r in db.execute(_t(sql), params).fetchall()]
+
+
+def _gasto_dict(g) -> dict:
+    d = dict(vars(g))
+    for k, v in d.items():
+        if hasattr(v, "isoformat"):
+            d[k] = v.isoformat()
+    return d
+
+
+def _periodo_para(db, tenant_id: int, mes: int, anio: int, fecha_venc=None) -> int:
+    """Busca (o crea en borrador) el periodo YYYY-MM para cargos manuales."""
+    from sqlalchemy import text as _t
+    per = f"{int(anio):04d}-{int(mes):02d}"
+    row = db.execute(_t("SELECT id FROM gastos_periodos WHERE tenant_id=:tid AND periodo=:p"), {"tid": tenant_id, "p": per}).fetchone()
+    if row:
+        return row[0]
+    return db.execute(_t("INSERT INTO gastos_periodos (tenant_id, periodo, estado, notas, fecha_vencimiento) VALUES (:tid, :p, 'borrador', 'Creado desde Finanzas', :fv) RETURNING id"),
+                      {"tid": tenant_id, "p": per, "fv": fecha_venc}).scalar()
+
+
 CATEGORIAS_PREDEFINIDAS = [
     {"id": "suministros", "label": "Suministros", "items": [
         "Gas", "Electricidad", "Agua / Alcantarillado", "Internet / Telefonía"
@@ -87,52 +162,14 @@ def resumen_por_departamento(
     dept_ids = {d.id: d for d in depts}
     total_depts = len(depts)
 
-    # Get gastos for period
-    query = db.query(GastoComun)
-    if mes:
-        query = query.filter(GastoComun.mes == mes)
-    if anio:
-        query = query.filter(GastoComun.anio == anio)
-    gastos = query.all()
-
-    # Filter gastos that belong to this tenant's departments
-    tenant_gastos = [
-        g for g in gastos
-        if g.departamento_id is None or g.departamento_id in dept_ids
-    ]
-
-    # Build dept breakdown
+    # Cobros del periodo (sistema de periodos), agrupados por departamento
     dept_items: dict = {d.id: [] for d in depts}
     dept_gastos_estados: dict = {d.id: set() for d in depts}
-
-    for gasto in tenant_gastos:
-        desglose = gasto.detalle or []
-        if not desglose:
-            desglose = [{"concepto": gasto.descripcion or "Gasto común", "categoria": gasto.categoria, "monto": gasto.monto_total}]
-
-        if gasto.departamento_id is not None:
-            if gasto.departamento_id in dept_items:
-                for item in desglose:
-                    dept_items[gasto.departamento_id].append({
-                        "concepto": item.get("concepto", ""),
-                        "categoria": item.get("categoria") or gasto.categoria,
-                        "monto": float(item.get("monto", 0)),
-                        "gasto_id": gasto.id,
-                        "estado": gasto.estado
-                    })
-                dept_gastos_estados[gasto.departamento_id].add(gasto.estado)
-        else:
-            if total_depts > 0:
-                for dept_id in dept_items:
-                    for item in desglose:
-                        dept_items[dept_id].append({
-                            "concepto": item.get("concepto", ""),
-                            "categoria": item.get("categoria") or gasto.categoria,
-                            "monto": round(float(item.get("monto", 0)) / total_depts, 0),
-                            "gasto_id": gasto.id,
-                            "estado": gasto.estado
-                        })
-                    dept_gastos_estados[dept_id].add(gasto.estado)
+    for g in _gastos_filtrados(db, tenant_id, mes, anio, None, None, 5000, 0):
+        if g.departamento_id in dept_items:
+            dept_items[g.departamento_id].append({"concepto": g.categoria or "", "categoria": g.categoria, "monto": g.monto_total,
+                                                  "gasto_id": g.id, "estado": g.estado})
+            dept_gastos_estados[g.departamento_id].add(g.estado)
 
     # Build response
     departamentos_result = []
@@ -182,111 +219,80 @@ def resumen_por_departamento(
     }
 
 
-@router.post("/gastos-comunes", response_model=GastoComunResponse)
+@router.post("/gastos-comunes")
 def crear_gasto_comun(gasto: GastoComunCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """Crear nuevo gasto común"""
-    gasto_data = gasto.model_dump()
-    if "detalle" in gasto_data:
-        gasto_data["detalle"] = [d if isinstance(d, dict) else d for d in gasto_data["detalle"]]
-    db_gasto = GastoComun(**gasto_data)
-    db.add(db_gasto)
+    """Cargo individual (multa, cobro extra, reserva...) a un departamento: se guarda como cobro del periodo del mes."""
+    from sqlalchemy import text as _t
+    tenant_id = current_user["tenant_id"]
+    gd = gasto.model_dump()
+    did = gd.get("departamento_id")
+    if not did:
+        raise HTTPException(400, "Elige el departamento al que se le cobra. Para cobrar a todos usa Gastos Comunes > Nuevo periodo.")
+    dep = db.execute(_t("SELECT d.id, d.numero, COALESCE(r.nombre_completo, pr.nombre_completo) AS nombre, COALESCE(d.residente_id, d.propietario_id) AS pid "
+                        "FROM departamentos d LEFT JOIN personas r ON r.id=d.residente_id LEFT JOIN personas pr ON pr.id=d.propietario_id "
+                        "WHERE d.id=:did AND d.tenant_id=:tid"), {"did": did, "tid": tenant_id}).fetchone()
+    if not dep:
+        raise HTTPException(404, "Departamento no encontrado en este condominio")
+    fv = gd.get("fecha_vencimiento")
+    pid = _periodo_para(db, tenant_id, gd.get("mes"), gd.get("anio"), fv)
+    concepto = (gd.get("categoria") or gd.get("descripcion") or "Cargo").strip()[:200]
+    monto = float(gd.get("monto_total") or gd.get("monto_base") or 0)
+    if monto <= 0:
+        raise HTTPException(400, "El monto debe ser mayor a 0")
+    cid = db.execute(_t("""
+        INSERT INTO gastos_cobros (tenant_id, periodo_id, departamento_id, persona_id, depto_numero, nombre_residente,
+                                   concepto, monto, estado, fecha_vencimiento, notas)
+        VALUES (:tid, :pid, :did, :pers, :num, :nom, :c, :m, 'pendiente', :fv, :n) RETURNING id
+    """), {"tid": tenant_id, "pid": pid, "did": did, "pers": dep._mapping["pid"], "num": dep._mapping["numero"],
+           "nom": dep._mapping["nombre"] or "Sin asignar", "c": concepto, "m": monto, "fv": fv, "n": gd.get("descripcion") or gd.get("observaciones")}).scalar()
+    db.execute(_t("UPDATE gastos_periodos SET total_monto = COALESCE(total_monto,0) + :m, total_cobros = COALESCE(total_cobros,0) + 1 WHERE id=:pid"), {"m": monto, "pid": pid})
     db.commit()
-    db.refresh(db_gasto)
-    try:
-        from app.services.email import send_gasto_notificacion
-        import asyncio
-        if db_gasto.departamento_id:
-            depto = db.query(Departamento).filter(Departamento.id == db_gasto.departamento_id).first()
-            if depto and depto.propietario_id:
-                persona = db.query(Persona).filter(Persona.id == depto.propietario_id).first()
-                if persona and persona.email:
-                    try:
-                        import asyncio as _asyncio
-                        _loop = _asyncio.get_event_loop()
-                        if _loop and _loop.is_running():
-                            _loop.create_task(send_gasto_notificacion(
-                                persona.email, persona.nombre_completo,
-                                db_gasto.mes, db_gasto.anio, float(db_gasto.monto_total),
-                                db_gasto.fecha_vencimiento.strftime("%d/%m/%Y") if db_gasto.fecha_vencimiento else "N/A"
-                            ))
-                    except Exception:
-                        pass
-    except Exception:
-        pass
-    return db_gasto
+    return _gasto_dict(_gasto_por_id(db, cid, tenant_id))
+
 
 @router.get("/gastos-comunes")
 def listar_gastos_comunes(
-    mes: Optional[int] = None,
-    anio: Optional[int] = None,
-    estado: Optional[str] = None,
-    departamento_id: Optional[int] = None,
-    skip: int = 0,
-    limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
+    mes: Optional[int] = None, anio: Optional[int] = None, estado: Optional[str] = None,
+    departamento_id: Optional[int] = None, skip: int = 0, limit: int = 300,
+    db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)
 ):
+    """Cobros del condominio (generados por periodos o cargos manuales), con residente y depto."""
     tenant_id = current_user["tenant_id"]
-    """Listar gastos comunes enriquecido con info residente"""
-    from sqlalchemy import text as _t
-    query = db.query(GastoComun)
-    valid = db.execute(_t(
-        "SELECT d.id FROM departamentos d JOIN pisos p ON p.id=d.piso_id "
-        "JOIN torres t ON t.id=p.torre_id JOIN condominios c ON c.id=t.condominio_id "
-        "WHERE c.tenant_id=:tid"
-    ), {"tid": tenant_id}).fetchall()
-    valid_ids = [r._mapping["id"] for r in valid]
-    query = query.filter(
-        (GastoComun.departamento_id == None) | GastoComun.departamento_id.in_(valid_ids)
-    )
-    if mes:
-        query = query.filter(GastoComun.mes == mes)
-    if anio:
-        query = query.filter(GastoComun.anio == anio)
-    if estado:
-        query = query.filter(GastoComun.estado == estado)
-    if departamento_id:
-        query = query.filter(GastoComun.departamento_id == departamento_id)
-    gastos = query.order_by(GastoComun.created_at.desc()).offset(skip).limit(limit).all()
-    result = []
-    for g in gastos:
-        d = {c.name: getattr(g, c.name) for c in g.__table__.columns}
-        for k, v in d.items():
-            if hasattr(v, "isoformat"): d[k] = v.isoformat()
-            elif hasattr(v, "__float__"):
-                try: d[k] = float(v)
-                except: pass
+    out = []
+    for g in _gastos_filtrados(db, tenant_id, mes, anio, estado, departamento_id, limit, skip):
+        d = _gasto_dict(g)
         persona, dnum, _ = _persona_de_depto(db, g.departamento_id, tenant_id)
-        d["depto_numero"] = dnum
-        d["persona_nombre"] = persona["nombre_completo"] if persona else None
-        d["persona_email"] = persona["email"] if persona else None
-        result.append(d)
-    return result
+        d["depto_numero"] = d.get("depto_numero") or dnum
+        d["persona_nombre"] = (persona or {}).get("nombre_completo") or d.get("persona_nombre")
+        d["persona_email"] = (persona or {}).get("email")
+        out.append(d)
+    return out
 
-@router.get("/gastos-comunes/{gasto_id}", response_model=GastoComunResponse)
+
+@router.get("/gastos-comunes/{gasto_id}")
 def obtener_gasto_comun(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """Obtener gasto común por ID"""
-    gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
+    gasto = _gasto_por_id(db, gasto_id, current_user["tenant_id"])
     if not gasto:
         raise HTTPException(status_code=404, detail="Gasto común no encontrado")
-    return gasto
+    return _gasto_dict(gasto)
 
-@router.put("/gastos-comunes/{gasto_id}", response_model=GastoComunResponse)
-def actualizar_gasto_comun(
-    gasto_id: int,
-    gasto_update: GastoComunUpdate,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_user)
-):
-    """Actualizar gasto común"""
-    gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
-    if not gasto:
+@router.put("/gastos-comunes/{gasto_id}")
+def actualizar_gasto_comun(gasto_id: int, gasto_update: GastoComunUpdate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    from sqlalchemy import text as _t
+    tenant_id = current_user["tenant_id"]
+    if not _gasto_por_id(db, gasto_id, tenant_id):
         raise HTTPException(status_code=404, detail="Gasto común no encontrado")
-    for field, value in gasto_update.model_dump(exclude_unset=True).items():
-        setattr(gasto, field, value)
-    db.commit()
-    db.refresh(gasto)
-    return gasto
+    u = gasto_update.model_dump(exclude_unset=True)
+    sets, params = [], {"id": gasto_id, "tid": tenant_id}
+    monto = u.get("monto_total", u.get("monto_base"))
+    if monto is not None: sets.append("monto=:m"); params["m"] = float(monto)
+    if u.get("estado"): sets.append("estado=:e"); params["e"] = u["estado"]
+    if u.get("fecha_vencimiento"): sets.append("fecha_vencimiento=:fv"); params["fv"] = u["fecha_vencimiento"]
+    if u.get("categoria"): sets.append("concepto=:c"); params["c"] = u["categoria"][:200]
+    if u.get("observaciones") or u.get("descripcion"): sets.append("notas=:n"); params["n"] = u.get("observaciones") or u.get("descripcion")
+    if sets:
+        db.execute(_t(f"UPDATE gastos_cobros SET {', '.join(sets)} WHERE id=:id AND tenant_id=:tid"), params); db.commit()
+    return _gasto_dict(_gasto_por_id(db, gasto_id, tenant_id))
 
 @router.post("/gastos-comunes/{gasto_id}/pagar")
 def registrar_pago(
@@ -296,53 +302,47 @@ def registrar_pago(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
 ):
-    """Registrar pago de gasto común"""
-    gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
-    if not gasto:
+    """Registrar pago de un cobro"""
+    from sqlalchemy import text as _t
+    tenant_id = current_user["tenant_id"]
+    if not _gasto_por_id(db, gasto_id, tenant_id):
         raise HTTPException(status_code=404, detail="Gasto común no encontrado")
-    gasto.estado = "pagado"
-    gasto.fecha_pago = datetime.now()
-    gasto.metodo_pago = metodo_pago
-    if comprobante_url:
-        gasto.comprobante_url = comprobante_url
+    db.execute(_t("UPDATE gastos_cobros SET estado='pagado', fecha_pago=NOW(), metodo_pago=:mp, comprobante_url=COALESCE(:cu, comprobante_url) WHERE id=:id AND tenant_id=:tid"),
+               {"mp": metodo_pago, "cu": comprobante_url, "id": gasto_id, "tid": tenant_id})
     db.commit()
-    db.refresh(gasto)
-    return {"message": "Pago registrado exitosamente", "gasto": gasto.id}
+    return {"message": "Pago registrado exitosamente", "gasto": gasto_id}
 
 @router.delete("/gastos-comunes/{gasto_id}")
 def eliminar_gasto_comun(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """Eliminar gasto común"""
-    gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
-    if not gasto:
+    """Eliminar un cobro (solo de este condominio)"""
+    from sqlalchemy import text as _t
+    tenant_id = current_user["tenant_id"]
+    g = _gasto_por_id(db, gasto_id, tenant_id)
+    if not g:
         raise HTTPException(status_code=404, detail="Gasto común no encontrado")
-    db.delete(gasto)
+    if g.estado == "pagado":
+        raise HTTPException(400, "No se puede eliminar un cobro ya pagado")
+    db.execute(_t("DELETE FROM gastos_cobros WHERE id=:id AND tenant_id=:tid"), {"id": gasto_id, "tid": tenant_id})
     db.commit()
     return {"message": "Gasto común eliminado"}
 
 @router.get("/stats/morosidad")
 def obtener_stats_morosidad(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    tenant_id = current_user["tenant_id"]
-    """Obtener estadísticas de morosidad"""
-    from sqlalchemy import func as sqlfunc
-    total = db.query(GastoComun).count()
-    pagados = db.query(GastoComun).filter(GastoComun.estado == "pagado").count()
-    pendientes = db.query(GastoComun).filter(GastoComun.estado == "pendiente").count()
-    atrasados = db.query(GastoComun).filter(GastoComun.estado == "atrasado").count()
-    monto_pendiente = db.query(sqlfunc.sum(GastoComun.monto_total)).filter(
-        GastoComun.estado.in_(["pendiente", "atrasado"])
-    ).scalar() or 0
-    monto_pagado = db.query(sqlfunc.sum(GastoComun.monto_total)).filter(
-        GastoComun.estado == "pagado"
-    ).scalar() or 0
-    return {
-        "total_gastos": total,
-        "pagados": pagados,
-        "pendientes": pendientes,
-        "atrasados": atrasados,
-        "monto_pendiente": float(monto_pendiente),
-        "monto_pagado": float(monto_pagado),
-        "tasa_pago": round((pagados / total * 100) if total > 0 else 0, 2)
-    }
+    """Morosidad del condominio (solo periodos emitidos o cerrados)."""
+    from sqlalchemy import text as _t
+    r = db.execute(_t("""
+        SELECT COUNT(*) AS total,
+               COUNT(*) FILTER (WHERE c.estado='pagado') AS pagados,
+               COUNT(*) FILTER (WHERE c.estado='pendiente' AND (c.fecha_vencimiento IS NULL OR c.fecha_vencimiento >= CURRENT_DATE)) AS pendientes,
+               COUNT(*) FILTER (WHERE c.estado='pendiente' AND c.fecha_vencimiento < CURRENT_DATE) AS atrasados,
+               COALESCE(SUM(c.monto) FILTER (WHERE c.estado='pendiente'),0)::float AS monto_pendiente,
+               COALESCE(SUM(c.monto) FILTER (WHERE c.estado='pagado'),0)::float AS monto_pagado
+        FROM gastos_cobros c JOIN gastos_periodos p ON p.id=c.periodo_id
+        WHERE c.tenant_id=:tid AND p.estado IN ('emitido','cerrado')
+    """), {"tid": current_user["tenant_id"]}).fetchone()
+    total, pagados = r[0], r[1]
+    return {"total_gastos": total, "pagados": pagados, "pendientes": r[2], "atrasados": r[3],
+            "monto_pendiente": r[4], "monto_pagado": r[5], "tasa_pago": round((pagados / total * 100) if total else 0, 2)}
 
 
 @router.post("/gastos-comunes/enviar-masivo")
@@ -356,10 +356,7 @@ def enviar_gastos_masivo(mes: int, anio: int, db: Session = Depends(get_db), cur
         "WHERE c.tenant_id=:tid"
     ), {"tid": tenant_id}).fetchall()
     valid_ids = [r._mapping["id"] for r in valid]
-    gastos = db.query(GastoComun).filter(
-        GastoComun.mes == mes, GastoComun.anio == anio,
-        GastoComun.departamento_id.in_(valid_ids)
-    ).all()
+    gastos = _gastos_filtrados(db, tenant_id, mes, anio, None, None, 5000, 0)
     enviados, errores = 0, []
     for g in gastos:
         persona, dnum, _ = _persona_de_depto(db, g.departamento_id, tenant_id)
@@ -389,7 +386,7 @@ def enviar_gastos_masivo(mes: int, anio: int, db: Session = Depends(get_db), cur
 def enviar_gasto_individual(gasto_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     tenant_id = current_user["tenant_id"]
     import httpx as _hx
-    gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
+    gasto = _gasto_por_id(db, gasto_id, tenant_id)
     if not gasto:
         raise HTTPException(404, "Gasto no encontrado")
     persona, dnum, _ = _persona_de_depto(db, gasto.departamento_id, tenant_id)
@@ -432,12 +429,7 @@ def exportar_gastos_pdf(
     from io import BytesIO
     from fastapi.responses import StreamingResponse
 
-    query = db.query(GastoComun)
-    if mes:
-        query = query.filter(GastoComun.mes == mes)
-    if anio:
-        query = query.filter(GastoComun.anio == anio)
-    gastos = query.order_by(GastoComun.departamento_id).all()
+    gastos = _gastos_filtrados(db, current_user["tenant_id"], mes, anio, None, None, 5000, 0)
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=A4)
@@ -520,7 +512,7 @@ def generar_pdf_individual(gasto_id: int, db: Session = Depends(get_db), current
     from io import BytesIO
     from fastapi.responses import StreamingResponse
 
-    gasto = db.query(GastoComun).filter(GastoComun.id == gasto_id).first()
+    gasto = _gasto_por_id(db, gasto_id, current_user["tenant_id"])
     if not gasto:
         raise HTTPException(status_code=404, detail="Gasto común no encontrado")
 

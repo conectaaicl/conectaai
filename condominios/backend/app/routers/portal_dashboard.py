@@ -24,17 +24,24 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
         g.fecha_vencimiento.date() if hasattr(g.fecha_vencimiento,'date') else g.fecha_vencimiento
     ) < hoy.date())
     monto = sum(g.monto_total or 0 for g in gastos)
+    periodos_pendientes = 0
     # Include gastos_cobros (new period system)
     from sqlalchemy import text as _txt_cobros
     if r.departamento_id:
+        # Solo periodos EMITIDOS cuentan; "vencido" = periodo cuya fecha de vencimiento ya paso.
+        # Se cuentan periodos (meses), no cobros individuales (un mes tiene varios conceptos).
         _cr = db.execute(_txt_cobros(
-            "SELECT COALESCE(SUM(monto),0)::float as t, COUNT(*)::int as n "
-            "FROM gastos_cobros WHERE departamento_id=:did AND estado NOT IN ('pagado','exento')"
-        ), {"did": r.departamento_id}).fetchone()
-        # indices, no atributos: Row.t es un alias reservado de SQLAlchemy (devuelve la fila completa)
+            "SELECT COALESCE(SUM(c.monto),0)::float, "
+            "COUNT(DISTINCT c.periodo_id) FILTER (WHERE c.fecha_vencimiento < CURRENT_DATE)::int, "
+            "COUNT(DISTINCT c.periodo_id)::int "
+            "FROM gastos_cobros c JOIN gastos_periodos p ON p.id = c.periodo_id "
+            "WHERE c.departamento_id=:did AND c.tenant_id=:tid AND c.estado NOT IN ('pagado','exento') "
+            "AND p.estado IN ('emitido','cerrado')"
+        ), {"did": r.departamento_id, "tid": r.tenant_id}).fetchone()
         if _cr and _cr[0]:
             monto += float(_cr[0])
             vencidos += int(_cr[1] or 0)
+            periodos_pendientes = int(_cr[2] or 0)
     semaforo = "verde" if vencidos==0 else ("amarillo" if vencidos<=2 else "rojo")
     msgs = {
         "verde": "Al día con sus pagos",
@@ -61,7 +68,7 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
     return {
         "semaforo": semaforo, "semaforo_msg": msgs[semaforo],
         "meses_vencidos": vencidos, "monto_pendiente": monto,
-        "gastos_pendientes": len(gastos),
+        "gastos_pendientes": len(gastos) + periodos_pendientes,
         "avisos_no_leidos": max(0, avisos_total - leidos),
         "residente": {
             "nombre": r.nombre_completo, "rut": r.rut, "departamento_id": r.departamento_id,

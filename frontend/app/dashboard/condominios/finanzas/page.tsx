@@ -478,7 +478,7 @@ export default function FinanzasPage() {
                         <td className="px-4 py-3 text-slate-500 max-w-[180px] truncate">{gasto.descripcion || '-'}</td>
                         <td className="px-4 py-3 text-slate-800 font-semibold">{formatCLP(gasto.monto_total)}</td>
                         <td className="px-4 py-3 text-slate-500">
-                          {gasto.departamento_id ? `Depto ${gasto.departamento_id}` : 'Todos'}
+                          {gasto.departamento_id ? `Depto ${gasto.depto_numero || gasto.departamento_id}` : 'Todos'}
                         </td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
                           {gasto.fecha_vencimiento ? new Date(gasto.fecha_vencimiento + 'T12:00:00').toLocaleDateString('es-CL') : '-'}
@@ -891,7 +891,7 @@ export default function FinanzasPage() {
                 <p className="text-xs text-slate-400 mt-0.5">
                   {MESES[gastoSeleccionado.mes - 1]} {gastoSeleccionado.anio}
                   {' — '}
-                  {gastoSeleccionado.departamento_id ? `Depto ${gastoSeleccionado.departamento_id}` : 'Todos los departamentos'}
+                  {gastoSeleccionado.departamento_id ? `Depto ${gastoSeleccionado.depto_numero || gastoSeleccionado.departamento_id}` : 'Todos los departamentos'}
                 </p>
               </div>
               <button onClick={() => setShowDesgloseModal(false)} className="text-slate-400 hover:text-slate-600">
