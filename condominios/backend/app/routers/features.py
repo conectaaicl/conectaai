@@ -25,7 +25,7 @@ TIPO_PRESETS = {
         "push_notificaciones", "ley_copropiedad", "accesos_qr", "biometrico",
         "facial", "alarmas", "proveedores", "ordenes", "remuneraciones",
         "asistencia", "noc", "anomalias", "resumenes_ia", "asistente_ia",
-        "sii_facturacion", "whatsapp_meta", "mantenciones",
+        "sii_facturacion", "whatsapp_meta", "mantenciones", "tag_vehicular", "lector_patentes",
     ],
     "bodega": [
         "visitas", "paqueteria", "puertas", "rfid", "camaras",
@@ -34,12 +34,12 @@ TIPO_PRESETS = {
     "pyme": [
         "visitas", "puertas", "rfid", "reservas", "personal", "asistencia",
         "avisos", "checklist", "reportes", "push_notificaciones", "incidencias",
-        "proveedores", "ordenes", "mantenciones",
+        "proveedores", "ordenes", "mantenciones", "tag_vehicular",
     ],
     "cowork": [
         "visitas", "puertas", "rfid", "reservas", "personal", "asistencia",
         "pagos_online", "avisos", "reportes", "push_notificaciones",
-        "portal_residente", "incidencias", "documentos", "ordenes", "mantenciones",
+        "portal_residente", "incidencias", "documentos", "ordenes", "mantenciones", "tag_vehicular", "lector_patentes",
     ],
     "gimnasio": [
         "gimnasio", "puertas", "rfid", "facial", "reservas",

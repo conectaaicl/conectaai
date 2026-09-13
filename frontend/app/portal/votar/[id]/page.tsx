@@ -17,11 +17,11 @@ interface Resultados {
 
 export default function VotarPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  const H = () => ({ Authorization: 'Bearer ' + (typeof window !== 'undefined' ? (localStorage.getItem('portal_token') || '') : '') })
   const [votacion, setVotacion] = useState<Votacion | null>(null)
   const [resultados, setResultados] = useState<Resultados | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [deptoId, setDeptoId] = useState('')
   const [opcion, setOpcion] = useState('')
   const [voting, setVoting] = useState(false)
   const [voted, setVoted] = useState(false)
@@ -29,8 +29,8 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
 
   useEffect(() => {
     Promise.all([
-      fetch(`/api/condominios/votaciones/${id}`),
-      fetch(`/api/condominios/votaciones/${id}/resultados`),
+      fetch(`/api/portal/votaciones/${id}`, { headers: H() }),
+      fetch(`/api/portal/votaciones/${id}/resultados`, { headers: H() }),
     ]).then(async ([vRes, rRes]) => {
       if (vRes.ok) setVotacion(await vRes.json())
       else setError('Votación no encontrada')
@@ -42,18 +42,17 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
     e.preventDefault()
     setVoteError('')
     if (!opcion) return setVoteError('Selecciona una opción')
-    if (!deptoId) return setVoteError('Ingresa tu departamento')
     setVoting(true)
     try {
-      const res = await fetch(`/api/condominios/votaciones/${id}/votar`, {
+      const res = await fetch(`/api/portal/votaciones/${id}/votar`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ opcion_elegida: opcion, departamento_id: Number(deptoId) }),
+        headers: { 'Content-Type': 'application/json', ...H() },
+        body: JSON.stringify({ opcion_elegida: opcion }),
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
         setVoted(true)
-        const rRes = await fetch(`/api/condominios/votaciones/${id}/resultados`)
+        const rRes = await fetch(`/api/portal/votaciones/${id}/resultados`, { headers: H() })
         if (rRes.ok) setResultados(await rRes.json())
       } else {
         setVoteError(data.detail || 'Error al registrar voto')
@@ -130,10 +129,7 @@ export default function VotarPage({ params }: { params: Promise<{ id: string }> 
                         ))}
                       </div>
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">Nº de departamento</label>
-                      <input type="number" required value={deptoId} onChange={e => setDeptoId(e.target.value)} placeholder="Ej: 101" className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                    </div>
+                    <p className="text-xs text-slate-500">Tu voto queda registrado a nombre de tu departamento (uno por unidad).</p>
                     {voteError && <p className="text-red-500 text-sm">{voteError}</p>}
                     <button type="submit" disabled={voting} className="w-full bg-indigo-600 text-white py-3 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:opacity-60">
                       {voting ? 'Enviando...' : 'Votar'}

@@ -55,14 +55,23 @@ def _ensure(db: Session):
             ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'aprobado';
             ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS registrado_por VARCHAR(30) DEFAULT 'admin';
             ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS notas TEXT;
+            ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS tag_uid VARCHAR(64);
+            ALTER TABLE vehiculos ADD COLUMN IF NOT EXISTS tag_tipo VARCHAR(10);
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_vehiculos_tenant_tag ON vehiculos(tenant_id, tag_uid) WHERE tag_uid IS NOT NULL;
         """))
         db.commit(); _SCHEMA_OK = True
     except Exception:
         db.rollback()
 
 
+def norm_tag(t: str) -> str:
+    return re.sub(r"[^A-Z0-9]", "", (t or "").upper())
+
+
 class VehiculoIn(BaseModel):
     patente: str = Field(..., min_length=5, max_length=10)
+    tag_uid: Optional[str] = None       # EPC del TAG UHF o UID NFC
+    tag_tipo: Optional[str] = None      # uhf | nfc
     departamento_id: Optional[int] = None
     persona_nombre: Optional[str] = None
     marca: Optional[str] = None
@@ -111,12 +120,15 @@ def crear(body: VehiculoIn, db: Session = Depends(get_db), current_user: dict = 
     if db.execute(text("SELECT 1 FROM vehiculos WHERE tenant_id=:t AND patente=:p"), {"t": tid, "p": pat}).fetchone():
         raise HTTPException(400, f"La patente {pat} ya está registrada")
     dep = _depto(db, body.departamento_id, tid)
+    tag = norm_tag(body.tag_uid) or None
+    if tag and db.execute(text("SELECT 1 FROM vehiculos WHERE tenant_id=:t AND tag_uid=:g"), {"t": tid, "g": tag}).fetchone():
+        raise HTTPException(400, f"El TAG {tag} ya está asignado a otro vehículo")
     vid = db.execute(text("""
-        INSERT INTO vehiculos (tenant_id, departamento_id, depto_numero, persona_nombre, patente, marca, modelo, color, tipo, estacionamiento, estado, registrado_por, notas)
-        VALUES (:t, :did, :num, :pn, :p, :ma, :mo, :co, :tipo, :est, 'aprobado', 'admin', :n) RETURNING id
+        INSERT INTO vehiculos (tenant_id, departamento_id, depto_numero, persona_nombre, patente, marca, modelo, color, tipo, estacionamiento, estado, registrado_por, notas, tag_uid, tag_tipo)
+        VALUES (:t, :did, :num, :pn, :p, :ma, :mo, :co, :tipo, :est, 'aprobado', 'admin', :n, :tag, :tt) RETURNING id
     """), {"t": tid, "did": body.departamento_id, "num": dep["numero"] if dep else None,
            "pn": body.persona_nombre or (dep["nombre"] if dep else None), "p": pat, "ma": body.marca, "mo": body.modelo, "co": body.color,
-           "tipo": body.tipo, "est": body.estacionamiento, "n": body.notas}).scalar()
+           "tipo": body.tipo, "est": body.estacionamiento, "n": body.notas, "tag": tag, "tt": (body.tag_tipo or ("uhf" if tag else None))}).scalar()
     db.commit()
     return {"id": vid, "patente": pat}
 
@@ -146,6 +158,42 @@ def eliminar(vid: int, db: Session = Depends(get_db), current_user: dict = Depen
     db.commit()
     if r.rowcount == 0: raise HTTPException(404, "Vehículo no encontrado")
     return {"ok": True}
+
+
+class TagIn(BaseModel):
+    tag_uid: Optional[str] = None
+    tag_tipo: Optional[str] = "uhf"
+
+
+@router.patch("/{vid}/tag")
+def asignar_tag(vid: int, body: TagIn, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Asigna (o quita, con tag_uid vacio) el TAG UHF / NFC de un vehiculo."""
+    _ensure(db)
+    tid = current_user["tenant_id"]
+    tag = norm_tag(body.tag_uid) or None
+    if tag:
+        dup = db.execute(text("SELECT id, patente FROM vehiculos WHERE tenant_id=:t AND tag_uid=:g AND id<>:id"), {"t": tid, "g": tag, "id": vid}).fetchone()
+        if dup:
+            raise HTTPException(400, f"Ese TAG ya está asignado a la patente {dup[1]}")
+    r = db.execute(text("UPDATE vehiculos SET tag_uid=:g, tag_tipo=:tt WHERE id=:id AND tenant_id=:t"), {"g": tag, "tt": body.tag_tipo if tag else None, "id": vid, "t": tid})
+    db.commit()
+    if r.rowcount == 0: raise HTTPException(404, "Vehículo no encontrado")
+    return {"ok": True, "tag_uid": tag}
+
+
+@router.get("/tags-no-asignados")
+def tags_no_asignados(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Ultimos TAG/NFC leidos por los lectores que aun no pertenecen a ningun vehiculo (para asignarlos con un clic)."""
+    _ensure(db)
+    rows = db.execute(text("""
+        SELECT r.uid_tarjeta AS uid, MAX(r.created_at)::text AS ultima_lectura, COUNT(*) AS lecturas, MAX(p.nombre) AS puerta
+        FROM registros_acceso_puertas r JOIN puertas p ON p.id=r.puerta_id
+        WHERE r.tenant_id=:t AND r.tipo_evento='denegado_tag' AND r.uid_tarjeta IS NOT NULL
+          AND r.created_at > NOW() - INTERVAL '2 days'
+          AND NOT EXISTS (SELECT 1 FROM vehiculos v WHERE v.tenant_id=r.tenant_id AND v.tag_uid=r.uid_tarjeta)
+        GROUP BY r.uid_tarjeta ORDER BY MAX(r.created_at) DESC LIMIT 20
+    """), {"t": current_user["tenant_id"]}).fetchall()
+    return [dict(x._mapping) for x in rows]
 
 
 @router.get("/buscar/{patente}")

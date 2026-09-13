@@ -24,7 +24,7 @@ export default function ConserjeAccesos() {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch('/api/accesos?tenant_id=' + tid() + '&limit=50', { credentials: 'include' })
+      const r = await fetch('/api/accesos/visitas?tenant_id=' + tid() + '&limit=50', { credentials: 'include' })
       if (r.ok) setAccesos(await r.json())
     } finally { setLoading(false) }
   }, [])

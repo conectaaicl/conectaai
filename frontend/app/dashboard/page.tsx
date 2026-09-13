@@ -83,7 +83,7 @@ export default function DashboardHome() {
         fetch('/api/condominios/puertas?tenant_id=' + tid),
         fetch('/api/camaras?tenant_id=' + tid),
         fetch('/api/visitas?tenant_id=' + tid + '&limit=6'),
-        fetch('/api/paquetes?tenant_id=' + tid + '&limit=6'),
+        fetch('/api/paqueteria?tenant_id=' + tid + '&estado=pendiente&limit=6'),
         fetch('/api/accesos/live?tenant_id=' + tid + '&limit=10'),
         fetch('/api/auth/conserjes-turno', { credentials: 'include' }),
         fetch('/api/condominios/departamentos', { credentials: 'include' }),

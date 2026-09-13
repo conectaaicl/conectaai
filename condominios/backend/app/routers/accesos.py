@@ -154,7 +154,7 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
         for r in rows:
             d = dict(r._mapping)
             te, met, desc = d.get("tipo_evento") or "acceso", d.get("metodo") or "", d.get("descripcion") or ""
-            if met in ("citofono", "patente", "sensor", "dispositivo") or te in ("timbre", "alarma"):
+            if met in ("citofono", "patente", "sensor", "dispositivo", "tag", "nfc") or te in ("timbre", "alarma"):
                 persona = desc or te          # eventos de hardware: lo importante es el mensaje y la puerta
             else:
                 persona = d.get("persona") or "Desconocido"
@@ -229,7 +229,7 @@ def accesos_live(limit: int = 60, db: Session = Depends(get_db), current_user: d
     except Exception:
         pass
     events.sort(key=lambda x: x["ts"], reverse=True)
-    ACCION = {"timbre": "Tocaron el timbre", "acceso_patente": "Ingreso por patente", "denegado_patente": "Patente no autorizada",
+    ACCION = {"timbre": "Tocaron el timbre", "acceso_patente": "Ingreso por patente", "denegado_patente": "Patente no autorizada", "acceso_tag": "Ingreso por TAG", "denegado_tag": "TAG no autorizado",
               "apertura": "Puerta abierta", "cierre": "Puerta cerrada", "alarma": "ALARMA", "entrada": "Entrada", "salida": "Salida",
               "acceso": "Acceso", "abrir": "Apertura remota", "cerrar": "Cierre remoto"}
     for i, e in enumerate(events):

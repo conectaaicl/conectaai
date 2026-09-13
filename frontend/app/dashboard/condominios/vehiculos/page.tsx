@@ -1,9 +1,10 @@
 'use client'
 import { useCallback, useEffect, useState } from 'react'
 
-interface Vehiculo { id: number; departamento_id: number | null; depto_numero: string | null; persona_nombre: string | null; patente: string; marca?: string | null; modelo?: string | null; color?: string | null; tipo: string; estacionamiento?: string | null; estado: string; registrado_por: string; created_at: string }
+interface Vehiculo { id: number; departamento_id: number | null; depto_numero: string | null; persona_nombre: string | null; patente: string; tag_uid?: string | null; tag_tipo?: string | null; marca?: string | null; modelo?: string | null; color?: string | null; tipo: string; estacionamiento?: string | null; estado: string; registrado_por: string; created_at: string }
 interface Depto { id: number; numero: string }
 interface Puerta { id: number; nombre: string; tipo?: string; ubicacion?: string; webhook_url?: string | null }
+interface TagLibre { uid: string; ultima_lectura: string; lecturas: number; puerta: string }
 
 const inp = 'w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600'
 const EST: Record<string, string> = { aprobado: 'bg-emerald-100 text-emerald-700', pendiente: 'bg-amber-100 text-amber-700', bloqueado: 'bg-red-100 text-red-700' }
@@ -15,15 +16,18 @@ export default function VehiculosPage() {
   const [q, setQ] = useState('')
   const [show, setShow] = useState(false)
   const [msg, setMsg] = useState('')
-  const [form, setForm] = useState({ patente: '', departamento_id: '', persona_nombre: '', marca: '', modelo: '', color: '', tipo: 'residente', estacionamiento: '' })
+  const [form, setForm] = useState({ patente: '', departamento_id: '', persona_nombre: '', marca: '', modelo: '', color: '', tipo: 'residente', estacionamiento: '', tag_uid: '', tag_tipo: 'uhf' })
   const [conectar, setConectar] = useState<Puerta | null>(null)
   const [secret, setSecret] = useState('')
   const [pruebaPat, setPruebaPat] = useState('')
   const [pruebaRes, setPruebaRes] = useState('')
+  const [tagsLibres, setTagsLibres] = useState<TagLibre[]>([])
+  const [pruebaTag, setPruebaTag] = useState('')
 
   const load = useCallback(async () => {
     const r = await fetch('/api/vehiculos' + (q ? `?q=${encodeURIComponent(q)}` : ''), { credentials: 'include' })
     setItems(r.ok ? await r.json() : [])
+    fetch('/api/vehiculos/tags-no-asignados', { credentials: 'include' }).then(x => x.ok ? x.json() : []).then(d => setTagsLibres(Array.isArray(d) ? d : [])).catch(() => {})
   }, [q])
   useEffect(() => { load() }, [load])
   useEffect(() => {
@@ -37,11 +41,25 @@ export default function VehiculosPage() {
       body: JSON.stringify({ ...form, departamento_id: form.departamento_id ? Number(form.departamento_id) : null }) })
     const d = await r.json().catch(() => ({}))
     if (!r.ok) { setMsg(d.detail || 'No se pudo guardar'); return }
-    setShow(false); setForm({ patente: '', departamento_id: '', persona_nombre: '', marca: '', modelo: '', color: '', tipo: 'residente', estacionamiento: '' }); load()
+    setShow(false); setForm({ patente: '', departamento_id: '', persona_nombre: '', marca: '', modelo: '', color: '', tipo: 'residente', estacionamiento: '', tag_uid: '', tag_tipo: 'uhf' }); load()
   }
   async function accion(id: number, a: 'aprobar' | 'bloquear' | 'eliminar') {
     if (a === 'eliminar') { await fetch('/api/vehiculos/' + id, { method: 'DELETE', credentials: 'include' }) }
     else { await fetch(`/api/vehiculos/${id}/${a}`, { method: 'PATCH', credentials: 'include' }) }
+    load()
+  }
+  async function asignarTag(v: Vehiculo) {
+    const uid = window.prompt(`TAG / NFC para la patente ${v.patente} (deja vacío para quitar):`, v.tag_uid || tagsLibres[0]?.uid || '')
+    if (uid === null) return
+    const r = await fetch(`/api/vehiculos/${v.id}/tag`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag_uid: uid, tag_tipo: 'uhf' }) })
+    const d = await r.json().catch(() => ({})); if (!r.ok) alert(d.detail || 'No se pudo asignar'); load()
+  }
+  async function probarTag() {
+    if (!conectar || !secret) return
+    setPruebaRes('…')
+    const r = await fetch(`/api/condominios/puertas/${conectar.id}/evento`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Device-Secret': secret }, body: JSON.stringify({ tipo: 'tag', card_uid: pruebaTag }) })
+    const d = await r.json().catch(() => ({}))
+    setPruebaRes(r.ok ? (d.autorizado ? `✅ TAG autorizado → "${d.puerta}" abierto (${d.patente}, Depto ${d.depto})` : `⛔ Denegado: ${d.motivo}`) : (d.detail || 'Error'))
     load()
   }
   async function generarSecreto(p: Puerta) {
@@ -64,7 +82,7 @@ export default function VehiculosPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Vehículos y lector de patentes</h1>
-          <p className="text-sm text-gray-500">Patentes autorizadas por departamento. La cámara del portón las lee y abre sola.</p>
+          <p className="text-sm text-gray-500">Patentes y TAG (sticker UHF en el parabrisas o NFC) por departamento. El lector del portón los reconoce y abre solo.</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setConectar(puertas[0] || null)} className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-semibold hover:bg-gray-50">📷 Conectar cámara / citófono</button>
@@ -95,7 +113,7 @@ export default function VehiculosPage() {
         {items.length === 0 ? <p className="text-sm text-gray-500 py-8 text-center">Aún no hay patentes. Regístralas aquí o pide a los vecinos que las inscriban desde su app (Vehículos).</p> : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-xs text-gray-500 uppercase bg-gray-50"><tr><th className="text-left px-3 py-2">Patente</th><th className="text-left px-3 py-2">Depto</th><th className="text-left px-3 py-2">Persona</th><th className="text-left px-3 py-2">Vehículo</th><th className="text-left px-3 py-2">Tipo</th><th className="text-left px-3 py-2">Estac.</th><th className="text-left px-3 py-2">Estado</th><th className="px-3 py-2"></th></tr></thead>
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50"><tr><th className="text-left px-3 py-2">Patente</th><th className="text-left px-3 py-2">Depto</th><th className="text-left px-3 py-2">Persona</th><th className="text-left px-3 py-2">Vehículo</th><th className="text-left px-3 py-2">Tipo</th><th className="text-left px-3 py-2">TAG / NFC</th><th className="text-left px-3 py-2">Estac.</th><th className="text-left px-3 py-2">Estado</th><th className="px-3 py-2"></th></tr></thead>
               <tbody>
                 {items.map(v => (
                   <tr key={v.id} className="border-t border-gray-100">
@@ -104,6 +122,7 @@ export default function VehiculosPage() {
                     <td className="px-3 py-2 text-gray-800">{v.persona_nombre || '—'}</td>
                     <td className="px-3 py-2 text-gray-600">{[v.marca, v.modelo, v.color].filter(Boolean).join(' ') || '—'}</td>
                     <td className="px-3 py-2 text-gray-600 capitalize">{v.tipo}</td>
+                    <td className="px-3 py-2"><button onClick={() => asignarTag(v)} className={`text-xs font-mono px-2 py-1 rounded-lg border ${v.tag_uid ? 'border-teal-300 text-teal-800 bg-teal-50' : 'border-dashed border-gray-300 text-gray-400'}`}>{v.tag_uid ? `🏷️ ${v.tag_uid}` : '+ asignar'}</button></td>
                     <td className="px-3 py-2 text-gray-600">{v.estacionamiento || '—'}</td>
                     <td className="px-3 py-2"><span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${EST[v.estado] || 'bg-gray-100 text-gray-600'}`}>{v.estado}</span></td>
                     <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -139,6 +158,19 @@ export default function VehiculosPage() {
               <div><label className="text-xs font-semibold text-gray-600">Tipo</label><select className={inp} value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value })}><option value="residente">Residente</option><option value="propietario">Propietario</option><option value="visita">Visita frecuente</option><option value="proveedor">Proveedor</option></select></div>
               <div><label className="text-xs font-semibold text-gray-600">Estacionamiento</label><input className={inp} placeholder="E-12" value={form.estacionamiento} onChange={e => setForm({ ...form, estacionamiento: e.target.value })} /></div>
             </div>
+            <div>
+              <label className="text-xs font-semibold text-gray-600">TAG UHF / NFC <span className="font-normal text-gray-400">(opcional — el UID que lee el lector)</span></label>
+              <div className="flex gap-2">
+                <input className={inp + ' font-mono uppercase'} placeholder="E2000017221101441890" value={form.tag_uid} onChange={e => setForm({ ...form, tag_uid: e.target.value.toUpperCase() })} />
+                <select className={inp + ' max-w-[90px]'} value={form.tag_tipo} onChange={e => setForm({ ...form, tag_tipo: e.target.value })}><option value="uhf">UHF</option><option value="nfc">NFC</option></select>
+              </div>
+              {tagsLibres.length > 0 && (
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <span className="text-[11px] text-gray-500">Leídos hace poco sin dueño:</span>
+                  {tagsLibres.slice(0, 5).map(t => <button type="button" key={t.uid} onClick={() => setForm({ ...form, tag_uid: t.uid })} className="text-[11px] font-mono px-2 py-0.5 rounded bg-amber-50 border border-amber-200 text-amber-800">{t.uid}</button>)}
+                </div>
+              )}
+            </div>
             <div className="flex gap-2 pt-1"><button type="button" onClick={() => setShow(false)} className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-700 text-sm">Cancelar</button><button type="submit" className="flex-1 py-2 rounded-xl bg-teal-700 text-white text-sm font-semibold">Guardar</button></div>
           </form>
         </div>
@@ -160,6 +192,8 @@ export default function VehiculosPage() {
                       <p>POST {base}/api/condominios/puertas/{conectar.id}/evento<br />Header: X-Device-Secret: {secret || '<secreto>'}<br />Body: {'{"tipo":"timbre"}'}</p>
                       <p className="text-gray-400 pt-2"># Cámara lectora de patentes (Hikvision/Dahua/ESP32-CAM + ALPR)</p>
                       <p>POST … /evento &nbsp; Body: {'{"tipo":"patente","patente":"ABCD12"}'} → responde {'{"accion":"abrir"|"denegar"}'}</p>
+                      <p className="text-gray-400 pt-2"># Lector TAG UHF / NFC (ZKTeco UHF1-5E/10E, controladores C3/inBio via puente, u otros)</p>
+                      <p>POST … /evento &nbsp; Body: {'{"tipo":"tag","card_uid":"E2000017221101441890"}'} → responde {'{"accion":"abrir"|"denegar"}'}</p>
                       <p className="text-gray-400 pt-2"># Dispositivos simples (solo GET)</p>
                       <p>GET {base}/api/condominios/puertas/{conectar.id}/evento?secret={secret || '<secreto>'}&tipo=timbre</p>
                     </div>
@@ -167,6 +201,7 @@ export default function VehiculosPage() {
                     <div className="border border-gray-200 rounded-xl p-3">
                       <p className="text-xs font-semibold text-gray-700 mb-2">Probar ahora (simula la cámara)</p>
                       <div className="flex gap-2"><input className={inp + ' font-mono uppercase max-w-[180px]'} placeholder="ABCD12" value={pruebaPat} onChange={e => setPruebaPat(e.target.value.toUpperCase())} /><button onClick={probar} disabled={!secret} className="px-3 py-2 rounded-lg bg-teal-700 text-white text-xs font-semibold disabled:opacity-50">Simular lectura</button></div>
+                      <div className="flex gap-2 mt-2"><input className={inp + ' font-mono uppercase max-w-[260px]'} placeholder="UID del TAG / NFC" value={pruebaTag} onChange={e => setPruebaTag(e.target.value.toUpperCase())} /><button onClick={probarTag} disabled={!secret} className="px-3 py-2 rounded-lg bg-slate-800 text-white text-xs font-semibold disabled:opacity-50">Simular TAG</button></div>
                       {pruebaRes && <p className="text-sm mt-2 text-gray-800">{pruebaRes}</p>}
                       {!secret && <p className="text-[11px] text-gray-400 mt-1">Genera el secreto primero.</p>}
                     </div>

@@ -46,9 +46,23 @@ def create_dispositivo(
     db.refresh(dev)
     return {"ok": True, "id": dev.id}
 
+@router.put("/dispositivos/{id}")
+def update_dispositivo(id: int, data: dict, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    dev = db.query(DispositivoBiometrico).filter(DispositivoBiometrico.id == id, DispositivoBiometrico.tenant_id == current_user["tenant_id"]).first()
+    if not dev:
+        raise HTTPException(status_code=404, detail="No encontrado")
+    for k, v in data.items():
+        if k in ("id", "tenant_id", "token", "api_token"):
+            continue
+        if hasattr(dev, k):
+            setattr(dev, k, v)
+    db.commit()
+    return {"ok": True}
+
+
 @router.delete("/dispositivos/{id}")
 def delete_dispositivo(id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
-    dev = db.query(DispositivoBiometrico).filter(DispositivoBiometrico.id == id).first()
+    dev = db.query(DispositivoBiometrico).filter(DispositivoBiometrico.id == id, DispositivoBiometrico.tenant_id == current_user["tenant_id"]).first()
     if not dev:
         raise HTTPException(status_code=404, detail="No encontrado")
     dev.activo = False

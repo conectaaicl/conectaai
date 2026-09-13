@@ -35,7 +35,7 @@ def dashboard(r: ResidentePortal=Depends(get_residente), db: Session=Depends(get
             "COUNT(DISTINCT c.periodo_id) FILTER (WHERE c.fecha_vencimiento < CURRENT_DATE)::int, "
             "COUNT(DISTINCT c.periodo_id)::int "
             "FROM gastos_cobros c JOIN gastos_periodos p ON p.id = c.periodo_id "
-            "WHERE c.departamento_id=:did AND c.tenant_id=:tid AND c.estado NOT IN ('pagado','exento') "
+            "WHERE c.departamento_id=:did AND c.tenant_id=:tid AND c.estado='pendiente' "
             "AND p.estado IN ('emitido','cerrado')"
         ), {"did": r.departamento_id, "tid": r.tenant_id}).fetchone()
         if _cr and _cr[0]:

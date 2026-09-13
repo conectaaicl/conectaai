@@ -167,6 +167,11 @@ def _registrar(db, tenant_id: int, puerta_id: int, tipo_evento: str, metodo: str
     return row
 
 
+def _flag_activo(db, tenant_id: int, key: str) -> bool:
+    row = db.execute(text("SELECT activo FROM tenant_features WHERE tenant_id=:t AND feature_key=:k"), {"t": tenant_id, "k": key}).fetchone()
+    return bool(row and row[0])
+
+
 def _publicar(tenant_id: int, data: dict):
     try:
         from app.routers.sistema import _publish_evento
@@ -202,10 +207,34 @@ async def evento_dispositivo(
     if ev_tipo == "timbre":
         r = _registrar(db, tenant_id, pid, "timbre", "citofono", f"🔔 Tocaron el timbre en {nombre}", True)
         resultado.update({"accion": "aviso_conserjeria"})
+    elif ev_tipo in ("tag", "nfc"):
+        # TAG UHF en el parabrisas (lector ZKTeco UHF u otro) o llavero/tarjeta NFC: llega el UID leido
+        from app.routers.vehiculos import norm_tag, _ensure as _ensure_veh
+        _ensure_veh(db)
+        uid = norm_tag((body.card_uid if body else None) or request.query_params.get("card_uid") or request.query_params.get("uid") or "")
+        if not _flag_activo(db, tenant_id, "tag_vehicular"):
+            r = _registrar(db, tenant_id, pid, "denegado_tag", ev_tipo, f"⛔ TAG {uid or '?'} — módulo TAG vehicular no activo", False, uid or None)
+            resultado.update({"accion": "denegar", "autorizado": False, "motivo": "modulo no activo"})
+        else:
+            veh = db.execute(text("SELECT id, depto_numero, persona_nombre, estado, patente FROM vehiculos WHERE tenant_id=:t AND tag_uid=:g"), {"t": tenant_id, "g": uid}).fetchone() if uid else None
+            if veh and veh[3] == "aprobado":
+                desc = f"🏷️ TAG {uid} · {veh[4]} · Depto {veh[1] or '-'} · {veh[2] or ''} — portón abierto"
+                r = _registrar(db, tenant_id, pid, "acceso_tag", ev_tipo, desc, True, uid)
+                db.execute(text("UPDATE puertas SET estado='abierta', updated_at=NOW() WHERE id=:id"), {"id": pid})
+                asyncio.create_task(_trigger_webhook(webhook_url, webhook_secret, "abrir", nombre))
+                resultado.update({"accion": "abrir", "autorizado": True, "depto": veh[1], "persona": veh[2], "patente": veh[4]})
+            else:
+                motivo = "TAG bloqueado" if veh and veh[3] == "bloqueado" else "pendiente de aprobación" if veh else "TAG no asignado"
+                r = _registrar(db, tenant_id, pid, "denegado_tag", ev_tipo, f"⛔ TAG {uid or '?'} — {motivo}", False, uid or None)
+                resultado.update({"accion": "denegar", "autorizado": False, "motivo": motivo, "uid": uid})
     elif ev_tipo == "patente":
         from app.routers.vehiculos import norm_patente, _ensure as _ensure_veh
         _ensure_veh(db)
         pat = norm_patente(ev_pat)
+        if not _flag_activo(db, tenant_id, "lector_patentes"):
+            r = _registrar(db, tenant_id, pid, "denegado_patente", "patente", f"⛔ {pat or '?'} — módulo lector de patentes no activo", False, pat)
+            db.commit(); resultado.update({"accion": "denegar", "autorizado": False, "motivo": "modulo no activo"}); resultado["registro_id"] = r[0]
+            return resultado
         veh = db.execute(text("SELECT id, depto_numero, persona_nombre, estado, tipo FROM vehiculos WHERE tenant_id=:t AND patente=:p"), {"t": tenant_id, "p": pat}).fetchone()
         if veh and veh[3] == "aprobado":
             desc = f"🚗 {pat} · Depto {veh[1] or '-'} · {veh[2] or ''} — portón abierto"

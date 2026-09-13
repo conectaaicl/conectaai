@@ -242,17 +242,11 @@ function MorosidadBadge() {
 
     async function fetchMora() {
       try {
-        const [pendRes, totalRes] = await Promise.all([
-          fetch('/api/finanzas/gastos?tenant_id=' + condId + '&estado=pendiente'),
-          fetch('/api/finanzas/gastos?tenant_id=' + condId),
-        ])
-        if (!pendRes.ok || !totalRes.ok) return
-        const pend = await pendRes.json()
-        const total = await totalRes.json()
-        const pendCount = Array.isArray(pend) ? pend.length : (pend.total || 0)
-        const totalCount = Array.isArray(total) ? total.length : (total.total || 0)
-        if (totalCount > 0) setMora(Math.round((pendCount / totalCount) * 100))
-      } catch (_) { /* ignore */ }
+        const r = await fetch('/api/finanzas/stats/morosidad', { credentials: 'include' })
+        if (!r.ok) return
+        const d = await r.json()
+        setMora(Number(d.atrasados || 0))
+      } catch { /* silencioso */ }
     }
 
     fetchMora()

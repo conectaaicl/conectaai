@@ -248,6 +248,20 @@ def listar_paquetes(
     return result
 
 
+@router.get("/stats")
+def stats_paqueteria(current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    tenant_id = current_user["tenant_id"]
+    _ensure_table(db)
+    r = db.execute(text(
+        "SELECT COUNT(*) FILTER (WHERE estado='pendiente') AS pendientes, "
+        "COUNT(*) FILTER (WHERE estado='entregado' AND entregado_at::date = CURRENT_DATE) AS entregados_hoy, "
+        "COUNT(*) FILTER (WHERE recibido_at::date = CURRENT_DATE) AS recibidos_hoy, "
+        "COUNT(*) AS total, "
+        "COUNT(*) FILTER (WHERE estado='pendiente' AND recibido_at < NOW() - INTERVAL '7 days') AS sin_retirar_7d "
+        "FROM paqueteria WHERE tenant_id=:tid"), {"tid": tenant_id}).fetchone()
+    return {"pendientes": r[0], "entregados_hoy": r[1], "recibidos_hoy": r[2], "total": r[3], "sin_retirar_7d": r[4]}
+
+
 @router.get("/pendientes")
 def pendientes_por_depto(condominio_id: Optional[int] = None, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """For Central page: pending packages grouped by apartment."""

@@ -132,7 +132,7 @@ export default function AvisosPage() {
         body: JSON.stringify(payload),
       })
       if (res.ok) {
-        if (formData.notificarWA && selectedCondominio) {
+        if (false && formData.notificarWA && selectedCondominio) { // WhatsApp broadcast: pendiente de activar Meta Cloud API
           fetch(`/api/condominios/${selectedCondominio}/whatsapp/broadcast`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

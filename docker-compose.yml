@@ -57,6 +57,8 @@ services:
       VAPID_EMAIL: "mailto:admin@conectaai.cl"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    volumes:
+      - ./uploads:/app/uploads
     networks:
       - default
       - evolution_default

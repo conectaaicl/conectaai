@@ -87,7 +87,7 @@ def listar_votaciones(
 def resultados_votacion(votacion_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get voting results with participation percentage."""
     tenant_id = current_user["tenant_id"]
-    votacion = db.query(Votacion).filter(Votacion.id == votacion_id).first()
+    votacion = db.query(Votacion).filter(Votacion.id == votacion_id, Votacion.tenant_id == tenant_id).first()
     if not votacion:
         raise HTTPException(status_code=404, detail="Votación no encontrada")
 
@@ -122,7 +122,7 @@ def resultados_votacion(votacion_id: int, current_user: dict = Depends(get_curre
 def votar(votacion_id: int, body: VotoCreate, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Cast a vote; one vote per departamento_id enforced."""
     tenant_id = current_user["tenant_id"]
-    votacion = db.query(Votacion).filter(Votacion.id == votacion_id).first()
+    votacion = db.query(Votacion).filter(Votacion.id == votacion_id, Votacion.tenant_id == tenant_id).first()
     if not votacion:
         raise HTTPException(status_code=404, detail="Votación no encontrada")
     if votacion.estado != "activa":
@@ -169,10 +169,85 @@ def votar(votacion_id: int, body: VotoCreate, current_user: dict = Depends(get_c
 def cerrar_votacion(votacion_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
     """Close a voting."""
     tenant_id = current_user["tenant_id"]
-    votacion = db.query(Votacion).filter(Votacion.id == votacion_id).first()
+    votacion = db.query(Votacion).filter(Votacion.id == votacion_id, Votacion.tenant_id == tenant_id).first()
     if not votacion:
         raise HTTPException(status_code=404, detail="Votación no encontrada")
     votacion.estado = "cerrada"
     db.commit()
     db.refresh(votacion)
     return votacion_to_dict(votacion)
+
+
+
+# ---------------- Portal residente (auth por token de residente) ----------------
+from fastapi import APIRouter as _AR
+from app.routers.portal_auth import get_residente as _get_res
+from app.models import ResidentePortal as _RP
+
+portal_router = _AR(prefix="/api/portal/votaciones", tags=["Portal votaciones"])
+
+
+def _dict_publico(v: Votacion) -> dict:
+    d = votacion_to_dict(v)
+    return d
+
+
+@portal_router.get("")
+def portal_listar(r: _RP = Depends(_get_res), db: Session = Depends(get_db)):
+    items = db.query(Votacion).filter(Votacion.tenant_id == r.tenant_id).order_by(Votacion.id.desc()).limit(50).all()
+    out = []
+    for v in items:
+        d = _dict_publico(v)
+        d["ya_vote"] = bool(r.departamento_id and db.query(VotoRespuesta).filter(VotoRespuesta.votacion_id == v.id, VotoRespuesta.departamento_id == r.departamento_id).first())
+        out.append(d)
+    return out
+
+
+@portal_router.get("/{votacion_id}")
+def portal_detalle(votacion_id: int, r: _RP = Depends(_get_res), db: Session = Depends(get_db)):
+    v = db.query(Votacion).filter(Votacion.id == votacion_id, Votacion.tenant_id == r.tenant_id).first()
+    if not v:
+        raise HTTPException(404, "Votación no encontrada")
+    d = _dict_publico(v)
+    d["ya_vote"] = bool(r.departamento_id and db.query(VotoRespuesta).filter(VotoRespuesta.votacion_id == v.id, VotoRespuesta.departamento_id == r.departamento_id).first())
+    d["departamento_id"] = r.departamento_id
+    return d
+
+
+@portal_router.get("/{votacion_id}/resultados")
+def portal_resultados(votacion_id: int, r: _RP = Depends(_get_res), db: Session = Depends(get_db)):
+    v = db.query(Votacion).filter(Votacion.id == votacion_id, Votacion.tenant_id == r.tenant_id).first()
+    if not v:
+        raise HTTPException(404, "Votación no encontrada")
+    try:
+        opciones = json.loads(v.opciones) if v.opciones else []
+    except Exception:
+        opciones = []
+    votos = db.query(VotoRespuesta).filter(VotoRespuesta.votacion_id == votacion_id).all()
+    res = {op: 0 for op in opciones}
+    for x in votos:
+        res[x.opcion_elegida] = res.get(x.opcion_elegida, 0) + 1
+    return {"votos": res, "total": len(votos), "resultados": res, "total_votos": len(votos)}
+
+
+@portal_router.post("/{votacion_id}/votar", status_code=201)
+def portal_votar(votacion_id: int, body: dict, r: _RP = Depends(_get_res), db: Session = Depends(get_db)):
+    if not r.departamento_id:
+        raise HTTPException(400, "Tu cuenta no tiene departamento asignado")
+    v = db.query(Votacion).filter(Votacion.id == votacion_id, Votacion.tenant_id == r.tenant_id).first()
+    if not v:
+        raise HTTPException(404, "Votación no encontrada")
+    if v.estado != "activa":
+        raise HTTPException(400, "La votación no está activa")
+    if db.query(VotoRespuesta).filter(VotoRespuesta.votacion_id == votacion_id, VotoRespuesta.departamento_id == r.departamento_id).first():
+        raise HTTPException(409, "Tu departamento ya emitió su voto")
+    opcion = (body or {}).get("opcion_elegida") or (body or {}).get("opcion")
+    try:
+        opciones = json.loads(v.opciones) if v.opciones else []
+    except Exception:
+        opciones = []
+    if opciones and opcion not in opciones:
+        raise HTTPException(400, "Opción inválida")
+    db.add(VotoRespuesta(votacion_id=votacion_id, departamento_id=r.departamento_id, opcion_elegida=opcion))
+    db.commit()
+    return {"ok": True, "opcion_elegida": opcion}

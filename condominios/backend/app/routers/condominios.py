@@ -331,7 +331,7 @@ import os
 import uuid
 from fastapi import UploadFile, File as FastFile
 
-LOGO_DIR = "/var/www/conectaai/condominios/uploads/logos"
+LOGO_DIR = os.path.join(os.getenv("UPLOAD_DIR", "/app/uploads"), "logos")
 os.makedirs(LOGO_DIR, exist_ok=True)
 
 @router.post("/{condominio_id}/upload-logo")

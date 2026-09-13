@@ -49,7 +49,7 @@ export default function VotacionesPage() {
   }
 
   async function cerrar(id: number) {
-    await fetch(`/api/votaciones/${id}/cerrar`, { method: 'POST' })
+    await fetch(`/api/votaciones/${id}/cerrar`, { method: 'PATCH', credentials: 'include' })
     load()
   }
 

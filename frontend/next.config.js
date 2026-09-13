@@ -74,6 +74,8 @@ const nextConfig = {
       { source: '/api/multas', destination: 'http://backend-condominios:8003/api/multas' },
       { source: '/api/mascotas/:path*', destination: 'http://backend-condominios:8003/api/mascotas/:path*' },
       { source: '/api/mascotas', destination: 'http://backend-condominios:8003/api/mascotas' },
+      { source: '/api/branding/:path*', destination: 'http://backend-condominios:8003/api/branding/:path*' },
+      { source: '/api/upload/:path*', destination: 'http://backend-condominios:8003/api/upload/:path*' },
       { source: '/api/vehiculos/:path*', destination: 'http://backend-condominios:8003/api/vehiculos/:path*' },
       { source: '/api/vehiculos', destination: 'http://backend-condominios:8003/api/vehiculos' },
       { source: '/api/mantenciones/:path*', destination: 'http://backend-condominios:8003/api/mantenciones/:path*' },

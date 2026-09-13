@@ -126,6 +126,13 @@ app.include_router(mantenciones_router.router)
 
 from app.routers import vehiculos as vehiculos_router
 app.include_router(vehiculos_router.router)
+
+from app.routers import branding as branding_router
+app.include_router(branding_router.router)
+
+from app.routers import convenios as convenios_router
+app.include_router(convenios_router.router)
+app.include_router(convenios_router.portal_router)
 app.include_router(documentos.router)
 app.include_router(avisos_lectura.router)
 app.include_router(recordatorios.router)
@@ -140,6 +147,7 @@ app.include_router(sistema.router)
 app.include_router(accesos.router)
 app.include_router(incidencias.router)
 app.include_router(votaciones.router)
+app.include_router(votaciones.portal_router)
 from app.routers import historial as historial_router
 from app.routers import portal_auth
 from app.routers import portal_pagos, portal_dashboard

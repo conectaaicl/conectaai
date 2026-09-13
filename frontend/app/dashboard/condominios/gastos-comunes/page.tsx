@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useSession } from '@/hooks/useSession'
 import NuevoPeriodoWizard from './NuevoPeriodoWizard'
+import ConveniosPanel from './ConveniosPanel'
 
 const API = '/api/gastos-comunes'
 
@@ -362,7 +363,9 @@ export default function GastosComunesPage() {
         </div>
       </div>
 
-      {/* Periods table */}
+      
+      <ConveniosPanel onChange={() => loadPeriodos()} />
+{/* Periods table */}
       <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
