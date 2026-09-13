@@ -921,7 +921,7 @@ def propuesta_publica(token: str, request: Request, db: Session = Depends(get_db
         cred = d["credenciales"] if isinstance(d["credenciales"], dict) else json.loads(d["credenciales"] or "{}")
         est = demo.estado_demo(db, d["tenant_id"])
         d = {"dominio": d["dominio"], "vence": d["vence"], "estado": d["estado"], "vencido": est["vencido"], "dias_restantes": est["dias_restantes"]}
-    return {"edificio": {k: e[k] for k in ("nombre", "tipo", "comuna", "direccion", "administrador_nombre", "unidades")},
+    return {"edificio": {k: e[k] for k in ("nombre", "tipo", "comuna", "administrador_nombre", "unidades")},  # sin direccion: pagina publica
             "dolores": [{"key": k, **dict(zip(("titulo", "solucion"), DOLORES[k]))} for k in dol if k in DOLORES],
             "modulos": [m for m in MODULOS_() if m["key"] in set(mods) | {"base"}],
             "precio_unidad": prop["precio_unidad"], "unidades": prop["unidades"], "total_mensual": prop["total_mensual"], "descuento_pct": prop["descuento_pct"], "meses_gratis": prop["meses_gratis"],

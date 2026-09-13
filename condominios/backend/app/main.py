@@ -43,7 +43,7 @@ _ip_lock = threading.Lock()
 _LOGIN_WINDOW = 300
 _LOGIN_MAX = 20
 
-_RATE_LIMITED_PATHS = {"/api/auth/login", "/api/portal/auth/login", "/api/portal/auth/registro"}
+_RATE_LIMITED_PATHS = {"/api/auth/login", "/api/portal/auth/login", "/api/portal/auth/registro", "/api/ventas-terreno/auth/login"}
 
 class LoginRateLimitMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: StarletteRequest, call_next):

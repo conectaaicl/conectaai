@@ -517,7 +517,8 @@ def publica(token: str, request: Request, db: Session = Depends(get_db)):
     _ensure(db)
     p = _row(db, "SELECT * FROM ventas_cortinas_propuestas WHERE token=:t", t=token)
     if not p: raise HTTPException(404, "Propuesta no encontrada")
-    l = _row(db, "SELECT nombre, tipo, comuna, direccion, telefono, email FROM ventas_cortinas_leads WHERE id=:id", id=p["lead_id"])
+    # pagina publica: sin telefono/email/direccion del cliente (el link circula por WhatsApp)
+    l = _row(db, "SELECT nombre, tipo, comuna FROM ventas_cortinas_leads WHERE id=:id", id=p["lead_id"])
     v = _row(db, "SELECT nombre, telefono, email FROM ventas_vendedores WHERE id=:id", id=p["vendedor_id"]) or {}
     ua = (request.headers.get("user-agent") or "").lower()
     if "bot" not in ua and "whatsapp" not in ua:
