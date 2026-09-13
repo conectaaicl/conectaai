@@ -387,7 +387,7 @@ def convertir_demo(db: Session, tenant_id: int) -> None:
 # ─── Modo vitrina (consultado por el middleware) ─────────────────────────────
 
 _CACHE: dict = {}      # tenant_id -> (es_demo, vence_iso|None, ts)
-_CACHE_TTL = 60
+_CACHE_TTL = 10   # vitrina: al vencer o extender un demo se nota en <=10 s
 
 
 def estado_demo(db: Session, tenant_id: int) -> dict:
