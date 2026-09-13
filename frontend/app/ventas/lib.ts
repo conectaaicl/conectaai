@@ -7,6 +7,8 @@ export async function vfetch(path: string, init: RequestInit = {}) {
   if (init.body && typeof init.body === 'string') headers['Content-Type'] = 'application/json'
   const r = await fetch(API + path, { credentials: 'include', ...init, headers })
   if (r.status === 401 && typeof window !== 'undefined' && !location.pathname.endsWith('/ventas/login')) {
+    // sesion vencida o vendedor eliminado: borrar la cookie antes de ir al login (si no, el middleware devuelve al panel)
+    try { await fetch(API + '/auth/logout', { method: 'POST', credentials: 'include' }) } catch {}
     location.href = '/ventas/login'
   }
   return r
