@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
 import { ClipboardList } from 'lucide-react'
+import { tid } from '../tid'
 
 interface Reserva {
   id: number
@@ -34,7 +35,6 @@ export default function ConserjeReservas() {
   const [reservas, setReservas] = useState<Reserva[]>([])
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<'hoy' | 'pendiente' | 'todos'>('hoy')
-  const tid = () => localStorage.getItem('current_condominio_id') || '1'
 
   const load = useCallback(async () => {
     try {

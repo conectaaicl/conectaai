@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { tid } from '../tid'
 
 interface Evento {
   id: number | string
@@ -26,7 +27,6 @@ export default function ConserjeHistorial() {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const LIMIT = 30
-  const tid = () => localStorage.getItem('current_condominio_id') || '1'
 
   const load = useCallback(async () => {
     try {

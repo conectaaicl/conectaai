@@ -92,6 +92,13 @@ input::placeholder, textarea::placeholder {
 .dark input, .dark select, .dark textarea {
   color: #e2e8f0;
 }
+/* Modales/tarjetas blancas dentro del dashboard oscuro: texto oscuro legible */
+.dark .bg-white input, .dark .bg-white select, .dark .bg-white textarea {
+  color: #0f172a;
+}
+.dark .bg-white input::placeholder, .dark .bg-white textarea::placeholder {
+  color: #94a3b8;
+}
 /* Area superadmin (siempre oscura): inputs legibles */
 .sa-shell input, .sa-shell select, .sa-shell textarea {
   color: #f1f5f9;

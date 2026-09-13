@@ -263,10 +263,16 @@ def pendientes_por_depto(condominio_id: Optional[int] = None, current_user: dict
 
 
 @router.delete("/{paquete_id}")
-def eliminar_paquete(paquete_id: int, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+def eliminar_paquete(paquete_id: int, clave: Optional[str] = None, current_user: dict = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Una encomienda ya registrada solo la borra administracion, o conserjeria con la clave de administracion."""
+    from app.core.clave_admin import exigir_clave_admin, es_admin
     tenant_id = current_user["tenant_id"]
-    db.execute(text("DELETE FROM paqueteria WHERE id=:id"), {"id": paquete_id})
+    if not es_admin(current_user):
+        exigir_clave_admin(db, tenant_id, clave)
+    res = db.execute(text("DELETE FROM paqueteria WHERE id=:id AND tenant_id=:tid"), {"id": paquete_id, "tid": tenant_id})
     db.commit()
+    if res.rowcount == 0:
+        raise HTTPException(404, "Encomienda no encontrada")
     return {"ok": True}
 
 

@@ -121,6 +121,47 @@ def _condominio_id_de(r: ResidentePortal, db: Session) -> Optional[int]:
     return row[0] if row else None
 
 
+def _depto_numero(db: Session, r: ResidentePortal):
+    if not r.departamento_id:
+        return None
+    row = db.execute(text("SELECT numero FROM departamentos WHERE id=:d AND tenant_id=:t"), {"d": r.departamento_id, "t": r.tenant_id}).fetchone()
+    return row[0] if row else None
+
+
+@router.get("/mis-visitas")
+def mis_visitas_edificio(r: ResidentePortal = Depends(get_residente), db: Session = Depends(get_db)):
+    """Visitas registradas por conserjeria hacia el departamento del residente, con su estado de aprobacion."""
+    num = _depto_numero(db, r)
+    if not num:
+        return []
+    rows = db.execute(text("""
+        SELECT id, nombre_visitante, rut_visitante, motivo, patente, estado, aprobado_por,
+               entrada_at::text AS entrada_at, salida_at::text AS salida_at, aprobado_en::text AS aprobado_en,
+               registrado_por_nombre, motivo_rechazo
+        FROM visitas WHERE tenant_id=:tid AND depto_destino=:num
+        ORDER BY entrada_at DESC LIMIT 50
+    """), {"tid": r.tenant_id, "num": num}).fetchall()
+    return [dict(x._mapping) for x in rows]
+
+
+@router.get("/mis-paquetes")
+def mis_paquetes(r: ResidentePortal = Depends(get_residente), db: Session = Depends(get_db)):
+    """Encomiendas recibidas en conserjeria para el departamento del residente."""
+    num = _depto_numero(db, r)
+    if not num:
+        return []
+    try:
+        rows = db.execute(text("""
+            SELECT id, carrier, tracking_number, nombre_destinatario, descripcion, estado,
+                   recibido_at::text AS recibido_at, entregado_at::text AS entregado_at, registrado_por_nombre
+            FROM paqueteria WHERE tenant_id=:tid AND depto_destino=:num
+            ORDER BY recibido_at DESC LIMIT 50
+        """), {"tid": r.tenant_id, "num": num}).fetchall()
+    except Exception:
+        db.rollback(); return []
+    return [dict(x._mapping) for x in rows]
+
+
 @router.get("/mis-incidencias")
 def mis_incidencias(
     r: ResidentePortal = Depends(get_residente),

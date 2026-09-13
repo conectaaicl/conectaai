@@ -38,6 +38,8 @@ export default function ConserjeLayout({ children }: { children: React.ReactNode
       .then(data => {
         if (!data) { router.push('/conserje/login'); return }
         if (data.rol !== 'conserje') { router.push('/dashboard'); return }
+        localStorage.setItem('conserje_tenant_id', String(data.tenant_id || ''))
+        localStorage.setItem('conserje_user', JSON.stringify({ id: data.id, nombre_completo: data.nombre_completo, tenant_id: data.tenant_id }))
         setUser(data)
       })
       .catch(() => router.push('/conserje/login'))

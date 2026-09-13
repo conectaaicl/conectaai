@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { tid } from '../tid'
 
 interface Zona {
   id: number
@@ -41,7 +42,6 @@ export default function ConserjeAlarmas() {
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null)
   const [tab, setTab] = useState<'zonas' | 'alertas'>('alertas')
 
-  const tid = () => typeof window !== 'undefined' ? (localStorage.getItem('current_condominio_id') || '1') : '1'
 
   const load = useCallback(async () => {
     try {

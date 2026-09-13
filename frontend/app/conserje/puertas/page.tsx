@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { tid } from '../tid'
 
 interface Puerta {
   id: number
@@ -79,8 +80,6 @@ export default function ConserjeAccesosPuertas() {
   const [busy, setBusy] = useState<number | null>(null)
   const [toast, setToast] = useState<{ ok: boolean; msg: string } | null>(null)
 
-  const tid = () =>
-    typeof window !== 'undefined' ? (localStorage.getItem('current_condominio_id') || '1') : '1'
 
   const load = useCallback(async () => {
     try {

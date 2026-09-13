@@ -94,6 +94,47 @@ export default function VisitasPage() {
   const [stats, setStats] = useState<Stats>({ visitas_hoy: 0, en_edificio: 0, esta_semana: 0 });
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pendientesAprob, setPendientesAprob] = useState<Visita[]>([]);
+  const [claveConf, setClaveConf] = useState<boolean | null>(null);
+  const [showClave, setShowClave] = useState(false);
+  const [nuevaClave, setNuevaClave] = useState("");
+  const [claveMsg, setClaveMsg] = useState("");
+  const [aprobando, setAprobando] = useState<number | null>(null);
+
+  const cargarPendientes = useCallback(async () => {
+    try {
+      const [p, c] = await Promise.all([
+        fetch("/api/visitas?estado=pendiente&limit=50", { credentials: "include" }),
+        fetch("/api/visitas/clave-autorizacion", { credentials: "include" }),
+      ]);
+      if (p.ok) { const d = await p.json(); setPendientesAprob(Array.isArray(d) ? d : []); }
+      if (c.ok) { const d = await c.json(); setClaveConf(!!d.configurada); }
+    } catch { /* silencioso */ }
+  }, []);
+
+  async function decidir(id: number, accion: "aprobar" | "rechazar") {
+    setAprobando(id);
+    try {
+      const motivo = accion === "rechazar" ? (window.prompt("Motivo del rechazo (opcional):") ?? undefined) : undefined;
+      const r = await fetch(`/api/visitas/${id}/${accion}`, {
+        method: "PATCH", credentials: "include", headers: { "Content-Type": "application/json" },
+        body: accion === "rechazar" ? JSON.stringify({ motivo }) : undefined,
+      });
+      if (!r.ok) alert("No se pudo actualizar la visita");
+      await cargarPendientes(); fetchVisitas();
+    } finally { setAprobando(null); }
+  }
+
+  async function guardarClave(e: React.FormEvent) {
+    e.preventDefault(); setClaveMsg("");
+    const r = await fetch("/api/visitas/clave-autorizacion", {
+      method: "PUT", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ clave: nuevaClave }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { setClaveMsg(d.detail || "No se pudo guardar"); return; }
+    setClaveConf(true); setNuevaClave(""); setShowClave(false);
+    alert("Clave guardada. Entrégasela solo al personal de conserjería.");
+  }
 
   // Filters
   const [search, setSearch] = useState("");
@@ -148,6 +189,13 @@ export default function VisitasPage() {
   useEffect(() => {
     if (!loading) fetchVisitas();
   }, [loading, fetchVisitas]);
+
+  useEffect(() => {
+    if (loading) return;
+    cargarPendientes();
+    const iv = setInterval(cargarPendientes, 15000);
+    return () => clearInterval(iv);
+  }, [loading, cargarPendientes]);
 
   const handleSalida = async (id: number) => {
     try {
@@ -212,6 +260,49 @@ export default function VisitasPage() {
           </svg>
           Registrar Visita
         </button>
+      </div>
+
+      {/* Pendientes de aprobacion (registradas por conserjeria) */}
+      <div className={`rounded-xl border p-4 mb-6 ${pendientesAprob.length ? "bg-amber-50 border-amber-200" : "bg-white border-gray-100"}`}>
+        <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+          <div>
+            <h2 className="font-semibold text-gray-900">
+              Visitas por aprobar {pendientesAprob.length > 0 && <span className="ml-2 inline-flex items-center justify-center min-w-6 h-6 px-2 rounded-full bg-amber-500 text-white text-xs font-bold">{pendientesAprob.length}</span>}
+            </h2>
+            <p className="text-xs text-gray-500">Conserjería registra la visita y aquí la apruebas o rechazas.</p>
+          </div>
+          <button onClick={() => setShowClave(v => !v)}
+            className={`text-xs font-semibold px-3 py-2 rounded-lg border ${claveConf ? "border-gray-200 text-gray-700 hover:bg-gray-50" : "border-amber-400 bg-amber-100 text-amber-800"}`}>
+            🔑 {claveConf ? "Cambiar clave de conserjería" : "Definir clave de conserjería"}
+          </button>
+        </div>
+        {showClave && (
+          <form onSubmit={guardarClave} className="flex flex-wrap items-end gap-2 mb-3 bg-white border border-gray-200 rounded-lg p-3">
+            <div className="flex-1 min-w-48">
+              <label className="block text-xs text-gray-600 mb-1">Clave que conserjería usará para autorizar visitas y borrar encomiendas cuando no haya administración</label>
+              <input value={nuevaClave} onChange={e => setNuevaClave(e.target.value)} minLength={4} maxLength={32} placeholder="Ej: 4821" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+            </div>
+            <button type="submit" className="px-4 py-2 bg-gray-900 text-white text-sm rounded-lg">Guardar</button>
+            {claveMsg && <span className="text-xs text-red-600">{claveMsg}</span>}
+          </form>
+        )}
+        {pendientesAprob.length === 0 ? (
+          <p className="text-sm text-gray-500">No hay visitas esperando aprobación.</p>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {pendientesAprob.map(v => (
+              <div key={v.id} className="bg-white border border-amber-200 rounded-lg p-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{v.nombre_visitante} <span className="text-gray-400 font-normal text-xs">{v.rut || ""}</span></p>
+                  <p className="text-xs text-gray-500">Depto {v.depto_destino || "—"}{v.nombre_residente ? ` · ${v.nombre_residente}` : ""} · {v.motivo}{v.patente ? ` · ${v.patente}` : ""}</p>
+                  <p className="text-[11px] text-gray-400">Registró {v.registrado_por || "conserjería"} · {formatTime(v.hora_entrada)}</p>
+                </div>
+                <button disabled={aprobando === v.id} onClick={() => decidir(v.id, "rechazar")} className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50">Rechazar</button>
+                <button disabled={aprobando === v.id} onClick={() => decidir(v.id, "aprobar")} className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50">Aprobar</button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Stats */}

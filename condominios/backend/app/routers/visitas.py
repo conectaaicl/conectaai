@@ -50,6 +50,11 @@ def _ensure_tables(db: Session):
             observaciones TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW()
         );
+        ALTER TABLE visitas ADD COLUMN IF NOT EXISTS estado VARCHAR(20) DEFAULT 'aprobado';
+        ALTER TABLE visitas ADD COLUMN IF NOT EXISTS aprobado_por VARCHAR(200);
+        ALTER TABLE visitas ADD COLUMN IF NOT EXISTS aprobado_en TIMESTAMPTZ;
+        ALTER TABLE visitas ADD COLUMN IF NOT EXISTS autorizado_con_clave BOOLEAN DEFAULT FALSE;
+        ALTER TABLE visitas ADD COLUMN IF NOT EXISTS motivo_rechazo TEXT;
 
         CREATE TABLE IF NOT EXISTS estacionamientos_config (
             id SERIAL PRIMARY KEY,
@@ -115,20 +120,26 @@ class EstacOcupar(BaseModel):
 @router.post("", status_code=201)
 def crear_visita(body: VisitaCreate, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
+    tenant_id = current_user["tenant_id"]
+    es_conserje = current_user.get("rol") == "conserje"
+    estado = "pendiente" if es_conserje else "aprobado"
     row = db.execute(text(
         "INSERT INTO visitas (tenant_id,condominio_id,nombre_visitante,rut_visitante,"
         "telefono_visitante,depto_destino,nombre_residente,motivo,patente,"
-        "tipo_vehiculo,spot_asignado,registrado_por,registrado_por_nombre,observaciones) "
-        "VALUES (:tid,:cid,:nom,:rut,:tel,:depto,:res,:motivo,:pat,:tveh,:spot,:regid,:regnm,:obs) "
+        "tipo_vehiculo,spot_asignado,registrado_por,registrado_por_nombre,observaciones,"
+        "estado,aprobado_por,aprobado_en) "
+        "VALUES (:tid,:cid,:nom,:rut,:tel,:depto,:res,:motivo,:pat,:tveh,:spot,:regid,:regnm,:obs,"
+        ":estado,:apor,CASE WHEN :estado='aprobado' THEN NOW() END) "
         "RETURNING id, entrada_at"
     ), {
-        "tid": body.tenant_id, "cid": body.condominio_id,
+        "estado": estado, "apor": None if es_conserje else current_user.get("nombre_completo"),
+        "tid": tenant_id, "cid": body.condominio_id,
         "nom": body.nombre_visitante, "rut": body.rut_visitante,
         "tel": body.telefono_visitante, "depto": body.depto_destino,
         "res": body.nombre_residente, "motivo": body.motivo,
         "pat": body.patente, "tveh": body.tipo_vehiculo,
-        "spot": body.spot_asignado, "regid": body.registrado_por,
-        "regnm": body.registrado_por_nombre, "obs": body.observaciones
+        "spot": body.spot_asignado, "regid": body.registrado_por or current_user.get("id"),
+        "regnm": body.registrado_por_nombre or current_user.get("nombre_completo"), "obs": body.observaciones
     }).fetchone()
     db.commit()
 
@@ -139,7 +150,7 @@ def crear_visita(body: VisitaCreate, db: Session = Depends(get_db), current_user
                 "INSERT INTO estacionamientos_ocupacion "
                 "(tenant_id,spot_codigo,visita_id,patente,nombre_conductor) "
                 "VALUES (:tid,:spot,:vid,:pat,:nom)"
-            ), {"tid": body.tenant_id, "spot": body.spot_asignado,
+            ), {"tid": tenant_id, "spot": body.spot_asignado,
                 "vid": row._mapping["id"], "pat": body.patente,
                 "nom": body.nombre_visitante})
             db.commit()
@@ -149,18 +160,113 @@ def crear_visita(body: VisitaCreate, db: Session = Depends(get_db), current_user
     return {
         "id": row._mapping["id"],
         "entrada_at": str(row._mapping["entrada_at"]),
-        "nombre_visitante": body.nombre_visitante
+        "nombre_visitante": body.nombre_visitante,
+        "estado": estado,
     }
+
+
+def _visita_del_tenant(db: Session, visita_id: int, tenant_id: int):
+    v = db.execute(text("SELECT * FROM visitas WHERE id=:id AND tenant_id=:tid"), {"id": visita_id, "tid": tenant_id}).fetchone()
+    if not v:
+        raise HTTPException(404, "Visita no encontrada")
+    return dict(v._mapping)
+
+
+def _require_admin(current_user: dict):
+    if current_user.get("rol") not in ("admin", "administrador", "superadmin", "jefe", "gerente"):
+        raise HTTPException(403, "Solo administracion puede hacer esto")
+
+
+class ClaveIn(BaseModel):
+    clave: str
+
+
+class RechazoIn(BaseModel):
+    motivo: Optional[str] = None
+
+
+@router.patch("/{visita_id}/aprobar")
+def aprobar_visita(visita_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Administracion aprueba una visita registrada por conserjeria."""
+    _ensure_tables(db)
+    _require_admin(current_user)
+    v = _visita_del_tenant(db, visita_id, current_user["tenant_id"])
+    if v.get("estado") == "aprobado":
+        return {"ok": True, "estado": "aprobado"}
+    db.execute(text("UPDATE visitas SET estado='aprobado', aprobado_por=:n, aprobado_en=NOW(), motivo_rechazo=NULL WHERE id=:id AND tenant_id=:tid"),
+               {"n": current_user.get("nombre_completo"), "id": visita_id, "tid": current_user["tenant_id"]})
+    db.commit()
+    return {"ok": True, "estado": "aprobado"}
+
+
+@router.patch("/{visita_id}/rechazar")
+def rechazar_visita(visita_id: int, body: RechazoIn = RechazoIn(), db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    _ensure_tables(db)
+    _require_admin(current_user)
+    _visita_del_tenant(db, visita_id, current_user["tenant_id"])
+    db.execute(text("UPDATE visitas SET estado='rechazado', aprobado_por=:n, aprobado_en=NOW(), motivo_rechazo=:m, salida_at=COALESCE(salida_at, NOW()) WHERE id=:id AND tenant_id=:tid"),
+               {"n": current_user.get("nombre_completo"), "m": body.motivo, "id": visita_id, "tid": current_user["tenant_id"]})
+    db.commit()
+    return {"ok": True, "estado": "rechazado"}
+
+
+@router.patch("/{visita_id}/autorizar-clave")
+def autorizar_con_clave(visita_id: int, body: ClaveIn, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Conserjeria autoriza sin administracion presente, con la clave que dejo administracion."""
+    from app.core.clave_admin import exigir_clave_admin
+    _ensure_tables(db)
+    tid = current_user["tenant_id"]
+    v = _visita_del_tenant(db, visita_id, tid)
+    exigir_clave_admin(db, tid, body.clave)
+    if v.get("estado") == "aprobado":
+        return {"ok": True, "estado": "aprobado"}
+    db.execute(text("UPDATE visitas SET estado='aprobado', aprobado_por=:n, aprobado_en=NOW(), autorizado_con_clave=TRUE WHERE id=:id AND tenant_id=:tid"),
+               {"n": (current_user.get("nombre_completo") or "Conserjeria") + " (con clave)", "id": visita_id, "tid": tid})
+    db.commit()
+    return {"ok": True, "estado": "aprobado"}
+
+
+@router.get("/clave-autorizacion")
+def clave_estado(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    row = db.execute(text("SELECT metadata->>'clave_visitas_hash' FROM tenants WHERE id=:tid"), {"tid": current_user["tenant_id"]}).fetchone()
+    return {"configurada": bool(row and row[0])}
+
+
+@router.put("/clave-autorizacion")
+def clave_definir(body: ClaveIn, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    """Administracion define/cambia la clave que permite a conserjeria autorizar visitas."""
+    import bcrypt as _bcrypt, json as _json
+    _require_admin(current_user)
+    clave = (body.clave or "").strip()
+    if len(clave) < 4 or len(clave) > 32:
+        raise HTTPException(400, "La clave debe tener entre 4 y 32 caracteres")
+    h = _bcrypt.hashpw(clave.encode(), _bcrypt.gensalt(rounds=10)).decode()
+    db.execute(text("UPDATE tenants SET metadata = COALESCE(metadata,'{}'::jsonb) || CAST(:m AS jsonb), updated_at=NOW() WHERE id=:tid"),
+               {"m": _json.dumps({"clave_visitas_hash": h}), "tid": current_user["tenant_id"]})
+    db.commit()
+    return {"ok": True}
+
+
+@router.get("/stats")
+def visitas_stats(db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
+    _ensure_tables(db)
+    r = db.execute(text(
+        "SELECT COUNT(*) FILTER (WHERE entrada_at::date = CURRENT_DATE) AS hoy, "
+        "COUNT(*) FILTER (WHERE salida_at IS NULL AND estado='aprobado') AS dentro, "
+        "COUNT(*) FILTER (WHERE entrada_at >= date_trunc('week', NOW())) AS semana, "
+        "COUNT(*) FILTER (WHERE estado='pendiente') AS pendientes "
+        "FROM visitas WHERE tenant_id=:tid"), {"tid": current_user["tenant_id"]}).fetchone()
+    return {"visitas_hoy": r[0], "en_edificio": r[1], "esta_semana": r[2], "pendientes": r[3]}
 
 
 @router.patch("/{visita_id}/salida")
 def registrar_salida(visita_id: int, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
     _ensure_tables(db)
-    v = db.execute(text("SELECT * FROM visitas WHERE id=:id"), {"id": visita_id}).fetchone()
+    v = db.execute(text("SELECT * FROM visitas WHERE id=:id AND tenant_id=:tid"), {"id": visita_id, "tid": current_user["tenant_id"]}).fetchone()
     if not v:
         raise HTTPException(404, "Visita no encontrada")
     d = dict(v._mapping)
-    db.execute(text("UPDATE visitas SET salida_at=NOW() WHERE id=:id"), {"id": visita_id})
+    db.execute(text("UPDATE visitas SET salida_at=NOW() WHERE id=:id AND tenant_id=:tid"), {"id": visita_id, "tid": current_user["tenant_id"]})
     # Liberar estacionamiento si corresponde
     db.execute(text("UPDATE estacionamientos_ocupacion SET salida_at=NOW(), activo=false WHERE visita_id=:vid AND activo=true"), {"vid": visita_id})
     db.commit()
@@ -172,6 +278,8 @@ def listar_visitas(
     condominio_id: Optional[int] = None,
     activas: Optional[bool] = None,
     depto: Optional[str] = None,
+    estado: Optional[str] = None,
+    q: Optional[str] = None,
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user)
@@ -182,6 +290,10 @@ def listar_visitas(
     params: dict = {"tid": tenant_id}
     if condominio_id:
         sql += " AND condominio_id=:cid"; params["cid"] = condominio_id
+    if estado:
+        sql += " AND estado=:estado"; params["estado"] = estado
+    if q:
+        sql += " AND (nombre_visitante ILIKE :q OR rut_visitante ILIKE :q OR patente ILIKE :q)"; params["q"] = "%" + q + "%"
     if activas is True:
         sql += " AND salida_at IS NULL"
     elif activas is False:
@@ -196,6 +308,11 @@ def listar_visitas(
         d["entrada_at"] = str(d.get("entrada_at") or "")
         d["salida_at"] = str(d.get("salida_at") or "")
         d["created_at"] = str(d.get("created_at") or "")
+        d["aprobado_en"] = str(d.get("aprobado_en") or "")
+        # alias que usa el panel de administracion
+        d["hora_entrada"] = d["entrada_at"]; d["hora_salida"] = d["salida_at"] or None
+        d["rut"] = d.get("rut_visitante"); d["registrado_por"] = d.get("registrado_por_nombre")
+        d["spot_estacionamiento"] = d.get("spot_asignado")
         result.append(d)
     return result
 
@@ -205,7 +322,7 @@ def visitas_activas(condominio_id: Optional[int] = None, db: Session = Depends(g
     tenant_id = current_user["tenant_id"]
     """Quick endpoint for the Central page: visitors currently in the building."""
     _ensure_tables(db)
-    sql = "SELECT id,nombre_visitante,rut_visitante,depto_destino,nombre_residente,motivo,spot_asignado,patente,entrada_at::text FROM visitas WHERE tenant_id=:tid AND salida_at IS NULL"
+    sql = "SELECT id,nombre_visitante,rut_visitante,depto_destino,nombre_residente,motivo,spot_asignado,patente,entrada_at::text,estado FROM visitas WHERE tenant_id=:tid AND salida_at IS NULL AND estado='aprobado'"
     params: dict = {"tid": tenant_id}
     if condominio_id:
         sql += " AND condominio_id=:cid"; params["cid"] = condominio_id

@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { tid } from '../tid'
 
 interface Camara {
   id: number
@@ -137,7 +138,6 @@ export default function ConserjeMonitorCamaras() {
   const [camaras, setCamaras] = useState<Camara[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshMs, setRefreshMs] = useState(4000)
-  const tid = () => typeof window !== 'undefined' ? (localStorage.getItem('current_condominio_id') || '1') : '1'
 
   const fetchCamaras = useCallback(async () => {
     try {

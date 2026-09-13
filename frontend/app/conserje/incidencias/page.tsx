@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useCallback } from 'react'
+import { tid } from '../tid'
 
 interface Incidencia {
   id: number
@@ -36,7 +37,6 @@ export default function ConserjeIncidencias() {
   const [loading, setLoading] = useState(true)
   const [filtro, setFiltro] = useState<'abierta' | 'en_proceso' | 'todos'>('abierta')
   const [acting, setActing] = useState<number | null>(null)
-  const tid = () => localStorage.getItem('current_condominio_id') || '1'
 
   const load = useCallback(async () => {
     try {

@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { PackageX, Package } from 'lucide-react'
+import { tid } from '../tid'
 
 interface Paquete {
   id: number
@@ -52,7 +53,6 @@ function fmt(ts?: string) {
 }
 
 export default function ConserjePaqueteriaPage() {
-  const tid = () => typeof window !== 'undefined' ? (localStorage.getItem('current_condominio_id') || '1') : '1'
 
   const [paquetes, setPaquetes] = useState<Paquete[]>([])
   const [loading, setLoading] = useState(true)
@@ -152,6 +152,20 @@ export default function ConserjePaqueteriaPage() {
         setTimeout(() => setScanFeedback(null), 2000)
       }
     } finally { setSaving(false) }
+  }
+
+  const [borrar, setBorrar] = useState<Paquete | null>(null)
+  const [claveAdmin, setClaveAdmin] = useState('')
+  const [claveErr, setClaveErr] = useState('')
+
+  async function eliminarConClave(e: React.FormEvent) {
+    e.preventDefault()
+    if (!borrar) return
+    setClaveErr('')
+    const r = await fetch(`/api/paqueteria/${borrar.id}?clave=${encodeURIComponent(claveAdmin)}`, { method: 'DELETE', credentials: 'include' })
+    const d = await r.json().catch(() => ({}))
+    if (!r.ok) { setClaveErr(d.detail || 'Clave incorrecta'); return }
+    setBorrar(null); setClaveAdmin(''); load()
   }
 
   async function marcarEntregado(id: number) {
@@ -347,11 +361,28 @@ export default function ConserjePaqueteriaPage() {
                 ) : (
                   <span className="flex-shrink-0 px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs rounded-lg">✓</span>
                 )}
+                <button onClick={() => { setBorrar(p); setClaveAdmin(''); setClaveErr('') }} title="Eliminar (requiere clave de administración)"
+                  className="flex-shrink-0 px-2 py-2 text-slate-500 hover:text-red-400 text-xs rounded-xl transition">✕</button>
               </div>
             </div>
           )
         })}
       </div>
+      {borrar && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setBorrar(null)}>
+          <form onSubmit={eliminarConClave} onClick={e => e.stopPropagation()} className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-2xl p-5 space-y-3">
+            <h2 className="text-white font-bold">Eliminar encomienda</h2>
+            <p className="text-sm text-slate-300">Una encomienda ya registrada solo se puede borrar con la <b className="text-white">clave de administración</b>. Quedará fuera del historial.</p>
+            {claveErr && <p className="text-sm text-red-300 bg-red-500/10 border border-red-500/30 rounded-xl px-3 py-2">{claveErr}</p>}
+            <input type="password" autoFocus value={claveAdmin} onChange={e => setClaveAdmin(e.target.value)} placeholder="Clave de administración"
+              className="w-full px-3 py-2.5 rounded-xl bg-slate-800 border border-slate-700 text-white text-sm text-center tracking-widest focus:outline-none focus:ring-2 focus:ring-red-500" />
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setBorrar(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700">Cancelar</button>
+              <button type="submit" className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-600 hover:bg-red-500">Eliminar</button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

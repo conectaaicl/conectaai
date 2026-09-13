@@ -167,6 +167,8 @@ export default function PortalDashboard() {
             { label:'Incidencias',      href:'/portal/incidencias',icon:'🔧', bg:'bg-orange-100 border-orange-200' },
             { label:'Documentos',       href:'/portal/documentos', icon:'📁', bg:'bg-violet-100 border-violet-200' },
             { label:'Reservas',         href:'/portal/reservas',   icon:'📅', bg:'bg-emerald-100 border-emerald-200' },
+            { label:'Visitas',          href:'/portal/visitas',    icon:'🚪', bg:'bg-teal-100 border-teal-200' },
+            { label:'Encomiendas',      href:'/portal/paquetes',   icon:'📦', bg:'bg-lime-100 border-lime-200' },
             { label:'QR Acceso',        href:'/portal/qr',         icon:'🔑', bg:'bg-cyan-100 border-cyan-200' },
             { label:'Votar',            href:'/portal/votar',      icon:'🗳️', bg:'bg-pink-100 border-pink-200' },
           ].map(item => (

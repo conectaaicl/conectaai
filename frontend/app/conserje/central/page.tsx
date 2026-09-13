@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Plus, Package, RefreshCw, ExternalLink, Radio, DollarSign } from 'lucide-react'
+import { tid } from '../tid'
 
 interface Puerta { id: number; nombre: string; ubicacion: string; tipo: string; estado: string; modo: string; activa: boolean }
 interface Visita { id: number; nombre_visitante: string; rut_visitante?: string; depto_destino?: string; residente_nombre?: string; estado: string; creado_en: string }
@@ -40,7 +41,6 @@ export default function CentralConserje() {
   const [lastUpdate, setLastUpdate] = useState(new Date())
   const [time, setTime] = useState(new Date())
 
-  const tid = () => typeof window !== 'undefined' ? (localStorage.getItem('current_condominio_id') || '1') : '1'
 
   const loadData = useCallback(async () => {
     try {
@@ -49,7 +49,7 @@ export default function CentralConserje() {
         fetch('/api/condominios/puertas?tenant_id=' + t, { credentials: 'include' }),
         fetch('/api/accesos/live?tenant_id=' + t + '&limit=15', { credentials: 'include' }),
         fetch('/api/visitas?tenant_id=' + t + '&limit=8', { credentials: 'include' }),
-        fetch('/api/paquetes?tenant_id=' + t + '&estado=pendiente&limit=8', { credentials: 'include' }),
+        fetch('/api/paqueteria?tenant_id=' + t + '&estado=pendiente&limit=8', { credentials: 'include' }),
       ])
       if (pRes.status === 'fulfilled' && pRes.value.ok) setPuertas(await pRes.value.json())
       if (eRes.status === 'fulfilled' && eRes.value.ok) {
@@ -62,7 +62,13 @@ export default function CentralConserje() {
       }
       if (pqRes.status === 'fulfilled' && pqRes.value.ok) {
         const pd = await pqRes.value.json()
-        setPaquetes(Array.isArray(pd) ? pd : (pd.paquetes || []))
+        const arr = Array.isArray(pd) ? pd : (pd.paquetes || pd.items || [])
+        setPaquetes(arr.map((x: any) => ({
+          id: x.id, estado: x.estado || 'pendiente', carrier: x.carrier,
+          residente_nombre: x.residente_nombre || x.nombre_destinatario,
+          depto: x.depto || x.depto_destino, descripcion: x.descripcion,
+          creado_en: x.creado_en || x.recibido_at || x.created_at, notificado: x.notificado,
+        })))
       }
       setLastUpdate(new Date())
     } finally { setLoading(false) }
@@ -107,7 +113,7 @@ export default function CentralConserje() {
           </p>
         </div>
         <div className="flex gap-3 flex-wrap">
-          <Link href="/conserje/visitas"
+          <Link href="/conserje/visitas?nueva=1"
             className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-brand-700 hover:bg-brand-600 border border-brand-500/40 transition-colors">
             <Plus size={16} /> Nueva visita
           </Link>
@@ -230,7 +236,7 @@ export default function CentralConserje() {
                 ))}
               </div>
             )}
-            <Link href="/conserje/visitas"
+            <Link href="/conserje/visitas?nueva=1"
               className="mt-3 w-full flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-semibold text-brand-300 border border-brand-500/30 hover:bg-brand-500/10 transition-colors">
               <Plus size={13} /> Nueva visita
             </Link>
