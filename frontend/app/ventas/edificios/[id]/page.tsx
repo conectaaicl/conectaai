@@ -51,7 +51,7 @@ export default function EdificioDetalle({ params }: { params: Promise<{ id: stri
       setMsg({ ok: true, t: 'Propuesta creada · ' + partes.join(' · '), wa: r.envio.wa_link }); setTab(null); load()
     } catch (er: any) { setMsg({ ok: false, t: er.message }) } finally { setBusy(false) }
   }
-  async function reenviar(pid: number, canal: string) { setBusy(true); try { const r = await vjson(`/propuestas/${pid}/reenviar?canal=${canal}`, { method: 'POST' }); setMsg({ ok: true, t: `Reenvío: ${r.email || ''} ${r.whatsapp || ''}`.trim(), wa: r.wa_link }); load() } catch (er: any) { setMsg({ ok: false, t: er.message }) } finally { setBusy(false) } }
+  async function reenviar(pid: number, canal: string) { setBusy(true); try { const r = await vjson(`/propuestas/${pid}/reenviar?canal=${canal}`, { method: 'POST' }); if (canal === 'whatsapp' && r.whatsapp !== 'enviado' && r.wa_link) window.open(r.wa_link, '_blank'); setMsg({ ok: true, t: r.whatsapp === 'enviado' ? 'WhatsApp enviado automáticamente' : r.email === 'enviado' ? 'Correo reenviado' : r.email ? 'Correo: ' + r.email : 'Se abrió WhatsApp con el mensaje listo', wa: r.wa_link }); load() } catch (er: any) { setMsg({ ok: false, t: er.message }) } finally { setBusy(false) } }
   async function demoAccion(did: number, acc: 'extender' | 'convertir' | 'eliminar') {
     if (acc !== 'extender' && !confirm(acc === 'convertir' ? '¿Convertir este demo en el condominio real del cliente?' : '¿Desactivar este demo? El cliente no podrá entrar.')) return
     setBusy(true); try { const r = await vjson(`/demos/${did}/${acc}`, { method: 'POST', body: acc === 'extender' ? JSON.stringify({ dias: 5 }) : undefined }); setMsg({ ok: true, t: acc === 'extender' ? `Demo extendido hasta ${fecha(r.vence)}` : acc === 'convertir' ? '¡Cliente! ' + (r.siguiente || '') : 'Demo desactivado' }); load() } catch (er: any) { setMsg({ ok: false, t: er.message }) } finally { setBusy(false) }
@@ -78,7 +78,7 @@ export default function EdificioDetalle({ params }: { params: Promise<{ id: stri
       </div>
       <p className="text-xs text-[#35505C] -mt-2">Siguiente paso: {et.hint}{e.proxima_accion ? ` · Agendado: ${e.proxima_accion}${e.proxima_fecha ? ' el ' + fecha(e.proxima_fecha) : ''}` : ''}</p>
 
-      {msg && <div className={`rounded-2xl px-4 py-3 text-sm flex flex-wrap items-center gap-3 ${msg.ok ? 'bg-[#DDF4F0] text-[#0F766E]' : 'bg-rose-50 text-rose-700'}`}><span className="flex-1">{msg.t}</span>{msg.wa && <a href={msg.wa} target="_blank" rel="noreferrer" className="bg-[#25D366] text-white font-bold px-3 py-2 rounded-xl text-xs inline-flex items-center gap-1"><MessageCircle size={14} /> Mandar por mi WhatsApp</a>}</div>}
+      {msg && <div role="status" className={`fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-2xl shadow-2xl border rounded-2xl px-4 py-3 text-sm flex flex-wrap items-center gap-3 ${msg.ok ? 'bg-[#DDF4F0] text-[#0F766E] border-teal-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}><span className="flex-1">{msg.t}</span><button onClick={() => setMsg(null)} className="text-xs font-bold opacity-60">✕</button>{msg.wa && <a href={msg.wa} target="_blank" rel="noreferrer" className="bg-[#25D366] text-white font-bold px-3 py-2 rounded-xl text-xs inline-flex items-center gap-1"><MessageCircle size={14} /> Mandar por mi WhatsApp</a>}</div>}
 
       {/* Contacto */}
       <div className="grid grid-cols-3 gap-2">

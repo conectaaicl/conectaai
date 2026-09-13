@@ -24,14 +24,14 @@ export default function Presentaciones() {
     } catch (e: any) { setMsg({ ok: false, t: e.message }) } finally { setBusy(false) }
   }
   async function estado(id: number, estado: string) { await vjson(`/presentaciones/${id}`, { method: 'PATCH', body: JSON.stringify({ estado }) }); load() }
-  async function reenviar(id: number, canal: string) { setBusy(true); try { const r = await vjson(`/presentaciones/${id}/reenviar?canal=${canal}`, { method: 'POST' }); setMsg({ ok: true, t: `Reenviado: ${r.wa || ''} ${r.email || ''}`, wa: r.wa_link }) } catch (e: any) { setMsg({ ok: false, t: e.message }) } finally { setBusy(false) } }
+  async function reenviar(id: number, canal: string) { setBusy(true); try { const r = await vjson(`/presentaciones/${id}/reenviar?canal=${canal}`, { method: 'POST' }); if (r.wa !== 'enviado' && r.wa_link) window.open(r.wa_link, '_blank'); setMsg({ ok: true, t: (r.email === 'enviado' ? 'Correo reenviado · ' : '') + (r.wa === 'enviado' ? 'WhatsApp enviado' : 'se abrió WhatsApp con el mensaje listo'), wa: r.wa_link }) } catch (e: any) { setMsg({ ok: false, t: e.message }) } finally { setBusy(false) } }
   async function borrar(id: number) { if (!confirm('¿Eliminar esta presentación?')) return; await vfetchDel(id); load() }
   async function vfetchDel(id: number) { await fetch(`/api/ventas-terreno/presentaciones/${id}`, { method: 'DELETE', credentials: 'include' }) }
 
   return (
     <div className="p-4 md:p-8 max-w-6xl mx-auto">
       <div className="mb-4"><p className="text-xs font-bold tracking-widest text-[#0F766E] uppercase">Ecosistema ConectaAI</p><h1 className="text-2xl font-extrabold">Presentaciones</h1><p className="text-sm text-[#7A8F98]">Elige los productos, escribe el contacto y sale por WhatsApp y correo con PDF y link que avisa cuando lo abren.</p></div>
-      {msg && <div className={`rounded-2xl px-4 py-3 text-sm flex flex-wrap items-center gap-3 mb-4 ${msg.ok ? 'bg-[#DDF4F0] text-[#0F766E]' : 'bg-rose-50 text-rose-700'}`}><span className="flex-1">{msg.t}</span>{msg.wa && <a href={msg.wa} target="_blank" rel="noreferrer" className="bg-[#25D366] text-white font-bold px-3 py-2 rounded-xl text-xs inline-flex items-center gap-1"><MessageCircle size={14} /> Mandar por mi WhatsApp</a>}</div>}
+      {msg && <div role="status" className={`fixed bottom-20 md:bottom-6 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-2xl shadow-2xl border rounded-2xl px-4 py-3 text-sm flex flex-wrap items-center gap-3 ${msg.ok ? 'bg-[#DDF4F0] text-[#0F766E] border-teal-200' : 'bg-rose-50 text-rose-700 border-rose-200'}`}><span className="flex-1">{msg.t}</span><button onClick={() => setMsg(null)} className="text-xs font-bold opacity-60">✕</button>{msg.wa && <a href={msg.wa} target="_blank" rel="noreferrer" className="bg-[#25D366] text-white font-bold px-3 py-2 rounded-xl text-xs inline-flex items-center gap-1"><MessageCircle size={14} /> Mandar por mi WhatsApp</a>}</div>}
       <div className="grid lg:grid-cols-[minmax(0,420px)_1fr] gap-4">
         <section className="bg-white border border-[#DDE4E6] rounded-2xl p-4 space-y-3 h-fit">
           <h2 className="font-bold text-sm">Nueva presentación</h2>

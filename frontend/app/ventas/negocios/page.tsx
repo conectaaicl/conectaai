@@ -58,7 +58,7 @@ export default function Negocios() {
         {list.length === 0 && <div className="p-8 text-center text-sm text-[#7A8F98]">Sin negocios todavía.</div>}
         {list.map(n => (
           <Link key={n.id} href={`/ventas/negocios/${n.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-slate-50">
-            <div className="w-10 h-10 rounded-xl bg-[#F3F6F5] flex items-center justify-center text-lg shrink-0">{(cat?.productos.find((p: any) => p.id === (n.productos || [])[0]) || {}).icon || '🏪'}</div>
+            <div className="w-10 h-10 rounded-xl bg-[#F3F6F5] flex items-center justify-center text-lg shrink-0">{(cat?.productos.find((p: any) => p.id === (n.productos || [])[0]) || {}).icon || '•'}</div>
             <div className="flex-1 min-w-0"><b className="block text-sm truncate">{n.nombre}</b><span className="text-xs text-[#7A8F98] block truncate">{[n.rubro, n.comuna, (n.productos || []).map((x: string) => cat?.productos.find((p: any) => p.id === x)?.name || x).join(', ')].filter(Boolean).join(' · ')} · {hace(n.updated_at)}</span></div>
             <div className="text-right shrink-0"><span className={`text-[11px] font-bold px-2 py-1 rounded-full ${ETAPAS[n.etapa]?.color}`}>{ETAPAS[n.etapa]?.label}</span>{n.valor_mensual > 0 && <div className="text-[11px] text-[#35505C] mt-1 font-semibold">{clp(n.valor_mensual)}/mes</div>}{n.aceptada_en && <div className="text-[10px] text-emerald-700 font-bold">quiere partir</div>}</div>
           </Link>))}

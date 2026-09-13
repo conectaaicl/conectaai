@@ -29,7 +29,7 @@ export default function Cortinas() {
   }
   return (
     <div className="p-4 md:p-8 max-w-5xl mx-auto">
-      <div className="flex flex-wrap items-end justify-between gap-3 mb-4"><div><p className="text-xs font-bold tracking-widest text-[#8A7340] uppercase">TerraBlinds</p><h1 className="text-2xl font-extrabold">Cortinas</h1><p className="text-sm text-[#7A8F98]">Mide en terreno, propone tres niveles, el cliente acepta con un clic.</p></div><button onClick={() => setNuevo(!nuevo)} className="bg-[#0B1F2A] text-white font-bold px-5 py-3 rounded-2xl text-sm">＋ Nuevo cliente</button></div>
+      <div className="flex flex-wrap items-end justify-between gap-3 mb-4"><div className="flex items-center gap-4">{/* eslint-disable-next-line @next/next/no-img-element */}<img id="logoterrablinds" src="/uploads/branding/terrablinds/logo.png" alt="TerraBlinds" width={72} height={72} className="w-[72px] h-[72px] rounded-2xl bg-white border border-[#DDE4E6] p-1" /><div><p className="text-xs font-bold tracking-widest text-[#1F5FD6] uppercase">TerraBlinds</p><h1 className="text-2xl font-extrabold">Cortinas</h1><p className="text-sm text-[#7A8F98]">Mide en terreno, propone tres niveles, el cliente acepta con un clic.</p></div></div><button onClick={() => setNuevo(!nuevo)} className="bg-[#1F5FD6] text-white font-bold px-5 py-3 rounded-2xl text-sm">＋ Nuevo cliente</button></div>
       {nuevo && <div className="bg-white border border-[#DDE4E6] rounded-2xl p-4 mb-4 grid md:grid-cols-2 gap-2">
         <input className={inp} placeholder="Nombre del cliente *" value={f.nombre} onChange={e => setF({ ...f, nombre: e.target.value })} />
         <div className="flex gap-2">{[['casa', 'Casa'], ['departamento', 'Depto'], ['oficina', 'Oficina'], ['comunidad', 'Edificio']].map(([k, l]) => <button key={k} onClick={() => setF({ ...f, tipo: k })} className={`flex-1 px-2 py-3 rounded-xl border text-sm font-semibold ${f.tipo === k ? 'bg-[#0B1F2A] text-white border-[#0B1F2A]' : 'bg-white border-[#DDE4E6] text-[#35505C]'}`}>{l}</button>)}</div>
@@ -46,7 +46,7 @@ export default function Cortinas() {
         {list.length === 0 && <div className="p-8 text-center text-sm text-[#7A8F98]">Sin clientes de cortinas todavía.</div>}
         {list.map(l => (
           <Link key={l.id} href={`/ventas/cortinas/${l.id}`} className="flex items-center gap-3 px-4 py-3 active:bg-slate-50">
-            <div className="w-10 h-10 rounded-xl bg-[#F4EFE6] flex items-center justify-center text-lg shrink-0">🪟</div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}<img src="/uploads/branding/terrablinds/logo.png" alt="" className="w-10 h-10 rounded-xl bg-white border border-[#DDE4E6] p-0.5 shrink-0" />
             <div className="flex-1 min-w-0"><b className="block text-sm truncate">{l.nombre}</b><span className="text-xs text-[#7A8F98] block truncate">{[l.comuna, l.tipo, l.espacios?.length ? `${l.espacios.length} espacios · ${l.m2_total} m²` : 'sin medir', l.origen !== 'terreno' ? `vía ${l.origen}` : null].filter(Boolean).join(' · ')} · {hace(l.updated_at)}</span></div>
             <div className="text-right shrink-0"><span className={`text-[11px] font-bold px-2 py-1 rounded-full ${ETC[l.etapa]?.color}`}>{ETC[l.etapa]?.label}</span>{l.estimado > 0 && <div className="text-[11px] text-[#35505C] mt-1 font-semibold">{clp(l.estimado)}</div>}{l.aperturas > 0 && <div className="text-[10px] text-[#7A8F98]">abrió ×{l.aperturas}</div>}</div>
           </Link>))}
