@@ -46,6 +46,9 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
     { href: '/superadmin/dashboard', label: 'Dashboard',
       icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" /></svg>
     },
+    { href: '/superadmin/nuevo', label: 'Crear condominio',
+      icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+    },
     { href: '/superadmin/tenants', label: 'Tenants',
       icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-2 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
     },
@@ -95,7 +98,7 @@ export default function SuperAdminLayout({ children }: { children: React.ReactNo
   )
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex">
+    <div className="sa-shell min-h-screen bg-slate-950 text-white flex">
       {/* Desktop sidebar */}
       <div className="hidden lg:flex flex-col" style={{width:240}}>
         <div className="fixed inset-y-0 left-0" style={{width:240}}>

@@ -55,10 +55,10 @@ export default function SADashboard() {
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
           <p className="text-slate-400 text-sm mt-1">Resumen de la plataforma ConectaAI</p>
         </div>
-        <Link href="/superadmin/tenants/new"
+        <Link href="/superadmin/nuevo"
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-indigo-500/20">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-          Nuevo Tenant
+          Crear condominio
         </Link>
       </div>
 

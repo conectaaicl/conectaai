@@ -7,12 +7,19 @@ import { useRouter } from 'next/navigation'
 // (tenants.dominio) -- el titulo aqui es solo cosmetico, por hostname.
 function usePortalLabel() {
   const [label, setLabel] = useState('Portal Residentes')
+  const [nombre, setNombre] = useState('ConectaAI')
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) {
-      setLabel('Portal Socios')
-    }
+    fetch('/api/portal/auth/info-publica')
+      .then(r => r.ok ? r.json() : null)
+      .then(info => {
+        if (info?.nombre) setNombre(info.nombre)
+        if (info?.portal_label) setLabel(info.portal_label)
+      })
+      .catch(() => {
+        if (typeof window !== 'undefined' && window.location.hostname.includes('gym.')) setLabel('Portal Socios')
+      })
   }, [])
-  return label
+  return { label, nombre }
 }
 
 export default function PortalLogin() {
@@ -22,7 +29,7 @@ export default function PortalLogin() {
   const [showPw, setShowPw] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const portalLabel = usePortalLabel()
+  const { label: portalLabel, nombre: nombreTenant } = usePortalLabel()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -44,7 +51,7 @@ export default function PortalLogin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-600 to-indigo-900 flex flex-col items-center justify-center p-4">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold text-white">ConectaAI</h1>
+        <h1 className="text-3xl font-bold text-white">{nombreTenant}</h1>
         <p className="text-indigo-200 mt-1">{portalLabel}</p>
       </div>
       <div className="bg-white rounded-2xl p-8 w-full max-w-sm shadow-2xl">

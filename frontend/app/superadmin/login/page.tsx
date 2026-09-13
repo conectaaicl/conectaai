@@ -33,7 +33,7 @@ export default function SuperAdminLogin() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-950" style={{backgroundImage:'radial-gradient(ellipse at 50% 0%, rgba(91,62,245,0.15) 0%, transparent 60%)'}}>
+    <div className="sa-shell min-h-screen flex items-center justify-center bg-slate-950" style={{backgroundImage:'radial-gradient(ellipse at 50% 0%, rgba(91,62,245,0.15) 0%, transparent 60%)'}}>
       <div className="w-full max-w-md px-6">
         <div className="text-center mb-8">
           <div className="w-14 h-14 bg-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-500/30">

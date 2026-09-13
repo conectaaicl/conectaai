@@ -92,3 +92,10 @@ input::placeholder, textarea::placeholder {
 .dark input, .dark select, .dark textarea {
   color: #e2e8f0;
 }
+/* Area superadmin (siempre oscura): inputs legibles */
+.sa-shell input, .sa-shell select, .sa-shell textarea {
+  color: #f1f5f9;
+}
+.sa-shell select option {
+  color: #0f172a;
+}
