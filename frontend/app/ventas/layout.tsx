@@ -2,10 +2,10 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { MapPin, PlusCircle, Building2, Kanban, Gift, Presentation, Blinds, FileText, Store, BarChart3, LogOut, Wifi, WifiOff } from 'lucide-react'
+import { MapPin, PlusCircle, Building2, Kanban, Gift, Presentation, Blinds, FileText, Store, BarChart3, Tags, LogOut, Wifi, WifiOff } from 'lucide-react'
 import { vfetch } from './lib'
 
-const NAV = [
+const NAV: { href: string; label: string; icon: any; admin?: boolean }[] = [
   { href: '/ventas/hoy',       label: 'Mi día',       icon: MapPin },
   { href: '/ventas/visita',    label: 'Nueva visita', icon: PlusCircle },
   { href: '/ventas/edificios', label: 'Edificios',    icon: Building2 },
@@ -16,6 +16,7 @@ const NAV = [
   { href: '/ventas/presentaciones', label: 'Presentaciones', icon: Presentation },
   { href: '/ventas/cortinas',  label: 'Cortinas',     icon: Blinds },
   { href: '/ventas/resultados', label: 'Resultados',  icon: BarChart3 },
+  { href: '/ventas/precios',   label: 'Precios',      icon: Tags, admin: true },
 ]
 
 export default function VentasLayout({ children }: { children: React.ReactNode }) {
@@ -44,6 +45,8 @@ export default function VentasLayout({ children }: { children: React.ReactNode }
 
   if (isPublic) return <div className="min-h-screen bg-[#F3F6F5] text-[#0B1F2A]">{children}</div>
 
+  const nav = NAV.filter(n => !n.admin || me?.rol === 'admin')
+
   async function salir() { await vfetch('/auth/logout', { method: 'POST' }); router.replace('/ventas/login') }
 
   return (
@@ -51,7 +54,7 @@ export default function VentasLayout({ children }: { children: React.ReactNode }
       <aside className="hidden md:flex md:flex-col w-56 shrink-0 bg-white border-r border-[#DDE4E6] min-h-screen sticky top-0 p-4">
         <div className="px-2 pb-5 flex items-center gap-3">{/* eslint-disable-next-line @next/next/no-img-element */}<img src="/uploads/branding/conectaai/marca.png" alt="ConectaAI" width={44} height={33} className="w-11 h-auto" /><div><div className="font-extrabold text-lg leading-tight">ConectaAI</div><div className="text-xs text-[#7A8F98] font-medium">Ventas Terreno</div></div></div>
         <nav className="flex flex-col gap-1">
-          {NAV.map(n => { const on = pathname.startsWith(n.href); const I = n.icon; return (
+          {nav.map(n => { const on = pathname.startsWith(n.href); const I = n.icon; return (
             <Link key={n.href} href={n.href} className={`flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold ${on ? 'bg-[#DDF4F0] text-[#0F766E]' : 'text-[#35505C] hover:bg-slate-50'}`}><I size={18} />{n.label}</Link>) })}
         </nav>
         <div className="mt-auto pt-4 border-t border-[#DDE4E6] text-xs text-[#7A8F98]">
@@ -62,7 +65,7 @@ export default function VentasLayout({ children }: { children: React.ReactNode }
       </aside>
       <main className="flex-1 min-w-0 pb-24 md:pb-8">{children}</main>
       <nav className="md:hidden fixed bottom-0 inset-x-0 bg-white border-t border-[#DDE4E6] flex overflow-x-auto z-40" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {NAV.map(n => { const on = pathname.startsWith(n.href); const I = n.icon; return (
+        {nav.map(n => { const on = pathname.startsWith(n.href); const I = n.icon; return (
           <Link key={n.href} href={n.href} className={`flex flex-col items-center gap-0.5 py-2 min-w-[72px] shrink-0 text-[10px] font-semibold ${on ? 'text-[#0F766E]' : 'text-[#7A8F98]'}`}><I size={22} strokeWidth={on ? 2.4 : 1.8} />{n.label}</Link>) })}
       </nav>
     </div>

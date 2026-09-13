@@ -40,8 +40,14 @@ IMG_CACHE = UPLOAD_DIR / "ventas" / "tb_img"
 # Precios de respaldo CLP por m2 cuando el catalogo no trae precio (toldos/persianas). Override: TERRABLINDS_PRECIOS (json por categoria o slug)
 _PRECIOS_DEF = {"Cortinas Roller": 38000, "Persianas": 45000, "Toldos": 95000, "Mallas": 45000, "Cierres de Terraza": 0, "Domótica": 0, "Control de Acceso": 0,
                 "blackout": 38000, "sunscreen": 42000, "duo": 55000, "venecianas": 45000, "persianas_ext": 120000, "toldo": 95000, "toldo_vertical": 70000, "metalica": 85000}
-PRECIOS = {**_PRECIOS_DEF, **json.loads(os.getenv("TERRABLINDS_PRECIOS", "{}") or "{}")}
-MOTOR_UNIDAD = int(os.getenv("TERRABLINDS_MOTOR", "95000"))
+PRECIOS_DEF = {**_PRECIOS_DEF, **json.loads(os.getenv("TERRABLINDS_PRECIOS", "{}") or "{}")}
+MOTOR_DEF = int(os.getenv("TERRABLINDS_MOTOR", "95000"))
+
+
+def cfg_cortinas() -> dict:
+    """Precios de respaldo, motor y factores de nivel vigentes (BD sobre defaults). Ver ventas_config."""
+    from app.routers.ventas_config import get_config
+    return get_config("cortinas", {"precios": PRECIOS_DEF, "motor": MOTOR_DEF, "niveles": {k: {"factor": v["factor"]} for k, v in NIVELES.items()}})
 M2_MINIMO = 1.0
 _ICON_CAT = {"Cortinas Roller": "🪟", "Persianas": "🏠", "Toldos": "⛱️", "Mallas": "🛡️", "Cierres de Terraza": "🏡", "Domótica": "📡", "Control de Acceso": "🔐"}
 # Respaldo si terrablinds.cl no responde
@@ -75,7 +81,7 @@ def catalogo_tb(force: bool = False) -> list:
             m2 = float(p.get("base_price_m2") or 0)
             unit = float(p.get("price_unit") or 0)
             if not m2 and not p.get("is_unit_price"):
-                m2 = PRECIOS.get(p.get("slug"), PRECIOS.get(cat, 0))
+                pr = cfg_cortinas()["precios"]; m2 = pr.get(p.get("slug"), pr.get(cat, 0))
             img = (p.get("images") or [None])[0]
             items.append({"key": p["slug"], "id_tb": p["id"], "nombre": p["name"], "categoria": cat, "desc": p.get("short_description") or _limpiar(p.get("description")),
                           "icon": _ICON_CAT.get(cat, "🪟"), "precio_m2": int(m2), "por_unidad": bool(p.get("is_unit_price")), "precio_unidad": int(unit),
@@ -101,7 +107,7 @@ def _prod(key: str) -> dict:
         if it["key"] == key: return it
     for it in items:
         if it["key"] == _ALIAS.get(key): return it
-    return {"key": key, "nombre": key.replace("-", " ").title(), "categoria": "Otros", "desc": "", "icon": "🪟", "precio_m2": PRECIOS.get(key, 40000), "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None}
+    return {"key": key, "nombre": key.replace("-", " ").title(), "categoria": "Otros", "desc": "", "icon": "🪟", "precio_m2": cfg_cortinas()["precios"].get(key, 40000), "por_unidad": False, "precio_unidad": 0, "colores": [], "imagen": None}
 
 
 def _imagen_local(url):
@@ -174,12 +180,14 @@ def calcular(espacios: List[dict], descuento_pct: int = 0) -> dict:
             base = prod.get("precio_m2") or 0; sub = m2 * base
         filas.append({**e, "producto_nombre": prod["nombre"], "categoria": prod.get("categoria"), "imagen": prod.get("imagen"), "por_unidad": bool(prod.get("por_unidad")),
                       "m2": round(m2, 2), "precio_m2": int(base), "subtotal": int(round(sub)), "a_cotizar": not base})
+    cfg = cfg_cortinas(); motor_unidad = int(cfg["motor"])
     for k, n in NIVELES.items():
         total = 0
+        factor = float((cfg.get("niveles") or {}).get(k, {}).get("factor", n["factor"]))
         for f in filas:
-            sub = f["subtotal"] * n["factor"]
+            sub = f["subtotal"] * factor
             motor = n["motor"] == "todo" or (n["motor"] is True and f.get("motorizado"))
-            if motor: sub += MOTOR_UNIDAD * max(int(f.get("cantidad", 1)), 1)
+            if motor: sub += motor_unidad * max(int(f.get("cantidad", 1)), 1)
             total += sub
         total = int(round(total * (100 - descuento_pct) / 100))
         out[k] = {"nombre": n["nombre"], "desc": n["desc"], "total": total, "mensual_12": int(round(total / 12))}
@@ -189,7 +197,7 @@ def calcular(espacios: List[dict], descuento_pct: int = 0) -> dict:
 @router.get("/catalogo")
 def catalogo(refrescar: bool = False, v: dict = Depends(get_vendedor)):
     prods = catalogo_tb(force=refrescar)
-    return {"productos": prods, "precios": {p["key"]: (p["precio_unidad"] if p["por_unidad"] else p["precio_m2"]) for p in prods}, "motor": MOTOR_UNIDAD, "niveles": NIVELES, "etapas": ETAPAS, "logo": LOGO_TB_URL, "fuente": TB_API}
+    return {"productos": prods, "precios": {p["key"]: (p["precio_unidad"] if p["por_unidad"] else p["precio_m2"]) for p in prods}, "motor": cfg_cortinas()["motor"], "niveles": NIVELES, "etapas": ETAPAS, "logo": LOGO_TB_URL, "fuente": TB_API}
 
 
 class LeadIn(BaseModel):

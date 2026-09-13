@@ -36,7 +36,13 @@ _PLANES_DEF = {
     "working": {"mensual": 39990, "unidad": "por taller", "setup": 59990, "setup_desc": "carga de catálogo, usuarios y capacitación", "min": 1},
     "omniflow": {"mensual": 49990, "unidad": "por número de WhatsApp", "setup": 79990, "setup_desc": "conexión Meta, bot IA entrenado con tu negocio", "min": 1},
 }
-PLANES = {**_PLANES_DEF, **json.loads(os.getenv("VENTAS_PRECIOS_NEGOCIOS", "{}") or "{}")}
+PLANES_DEF = {**_PLANES_DEF, **json.loads(os.getenv("VENTAS_PRECIOS_NEGOCIOS", "{}") or "{}")}
+
+
+def PLANES_() -> dict:
+    """Planes vigentes (BD sobre defaults). Ver ventas_config."""
+    from app.routers.ventas_config import get_config
+    return get_config("negocios", {"planes": PLANES_DEF})["planes"]
 # Accesos demo por producto (links/credenciales que se entregan al prospecto). Override: VENTAS_DEMOS_NEGOCIOS (json)
 _DEMOS_DEF = {
     "conectatap": {"url": "https://tap.conectaai.cl/t/menusmart", "nota": "Toca o escanea: así llega tu cliente a tu negocio."},
@@ -94,7 +100,7 @@ def cotizar(items: List[dict], descuento_pct: int = 0, meses_gratis: int = 0) ->
     for it in items:
         k = it["producto"]
         if k not in CAT: continue
-        pl = PLANES.get(k, {"mensual": 0, "unidad": "", "setup": 0, "setup_desc": "", "min": 1})
+        pl = PLANES_().get(k, {"mensual": 0, "unidad": "", "setup": 0, "setup_desc": "", "min": 1})
         cant = max(int(it.get("cantidad") or 1), pl.get("min", 1))
         pm = int(it.get("precio_mensual") or pl["mensual"]); st = int(it["setup"] if it.get("setup") is not None else pl["setup"])
         sub = pm * cant
@@ -106,7 +112,8 @@ def cotizar(items: List[dict], descuento_pct: int = 0, meses_gratis: int = 0) ->
 
 @router.get("/catalogo")
 def catalogo(v: dict = Depends(get_vendedor)):
-    return {"productos": [{**c, "plan": PLANES.get(c["id"]), "demo": DEMOS.get(c["id"])} for c in CATALOG], "rubros": RUBROS, "dolores": DOLORES, "etapas": ETAPAS}
+    planes = PLANES_()
+    return {"productos": [{**c, "plan": planes.get(c["id"]), "demo": DEMOS.get(c["id"])} for c in CATALOG], "rubros": RUBROS, "dolores": DOLORES, "etapas": ETAPAS}
 
 
 class NegocioIn(BaseModel):

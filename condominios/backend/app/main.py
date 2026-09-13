@@ -287,7 +287,9 @@ app.include_router(ventas_cron_router.router)
 from app.routers import ventas_extras as ventas_extras_router
 app.include_router(ventas_extras_router.router)
 from app.routers import ventas_working as ventas_working_router
+from app.routers import ventas_config as ventas_config_router
 app.include_router(ventas_working_router.router)
+app.include_router(ventas_config_router.router)
 app.include_router(ventas_demo_router.router)
 from app.routers import egresos as egresos_router
 app.include_router(egresos_router.router)

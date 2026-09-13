@@ -62,7 +62,7 @@ DOLORES = {
     "acceso_vehicular": ("Portón y estacionamientos", "TAG UHF/NFC en el auto del vecino y lector de patentes: el portón abre solo a autorizados y queda registro de cada acceso."),
     "conserjeria": ("Conserjería desordenada", "Panel táctil del conserje: central de eventos en vivo, visitas, encomiendas, reservas, incidencias y libro de novedades."),
 }
-MODULOS = [
+MODULOS_DEF = [
     {"key": "base", "nombre": "Plan Pro (base)", "detalle": "Admin + Conserje + App vecinos: gastos comunes, convenios, visitas, encomiendas, reservas, avisos, votaciones, incidencias", "precio": 800, "base": True},
     {"key": "mantenciones", "nombre": "Mantenciones QR", "detalle": "Bitácora firmada por técnicos desde sticker QR/NFC", "precio": 150},
     {"key": "tag_vehicular", "nombre": "TAG vehicular UHF/NFC", "detalle": "Apertura automática de portón con TAG en el auto", "precio": 250},
@@ -71,7 +71,17 @@ MODULOS = [
     {"key": "facial", "nombre": "Reconocimiento facial", "detalle": "Integración ZKTeco / Hikvision", "precio": 400},
     {"key": "whatsapp", "nombre": "WhatsApp oficial", "detalle": "Avisos y recordatorios por WhatsApp Business", "precio": 200},
 ]
-MINIMO_MENSUAL = 40000
+MINIMO_MENSUAL_DEF = 40000
+
+
+def cfg_condo() -> dict:
+    """Precios vigentes de condominios (BD sobre defaults). Ver ventas_config."""
+    from app.routers.ventas_config import get_config
+    return get_config("condominios", {"modulos": MODULOS_DEF, "minimo_mensual": MINIMO_MENSUAL_DEF})
+
+
+def MODULOS_():
+    return cfg_condo()["modulos"]
 
 _SCHEMA_OK = False
 
@@ -210,9 +220,10 @@ def _edificio(db: Session, eid: int, v: dict) -> dict:
 
 def _precio(modulos: List[str], unidades: int, precio_unidad: Optional[int] = None, descuento_pct: int = 0) -> dict:
     keys = set(modulos or []) | {"base"}
-    items = [m for m in MODULOS if m["key"] in keys]
-    pu = precio_unidad if precio_unidad else sum(m["precio"] for m in items)
-    total = max(pu * max(unidades or 0, 0), MINIMO_MENSUAL if unidades else 0)
+    cfg = cfg_condo()
+    items = [m for m in cfg["modulos"] if m["key"] in keys]
+    pu = precio_unidad if precio_unidad else sum(int(m["precio"]) for m in items)
+    total = max(pu * max(unidades or 0, 0), int(cfg["minimo_mensual"]) if unidades else 0)
     if descuento_pct:
         total = int(round(total * (100 - descuento_pct) / 100))
     return {"items": items, "precio_unidad": pu, "total_mensual": int(total), "unidades": unidades, "descuento_pct": descuento_pct}
@@ -445,7 +456,8 @@ def pipeline(v: dict = Depends(get_vendedor), db: Session = Depends(get_db)):
 
 @router.get("/modulos")
 def modulos():
-    return {"modulos": MODULOS, "dolores": DOLORES, "minimo_mensual": MINIMO_MENSUAL, "demo_dias": demo.DEMO_DIAS}
+    cfg = cfg_condo()
+    return {"modulos": cfg["modulos"], "dolores": DOLORES, "minimo_mensual": cfg["minimo_mensual"], "demo_dias": demo.DEMO_DIAS}
 
 
 class CotizarIn(BaseModel):
@@ -660,7 +672,7 @@ def _pdf_propuesta(prop: dict, e: dict, d: Optional[dict], v: dict) -> bytes:
     INK, TEAL, MUT, SOFT = HexColor("#0B1F2A"), HexColor("#0F766E"), HexColor("#7A8F98"), HexColor("#DDF4F0")
     fmt = lambda n: "$" + f"{int(n):,}".replace(",", ".")
     mods = prop["modulos"] if isinstance(prop["modulos"], list) else json.loads(prop["modulos"] or "[]")
-    items = [m for m in MODULOS if m["key"] in set(mods) | {"base"}]
+    items = [m for m in MODULOS_() if m["key"] in set(mods) | {"base"}]
     dol = e.get("dolores") or []
     if isinstance(dol, str): dol = json.loads(dol)
 
@@ -911,7 +923,7 @@ def propuesta_publica(token: str, request: Request, db: Session = Depends(get_db
         d = {"dominio": d["dominio"], "vence": d["vence"], "estado": d["estado"], "vencido": est["vencido"], "dias_restantes": est["dias_restantes"]}
     return {"edificio": {k: e[k] for k in ("nombre", "tipo", "comuna", "direccion", "administrador_nombre", "unidades")},
             "dolores": [{"key": k, **dict(zip(("titulo", "solucion"), DOLORES[k]))} for k in dol if k in DOLORES],
-            "modulos": [m for m in MODULOS if m["key"] in set(mods) | {"base"}],
+            "modulos": [m for m in MODULOS_() if m["key"] in set(mods) | {"base"}],
             "precio_unidad": prop["precio_unidad"], "unidades": prop["unidades"], "total_mensual": prop["total_mensual"], "descuento_pct": prop["descuento_pct"], "meses_gratis": prop["meses_gratis"],
             "mensaje": prop["mensaje"], "vendedor": v, "demo": d, "credenciales": cred, "pdf_url": f"/api/ventas-terreno/p/{token}/pdf", "creada": prop["created_at"], "marca": MARCA,
             "wa": "https://wa.me/" + "".join(ch for ch in (v.get("telefono") or "56998101891") if ch.isdigit())}
