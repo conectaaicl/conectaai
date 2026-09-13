@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import DemoBanner from '../components/DemoBanner'
 import {
   LayoutGrid, QrCode, DoorClosed, Users, Package,
   CalendarDays, AlertTriangle, History, Siren,
@@ -118,6 +119,7 @@ export default function ConserjeLayout({ children }: { children: React.ReactNode
 
   return (
     <div className="flex h-screen bg-slate-950 overflow-hidden">
+      <DemoBanner />
       <aside className="hidden lg:flex w-56 flex-col shrink-0 border-r border-slate-800">
         <SidebarContent />
       </aside>

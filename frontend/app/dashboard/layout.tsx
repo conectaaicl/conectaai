@@ -1,4 +1,5 @@
 'use client'
+import DemoBanner from '../components/DemoBanner'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -669,6 +670,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <ToastProvider>
+      <DemoBanner />
       <div className="flex h-screen bg-slate-50 dark:bg-[#080812] overflow-hidden">
         {open && (
           <div className="fixed inset-0 bg-black/50 z-20 lg:hidden backdrop-blur-sm" onClick={() => setOpen(false)} />

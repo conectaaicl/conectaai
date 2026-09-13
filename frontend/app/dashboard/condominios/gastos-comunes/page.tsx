@@ -67,7 +67,7 @@ const BADGE: Record<Estado, string> = {
 
 export default function GastosComunesPage() {
   const { user } = useSession()
-  const tenantId = user?.tenant_id ?? 1
+  const tenantId = user?.tenant_id ?? 0
 
   const [periodos, setPeriodos] = useState<Periodo[]>([])
   const [loading, setLoading] = useState(false)

@@ -88,25 +88,42 @@ def listar_visitas(
 
 @router.get("/qr/{token}")
 def obtener_visita_por_qr(token: str, db: Session = Depends(get_db)):
-    """Public endpoint: get visit info by QR token (for portería tablet)."""
+    """Public endpoint: get visit info by QR token (for porteria tablet)."""
+    from app.routers.invitaciones import _ensure_schema, estado_efectivo, contexto
+    _ensure_schema(db)
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:
         raise HTTPException(status_code=404, detail="QR no encontrado")
-    return visita_to_dict(visita)
+    d = visita_to_dict(visita)
+    d["estado"] = estado_efectivo(visita)
+    ctx = contexto(db, visita)
+    cel = getattr(visita, "celular_visitante", None)
+    d.update({"unidad": ctx["unidad"], "torre": ctx["torre"], "condominio": ctx["condominio"], "anfitrion": ctx["anfitrion"],
+              "activada": bool(cel), "celular_oculto": (f"•••• {cel[-4:]}" if cel else None)})
+    return d
 
 
 @router.patch("/qr/{token}/ingresar")
 def registrar_ingreso(token: str, db: Session = Depends(get_db), current_user: dict = Depends(get_current_user)):
-    """Mark visitor as entered."""
+    """Mark visitor as entered (single use)."""
+    from app.routers.invitaciones import _ensure_schema, estado_efectivo, _avisar_anfitrion, _avisar_conserje
+    _ensure_schema(db)
     visita = db.query(VisitaQR).filter(VisitaQR.qr_token == token).first()
     if not visita:
         raise HTTPException(status_code=404, detail="QR no encontrado")
-    if visita.estado == "ingresado":
-        raise HTTPException(status_code=400, detail="El visitante ya ingresó")
+    est = estado_efectivo(visita)
+    if est == "ingresado":
+        raise HTTPException(status_code=400, detail="Este código ya fue usado: el visitante ya ingresó")
+    if est == "expirado":
+        raise HTTPException(status_code=400, detail="Invitación vencida")
+    if est in ("rechazado", "cancelado", "salido"):
+        raise HTTPException(status_code=400, detail=f"Invitación no vigente ({est})")
     visita.hora_entrada = datetime.now()
     visita.estado = "ingresado"
     db.commit()
     db.refresh(visita)
+    _avisar_anfitrion(db, visita, "Tu visita llegó", f"{visita.nombre_visitante} ingresó al condominio.")
+    _avisar_conserje(db, visita, "ingreso")
     return visita_to_dict(visita)
 
 

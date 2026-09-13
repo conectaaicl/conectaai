@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, or_
 from app.core.database import get_db
@@ -160,7 +160,7 @@ def leer_aviso(aviso_id: int, r: ResidentePortal=Depends(get_residente), db: Ses
     return {"ok": True}
 
 @router.post("/qr/visita")
-def generar_qr(data: dict, r: ResidentePortal=Depends(get_residente), db: Session=Depends(get_db)):
+def generar_qr(data: dict, request: Request, r: ResidentePortal=Depends(get_residente), db: Session=Depends(get_db)):
     try:
         from app.models.acceso import VisitaQR
         horas = int(data.get("horas_validez", 24))
@@ -179,9 +179,10 @@ def generar_qr(data: dict, r: ResidentePortal=Depends(get_residente), db: Sessio
             creado_por=r.id
         )
         db.add(visita); db.commit(); db.refresh(visita)
-        app_url = os.getenv("APP_URL", "https://conectaai.cl")
+        from app.routers.invitaciones import base_url
+        app_url = base_url(request)
         token = visita.qr_token
-        return {"token": token, "url": f"{app_url}/acceso/qr/{token}", "expira": fecha_visita.isoformat()}
+        return {"token": token, "url": f"{app_url}/i/{token}", "url_scan": f"{app_url}/acceso/qr/{token}", "expira": fecha_visita.isoformat()}
     except Exception as e:
         raise HTTPException(500, f"Error generando QR: {str(e)}")
 

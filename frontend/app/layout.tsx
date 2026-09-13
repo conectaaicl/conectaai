@@ -16,6 +16,16 @@ export async function generateMetadata(): Promise<Metadata> {
   const headersList = await headers();
   const host = headersList.get("host") || "";
   const isGym = host.startsWith("gym.");
+  const isVentas = host.startsWith("ventas.");
+
+  if (isVentas) {
+    return {
+      metadataBase: new URL("https://ventas.conectaai.cl"),
+      title: { default: "ConectaAI Ventas Terreno", template: "%s | ConectaAI Ventas" },
+      description: "Cartera de edificios, propuestas, demos y cortinas TerraBlinds.",
+      robots: { index: false, follow: false },
+    };
+  }
 
   if (isGym) {
     return {

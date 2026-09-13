@@ -130,6 +130,9 @@ app.include_router(vehiculos_router.router)
 from app.routers import branding as branding_router
 app.include_router(branding_router.router)
 
+from app.routers import invitaciones as invitaciones_router
+app.include_router(invitaciones_router.router)
+
 from app.routers import convenios as convenios_router
 app.include_router(convenios_router.router)
 app.include_router(convenios_router.portal_router)
@@ -266,5 +269,13 @@ def health():
 
 from app.routers import ventas as ventas_router
 app.include_router(ventas_router.router)
+from app.routers import ventas_terreno as ventas_terreno_router
+app.include_router(ventas_terreno_router.router)
+from app.routers import ventas_demo as ventas_demo_router
+from app.routers import ventas_presentaciones as ventas_pres_router
+app.include_router(ventas_pres_router.router)
+from app.routers import ventas_cortinas as ventas_cortinas_router
+app.include_router(ventas_cortinas_router.router)
+app.include_router(ventas_demo_router.router)
 from app.routers import egresos as egresos_router
 app.include_router(egresos_router.router)

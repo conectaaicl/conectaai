@@ -10,6 +10,12 @@ interface Visita {
   estado: string
   hora_entrada?: string
   hora_salida?: string
+  unidad?: string | null
+  torre?: string | null
+  condominio?: string
+  anfitrion?: string | null
+  activada?: boolean
+  celular_oculto?: string | null
 }
 
 export default function AccesoQRPage({ params }: { params: Promise<{ token: string }> }) {
@@ -59,7 +65,7 @@ export default function AccesoQRPage({ params }: { params: Promise<{ token: stri
             </svg>
           </div>
           <h1 className="text-xl font-bold">Control de Acceso</h1>
-          <p className="text-indigo-100 text-sm">ConectaAI</p>
+          <p className="text-indigo-100 text-sm">{visita?.condominio || 'ConectaAI'}</p>
         </div>
 
         <div className="p-6">
@@ -88,7 +94,9 @@ export default function AccesoQRPage({ params }: { params: Promise<{ token: stri
                 {[
                   { label: 'Visitante', value: visita.nombre_visitante },
                   { label: 'RUT', value: visita.rut_visitante || '—' },
-                  { label: 'Departamento', value: String(visita.departamento_id) },
+                  { label: 'Unidad', value: visita.unidad ? `${visita.torre && visita.torre !== 'A' ? visita.torre + ' · ' : ''}${visita.unidad}` : String(visita.departamento_id || '—') },
+                  { label: 'Invita', value: visita.anfitrion || '—' },
+                  { label: 'Celular', value: visita.activada ? `Ligado ${visita.celular_oculto}` : 'Sin activar' },
                   { label: 'Motivo', value: visita.motivo || '—' },
                   { label: 'Estado', value: visita.estado },
                 ].map(({ label, value }) => (
@@ -117,9 +125,9 @@ export default function AccesoQRPage({ params }: { params: Promise<{ token: stri
                   {updating ? 'Registrando...' : 'Registrar salida'}
                 </button>
               )}
-              {(visita.estado === 'salido' || visita.estado === 'cancelado') && (
-                <div className="text-center py-3 text-slate-500 text-sm">
-                  Visita finalizada ({visita.estado})
+              {(visita.estado === 'salido' || visita.estado === 'cancelado' || visita.estado === 'expirado' || visita.estado === 'rechazado') && (
+                <div className={`text-center py-3 rounded-xl text-sm font-semibold ${visita.estado === 'expirado' || visita.estado === 'rechazado' ? 'bg-red-50 text-red-700' : 'text-slate-500'}`}>
+                  {visita.estado === 'expirado' ? 'Invitación vencida: no permitir el ingreso' : visita.estado === 'rechazado' ? 'Invitación rechazada' : `Visita finalizada (${visita.estado})`}
                 </div>
               )}
             </>

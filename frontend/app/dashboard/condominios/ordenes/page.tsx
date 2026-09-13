@@ -30,7 +30,7 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace
 
 export default function OrdenesPage() {
   const { user } = useSession()
-  const tenantId = (user as any)?.tenant_id || 1
+  const tenantId = (user as any)?.tenant_id || 0
   const [ordenes, setOrdenes] = useState<any[]>([])
   const [stats, setStats] = useState<any>({})
   const [loading, setLoading] = useState(true)

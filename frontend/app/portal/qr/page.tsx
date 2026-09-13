@@ -255,7 +255,7 @@ export default function PortalQR() {
   const compartirWA = () => {
     if (!resultado) return
     const msg = encodeURIComponent(
-      `Hola! Aquí está tu código de acceso al edificio.\n\nVisitante: ${nombreVisita}\nVálido hasta: ${new Date(resultado.expira).toLocaleString('es-CL')}\n\nPresenta este QR en la recepción:\n${resultado.url}`
+      `Hola ${nombreVisita}! Te invité al edificio 🏢\n\nAbre este link, ingresa tu celular y te aparecerá tu código QR de acceso (sirve para una sola persona):\n${resultado.url}\n\nVálido hasta: ${new Date(resultado.expira).toLocaleString('es-CL')}`
     )
     window.open(`https://wa.me/?text=${msg}`, '_blank')
   }

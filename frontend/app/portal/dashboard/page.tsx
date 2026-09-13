@@ -1,4 +1,5 @@
 'use client'
+import DemoBanner from '../../components/DemoBanner'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { usePortalSession } from '../usePortalSession'
@@ -94,6 +95,7 @@ export default function PortalDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
+      <DemoBanner />
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-indigo-800 text-white p-6 pt-8">
         <div className="flex items-center justify-between max-w-lg mx-auto">

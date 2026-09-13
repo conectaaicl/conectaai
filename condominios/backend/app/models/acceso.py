@@ -19,3 +19,7 @@ class VisitaQR(Base):
     notas = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     creado_por = Column(Integer)  # persona_id quien invita
+    # Invitacion por link (/i/<token>): celular al que quedo ligada y cuando se activo
+    celular_visitante = Column(String(30))
+    activado_en = Column(DateTime(timezone=True))
+    vistas = Column(Integer, default=0)

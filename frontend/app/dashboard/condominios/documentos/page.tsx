@@ -41,7 +41,7 @@ function fmtBytes(b: number) {
 
 export default function DocumentosPage() {
   const { user } = useSession()
-  const tenantId = (user as any)?.tenant_id || 1
+  const tenantId = (user as any)?.tenant_id || 0
   const [docs, setDocs] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')

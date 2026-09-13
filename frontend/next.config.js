@@ -110,6 +110,9 @@ const nextConfig = {
       { source: '/api/alarmas/:path*', destination: 'http://backend-condominios:8003/api/alarmas/:path*' },
       { source: '/api/alarmas', destination: 'http://backend-condominios:8003/api/alarmas' },
       // Ventas y WhatsApp 360 → puerto 8003
+      { source: '/api/ventas-terreno/:path*', destination: 'http://backend-condominios:8003/api/ventas-terreno/:path*' },
+      { source: '/api/demo/:path*', destination: 'http://backend-condominios:8003/api/demo/:path*' },
+      { source: '/api/invitacion/:path*', destination: 'http://backend-condominios:8003/api/invitacion/:path*' },
       { source: '/api/ventas/:path*', destination: 'http://backend-condominios:8003/api/ventas/:path*' },
       { source: '/api/ventas', destination: 'http://backend-condominios:8003/api/ventas' },
       { source: '/uploads/:path*', destination: 'http://backend-condominios:8003/uploads/:path*' },

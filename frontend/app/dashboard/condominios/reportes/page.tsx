@@ -120,7 +120,7 @@ export default function ReportesPage() {
     }
   }
 
-  const tid = tenant_id || 1
+  const tid = tenant_id || 0
 
   const reportes: ReporteConfig[] = [
     {
